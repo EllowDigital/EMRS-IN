@@ -1,12 +1,20 @@
 # This file tells Netlify how to build your project.
 
 [build]
-  # This tells Netlify that your backend functions are in the "functions" folder.
+  # This tells Netlify where your backend functions are
   functions = "functions/"
+  
+  # This tells Netlify that your frontend is in the root directory
+  publish = "."
+
+  # This tells Netlify to run NO build command for the frontend.
+  # This is the line that fixes your error.
+  command = ""
 
 # This is a "redirect" rule that makes your function easier to call.
-# It forwards any request from "/api/register" to your "register" function.
+# It forwards any request from "/api/*" to your "register" function.
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/:splat"
   status = 200
+
