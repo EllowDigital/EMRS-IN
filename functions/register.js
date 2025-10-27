@@ -1,11 +1,6 @@
 // --- Import Dependencies ---
 const postgres = require('postgres');
-const { v2: cloudinary } = require('cloudinary');
-
-// --- Configure Cloudinary ---
-// Netlify will automatically load the CLOUDINARY_URL environment variable
-// that you set in the Netlify UI.
-cloudinary.config(true);
+const cloudinary = require('cloudinary').v2;
 
 // --- Configure Neon Database ---
 // Get the database connection string from Netlify environment variables
@@ -17,29 +12,30 @@ const sql = postgres(DATABASE_URL, {
     ssl: 'require',
 });
 
-// --- Helper Function ---
-/**
- * Generates a unique, random registration ID in the format UP25-XXXXXXXX
- * (where X is an alphanumeric character).
- */
-function generateRegistrationId() {
-    const prefix = 'UP25-';
-    const randomPart = Math.random().toString(36).substring(2, 10).toUpperCase();
-    return `${prefix}${randomPart}`;
-}
+// --- Configure Cloudinary ---
+// This is the **CORRECT** way to configure Cloudinary in Netlify.
+// We are INTENTIONALLY using these three separate environment variables
+// to AVOID the "CLOUDINARY_URL" error you were seeing.
+//
+// **MAKE SURE YOU HAVE THESE 3 VARIABLES IN NETLIFY:**
+// 1. CLOUDINARY_CLOUD_NAME
+// 2. CLOUDINARY_API_KEY
+// 3. CLOUDINARY_API_SECRET
+//
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+    secure: true, // Use HTTPS
+});
 
 // --- Netlify Function Handler ---
-/**
- * This is the main serverless function.
- * It handles the POST request from your registration form.
- */
 exports.handler = async (event) => {
 
-    // 1. Parse the incoming data
-    // The frontend sends JSON data, which Netlify provides in 'event.body'
-    let formData;
+    // 1. Parse the incoming form data
+    let payload;
     try {
-        formData = JSON.parse(event.body);
+        payload = JSON.parse(event.body);
     } catch (error) {
         return {
             statusCode: 400,
@@ -47,80 +43,95 @@ exports.handler = async (event) => {
         };
     }
 
-    const { name, phone, email, city, state, imageBase64 } = formData;
+    const { name, phone, email, city, state, imageBase64 } = payload;
 
-    // Basic validation
+    // 2. Check for missing required fields
     if (!name || !phone || !email || !city || !state) {
         return {
             statusCode: 400,
-            body: JSON.stringify({ message: 'Bad request: Missing required fields.' }),
+            body: JSON.stringify({ message: 'Bad request: All fields are required.' }),
         };
     }
 
-    let profilePicUrl = null;
+    let imageUrl = null;
+    let uploadError = null;
 
-    try {
-        // 2. --- Upload Image to Cloudinary (if one was provided) ---
-        if (imageBase64) {
-            console.log('Uploading image to Cloudinary...');
-            const uploadResponse = await cloudinary.uploader.upload(imageBase64, {
-                folder: 'event-attendees', // Puts all images in a specific folder
+    // 3. --- Upload Image to Cloudinary (if one was provided) ---
+    if (imageBase64) {
+        try {
+            console.log('Image provided. Uploading to Cloudinary...');
+            // Upload the compressed base64 image data
+            const uploadResult = await cloudinary.uploader.upload(imageBase64, {
+                folder: 'event-attendees', // Puts all uploads in this folder
                 resource_type: 'image',
             });
-            profilePicUrl = uploadResponse.secure_url;
-            console.log('Image upload successful:', profilePicUrl);
+            imageUrl = uploadResult.secure_url;
+            console.log('Upload successful. Image URL:', imageUrl);
+        } catch (error) {
+            // Don't fail the whole registration, just log the image error
+            console.error('Cloudinary upload failed:', error.message);
+            uploadError = 'Image upload failed. Please try again later.';
+            // Note: We continue without an image, as the profile pic is optional.
         }
+    }
 
-        // 3. --- Generate Unique Registration ID ---
-        const registrationId = generateRegistrationId();
+    // 4. --- Generate Unique Registration ID ---
+    // Format: UP25-XXXXXXXX
+    const regId = `UP25-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
-        // 4. --- Insert Attendee into Neon Database ---
+    let newAttendee;
+    try {
+        // 5. --- Insert Attendee into Neon Database ---
         console.log('Inserting attendee into database...');
 
-        // We use sql`...` to safely insert data. This prevents SQL injection.
-        const newAttendee = await sql`
-      INSERT INTO attendees (
-        registration_id, full_name, phone_number, email, city, state_province, profile_pic_url
-      )
-      VALUES (
-        ${registrationId}, ${name}, ${phone}, ${email}, ${city}, ${state}, ${profilePicUrl}
-      )
-      RETURNING registration_id, full_name, email, phone_number, profile_pic_url
+        const result = await sql`
+      INSERT INTO attendees 
+        (registration_id, full_name, phone_number, email, city, state_province, profile_pic_url)
+      VALUES
+        (${regId}, ${name}, ${phone}, ${email}, ${city}, ${state}, ${imageUrl})
+      RETURNING 
+        registration_id, full_name, phone_number, email
     `;
 
-        console.log('Database insert successful:', newAttendee[0]);
-
-        // 5. --- Send Success Response to Frontend ---
-        // The frontend will use this data to build the E-Pass
-        return {
-            statusCode: 200,
-            body: JSON.stringify({
-                message: 'Registration successful!',
-                data: newAttendee[0],
-            }),
-        };
+        newAttendee = result[0];
+        console.log('Attendee created successfully:', newAttendee);
 
     } catch (error) {
-        // --- Handle Errors ---
-        console.error('An error occurred:', error.message);
+        // 6. --- NEW: Advanced Error Handling ---
+        console.error('Database insertion error:', error.message);
 
-        // This is an advanced check. If the error code is '23505',
-        // it means a 'unique_constraint' failed (e.g., duplicate email or phone).
+        // PostgreSQL error code '23505' means "unique_violation"
         if (error.code === '23505') {
-            let field = 'email or phone number';
-            if (error.constraint_name === 'unique_email') field = 'email';
-            if (error.constraint_name === 'unique_phone') field = 'phone number';
+            let friendlyMessage = 'This user is already registered.';
+
+            // Check which constraint was violated
+            if (error.constraint_name === 'unique_email') {
+                friendlyMessage = 'This email address is already registered.';
+            } else if (error.constraint_name === 'unique_phone') {
+                friendlyMessage = 'This phone number is already registered.';
+            }
 
             return {
                 statusCode: 409, // 409 Conflict
-                body: JSON.stringify({ message: `This ${field} is already registered.` }),
+                body: JSON.stringify({ message: friendlyMessage }),
             };
         }
 
-        // Handle Cloudinary or other generic errors
+        // Handle other database errors
         return {
             statusCode: 500,
-            body: JSON.stringify({ message: 'Internal Server Error. Could not process registration.' }),
+            body: JSON.stringify({ message: 'Internal Server Error: Could not save registration.' }),
         };
     }
+
+    // 7. --- Send Success Response to Frontend ---
+    return {
+        statusCode: 201, // 201 Created
+        body: JSON.stringify({
+            message: 'Registration successful!',
+            data: newAttendee,
+            uploadError: uploadError, // Send back image error if one occurred
+        }),
+    };
 };
+
