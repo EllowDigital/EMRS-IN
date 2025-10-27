@@ -1,0 +1,13 @@
+{
+  "name": "event-management-backend",
+  "version": "1.0.0",
+  "description": "Backend functions for the Event Management app.",
+  "main": "functions/register.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "cloudinary": "^2.2.0",
+    "postgres": "^3.4.4"
+  }
+}

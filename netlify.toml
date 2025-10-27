@@ -1,0 +1,12 @@
+# This file tells Netlify how to build your project.
+
+[build]
+  # This tells Netlify that your backend functions are in the "functions" folder.
+  functions = "functions/"
+
+# This is a "redirect" rule that makes your function easier to call.
+# It forwards any request from "/api/register" to your "register" function.
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
