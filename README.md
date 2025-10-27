@@ -1,67 +1,119 @@
-# 🏷️ EMRS – Event Management and Registration System
+# 🏷️ EMRS – Event Management & Registration System
 
-**EMRS (Event Management and Registration System)** is an end-to-end digital platform designed to simplify and automate event operations.  
-It enables seamless **online registration**, **secure digital e-pass generation**, **real-time attendee validation**, and **QR-based check-ins**.  
-The system also features an **admin dashboard** for complete event oversight, with controls to pause registrations, track stats, and manage attendees — all while ensuring a smooth, paperless experience.
+**EMRS (Event Management & Registration System)** is a complete digital solution built to simplify and automate event workflows — from attendee registration to on-site verification.  
+It provides **online registration**, **QR-secured e-pass generation**, **real-time validation**, and **admin-level control** — all under one scalable, serverless architecture.
 
-This repository is built for **single-event deployment** and can be easily reused for future events by resetting the database and updating configuration details.
+Designed for **single-event deployment**, EMRS can be easily reused for future events by resetting the database and updating configurations.  
+The result: a secure, paperless, and efficient event experience for both organizers and attendees.
 
 ---
 
 ## 🚀 Key Features
 
-- **Online Attendee Registration:** A user-friendly registration form for attendees to register quickly and securely.  
-- **Secure E-Pass Generation:** Generates a unique, QR-secured digital e-pass containing attendee details and profile image.  
-- **Real-Time Validation & Check-In:** Admins can validate attendees by scanning QR codes (camera-based) or through manual check-in.  
-- **Admin Dashboard:**  
-  - Monitor real-time registration and check-in statistics.  
-  - Pause or resume registrations dynamically.  
-  - Activate “maintenance mode” for system updates.  
-  - Search and manage attendees manually.  
-- **Automated Email Notifications:**  
-  Utilizes **FormSubmit.co** to send personalized confirmation emails, including the attendee’s e-pass and details, along with a warm message:  
-  *“Thank you for registering — you are most welcome!”*  
-- **Find My Pass:** Allows attendees to retrieve their e-pass using their registered email.  
-- **Serverless Architecture:**  
-  Designed for scalability and cost efficiency using the **Jamstack** model — combining static hosting, serverless functions, and API-based workflows.
+### 📝 Online Registration
+- User-friendly registration form for attendees to register quickly and securely.  
+- Collects essential details: **Name**, **Phone Number**, **Email**, **City**, and **State**.  
+- All data is validated and securely stored to prevent duplicates.
+
+### 🎟️ Secure E-Pass Generation
+- Automatically generates a **unique random Registration ID** (format: `UP25-XXXXXXXX`).  
+- Creates a **QR-secured Digital E-Pass** containing:
+  - Attendee details  
+  - Profile image  
+  - QR code encoding Registration ID & Phone Number  
+- Includes a **“Download E-Pass”** option for easy access.
+
+### ✉️ Automated Email Notifications
+- Integrates **FormSubmit.co** to send personalized confirmation emails instantly.  
+- Each email includes:
+  - The attendee’s **E-Pass**  
+  - **Registration details**  
+  - A warm welcome message:  
+    > “Thank you for registering — you are most welcome!”
+
+### 🔍 Find My Pass
+- Lets attendees **retrieve their E-Pass** anytime using their **registered email address**.  
+- Ensures convenience if the original download is lost or deleted.
+
+### 🔐 Verify & Check-In Page
+- Enables event staff to validate attendees via:
+  - **Web-based QR scanner**, or  
+  - **Manual verification** (if QR scan fails).  
+- Displays attendee details instantly upon scan or ID lookup.  
+- Includes a **“Check-In”** button to mark attendance in real time.
+
+### 🧭 Admin Dashboard
+- Provides a centralized panel to **monitor, manage, and control** the entire system.  
+- **Key Features:**
+  - 📊 **Real-Time Monitoring:** Live stats of registrations & check-ins using **Netlify Functions**, **Neon DB**, and **Cloudinary APIs**.  
+  - ⚙️ **System Health Status:** View running/down states of core services (Database, API, Cloudinary, etc.).  
+  - 🚦 **Dynamic Registration Control:** Pause/resume registrations dynamically with live pop-up status updates.  
+  - 🔧 **Maintenance Mode:** Temporarily disable the system during updates with a maintenance notice.  
+  - 👥 **Manual Management:** Search, filter, and manage attendee records efficiently.
+
+### ☁️ Serverless Architecture
+- Built using the **Jamstack** approach for scalability, performance, and cost efficiency.  
+- Combines **static hosting**, **serverless functions**, and **API-based workflows** for a fully cloud-driven experience.
 
 ---
 
 ## 🧠 Tech Stack
 
-- **Frontend:** HTML, CSS, and Vanilla JavaScript  
-- **Backend:** Serverless (Netlify Functions running Node.js)  
-- **Database:** PostgreSQL (hosted on **Neon DB**)  
-- **Database Client:** [`postgres.js`](https://github.com/porsager/postgres) – lightweight Postgres client for Node.js  
-- **Image & Asset Management:** Cloudinary (for storing attendee photos and QR codes)  
-- **Email Notifications:** [FormSubmit.co](https://formsubmit.co/) for sending confirmation and e-pass emails  
-- **QR Code Generation:** [`qrcode`](https://www.npmjs.com/package/qrcode) npm library  
-- **Authentication:** `bcrypt` for password hashing and `JWT` for secure admin sessions  
-- **Deployment:** Netlify (hosting + serverless functions)  
-- **Version Control:** Git & GitHub  
+| Category | Technology / Tool | Purpose |
+|-----------|-------------------|----------|
+| **Frontend** | HTML, CSS, JavaScript | User interface & client interactions |
+| **Backend** | Netlify Functions (Node.js) | Handles registration, verification, and logic |
+| **Database** | PostgreSQL via **Neon DB** | Secure attendee data storage |
+| **Database Client** | [`postgres.js`](https://github.com/porsager/postgres) | Lightweight Postgres client for Node.js |
+| **Image Storage** | **Cloudinary** | Stores profile pictures & QR codes |
+| **Email Service** | [FormSubmit.co](https://formsubmit.co/) | Sends confirmation & e-pass emails |
+| **QR Code Generation** | [`qrcode`](https://www.npmjs.com/package/qrcode`) | Generates unique QR codes for passes |
+| **Authentication** | `bcrypt`, `JWT` | Secure admin access and session control |
+| **Deployment** | **Netlify** | Hosting + Serverless Functions |
+| **Version Control** | **Git & GitHub** | Code management & collaboration |
 
 ---
 
-## 🧩 Project Overview
+## 🧩 System Overview
 
-**EMRS** delivers a unified event management solution tailored for organizers who want full control over registration, verification, and attendee engagement.  
-With integrated digital passes, live tracking, and an intuitive dashboard, EMRS bridges convenience and security for modern event operations.
+**EMRS** empowers event organizers with full control over every stage of the attendee journey — from registration to on-site management.  
+By merging simplicity with security, EMRS eliminates paper-based processes and delivers a seamless digital event experience.
+
+**Core Modules:**
+1. 📝 Registration Page  
+2. 🎟️ Verify & Check-In Page  
+3. 🧭 Admin Dashboard  
 
 ---
 
-## 👨‍💻 Author
+## 🧑‍💻 Author
 
 **Sarwan Yadav (Devsarwan)**  
-Founder & CEO — [EllowDigital](https://ellowdigital.netlify.app)  
+Founder & CEO — [EllowDigital](https://ellowdigital.netlify.app)
 
 - 🌐 [EllowDigital Official Website](https://ellowdigital.netlify.app)  
 - 💼 [GitHub Organization – EllowDigital](https://github.com/EllowDigital)  
-- 👤 [GitHub Profile – Devsarwan](https://github.com/devsarwan)  
+- 👤 [GitHub Profile – Devsarwan](https://github.com/devsarwan)
 
 ---
 
 ## 💬 Contact
 
-For collaborations, inquiries, or project demos:  
+For collaborations, inquiries, or demo requests:  
 📧 **contact@ellowdigital.com**  
 🌐 [www.ellowdigital.netlify.app](https://ellowdigital.netlify.app)
+
+---
+
+## 🪪 Copyright & License
+
+**Copyright (c) 2025 [EllowDigital](https://github.com/EllowDigital)**  
+All rights reserved.
+
+This repository and its contents are provided for **demonstration and portfolio purposes only.**  
+No part of this software — including code, design, or documentation — may be **used, copied, modified, merged, published, distributed, sublicensed, or sold** in any form without the **express written permission of EllowDigital.**  
+Unauthorized use or reproduction of this material is **strictly prohibited.**
+
+---
+
+> 💡 *“EMRS is more than just registration — it’s a digital event experience that saves time, reduces paper, and enhances attendee engagement.”*
