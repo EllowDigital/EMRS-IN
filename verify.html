@@ -42,7 +42,6 @@
 
         body {
             background-color: var(--app-bg);
-            /* This data-attribute will control the entire UI state */
             data-ui-state: "lookup";
         }
 
@@ -53,7 +52,6 @@
         }
 
         /* --- Card Container --- */
-        /* Make the card slightly taller on mobile for a better feel */
         .main-card {
             min-height: 75vh;
         }
@@ -62,6 +60,19 @@
             .main-card {
                 min-height: auto;
             }
+        }
+
+        /* --- BUG FIX: Move top clear button to be relative to its content block, not absolutely within the card-body. --- */
+        #clear-btn-top {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 10;
+        }
+
+        #results-section {
+            position: relative;
+            /* Make it a positioning context for the top close button */
         }
 
         /* --- Toast Notification Container --- */
@@ -93,7 +104,6 @@
             transition: opacity 0.3s ease, transform 0.3s ease;
             pointer-events: none;
             display: none;
-            /* Hide by default */
         }
 
         /* --- UI State Control --- */
@@ -107,7 +117,6 @@
             pointer-events: auto;
         }
 
-        /* Show a spinner over the lookup form while loading */
         body[data-ui-state="loading"] #manual-lookup-form {
             opacity: 0.5;
             pointer-events: none;
@@ -166,12 +175,7 @@
             }
         }
 
-        /* --- Zoom Controls --- */
-        #zoom-controls {
-            transition: opacity 0.3s ease;
-        }
-
-        /* --- NEW: Button Transitions --- */
+        /* --- Button Transitions --- */
         .btn {
             transition: transform 0.15s ease-out;
         }
@@ -181,17 +185,6 @@
         }
 
         /* --- Attendee Result Card --- */
-        .result-card {
-            position: relative;
-        }
-
-        #clear-btn-top {
-            position: absolute;
-            top: 1rem;
-            right: 1.5rem;
-            z-index: 10;
-        }
-
         #result-status-badge {
             font-size: 1rem;
             font-weight: 600;
@@ -221,8 +214,7 @@
             font-size: 1rem;
         }
 
-        /* --- NEW: Result Animations --- */
-        /* We'll use JS to add the .animate-in class when the state changes to 'result' */
+        /* --- Result Animations --- */
         #results-section .animated {
             opacity: 0;
             transform: translateY(20px);
@@ -232,34 +224,33 @@
         #results-section.animate-in #result-status-badge {
             opacity: 1;
             transform: translateY(0);
-            transition-delay: 0.1s;
+            transition-delay: 0.05s;
         }
 
         #results-section.animate-in #result-avatar {
             opacity: 1;
             transform: translateY(0);
-            transition-delay: 0.2s;
+            transition-delay: 0.15s;
         }
 
         #results-section.animate-in #result-name {
             opacity: 1;
             transform: translateY(0);
-            transition-delay: 0.3s;
+            transition-delay: 0.25s;
         }
 
         #results-section.animate-in .epass-info-block {
             opacity: 1;
             transform: translateY(0);
-            transition-delay: 0.4s;
+            transition-delay: 0.35s;
         }
 
         #results-section.animate-in #checkin-btn,
         #results-section.animate-in #clear-btn-bottom {
             opacity: 1;
             transform: translateY(0);
-            transition-delay: 0.5s;
+            transition-delay: 0.45s;
         }
-
 
         /* Heartbeat Animation (Unchanged) */
         .heart {
@@ -403,6 +394,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
         integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
     <script>
         document.addEventListener("DOMContentLoaded", () => {
 
@@ -465,7 +457,6 @@
 
             /**
              * Sets the entire application UI state.
-             * @param {'lookup' | 'scanning' | 'loading' | 'result'} state
              */
             function setUIState(state) {
                 ui.body.dataset.uiState = state;
@@ -476,10 +467,7 @@
                     stopScanner();
                 }
 
-                // NEW: Trigger animations on result state
                 if (state === 'result') {
-                    // Use a tiny timeout to allow the 'display: block' to apply
-                    // before adding the animation class.
                     setTimeout(() => {
                         ui.resultsSection.classList.add('animate-in');
                     }, 10);
@@ -547,7 +535,6 @@
 
             /**
              * Controls the loading spinner state for buttons.
-             * (Includes the bugfix from our previous conversation)
              */
             function setLoadingState(isLoading, type) {
                 const isCheckin = type === 'checkin';
@@ -567,8 +554,6 @@
                     button.disabled = false;
                     btnText.textContent = defaultText;
 
-                    // --- BUG FIX ---
-                    // Only revert to 'lookup' if we are not already on the 'result' screen.
                     if (type === 'lookup' && ui.body.dataset.uiState !== 'result') {
                         setUIState('lookup');
                     }
@@ -580,8 +565,11 @@
              */
             function displayResults(attendee, isCheckedIn) {
                 appState.currentAttendeeRegId = attendee.registration_id;
-                ui.resultAvatar.src = attendee.profile_pic_url || config.placeholders.avatar;
+
+                // --- ENSURE NAME IS SET ---
                 ui.resultName.textContent = attendee.full_name;
+
+                ui.resultAvatar.src = attendee.profile_pic_url || config.placeholders.avatar;
                 ui.resultRegId.textContent = attendee.registration_id;
                 ui.resultPhone.textContent = attendee.phone_number || 'N/A';
                 ui.resultEmail.textContent = attendee.email || 'N/A';
@@ -679,7 +667,6 @@
                     });
                     const result = await response.json();
                     if (!response.ok) {
-                        // This will catch the 500 error and show its message
                         throw new Error(result.message || `HTTP error! Status: ${response.status}`);
                     }
                     showMessage("Check-In Successful!", "success");
@@ -743,21 +730,21 @@
                     const capabilities = track.getCapabilities();
                     const settings = track.getSettings();
                     if (capabilities && capabilities.zoom) {
-                        appState.cameraTrack = track; // Store the track
+                        appState.cameraTrack = track;
                         const { min, max, step } = capabilities.zoom;
                         ui.zoomSlider.min = min;
                         ui.zoomSlider.max = max;
                         ui.zoomSlider.step = step;
                         ui.zoomSlider.value = settings.zoom || min;
-                        ui.zoomControls.style.display = 'block'; // Show controls
+                        ui.zoomControls.style.display = 'block';
                         console.log(`Zoom enabled: min=${min}, max=${max}, current=${settings.zoom}`);
                     } else {
                         console.warn("Zoom is not supported by this camera.");
-                        ui.zoomControls.style.display = 'none'; // Hide if not supported
+                        ui.zoomControls.style.display = 'none';
                     }
                 } catch (err) {
                     console.error("Error getting camera capabilities:", err);
-                    ui.zoomControls.style.display = 'none'; // Hide on error
+                    ui.zoomControls.style.display = 'none';
                 }
             }
 
@@ -770,7 +757,7 @@
                     fps: 10,
                     qrbox: (viewfinderWidth, viewfinderHeight) => {
                         const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                        const size = Math.floor(minEdge * 0.75); // 75% of smallest dimension
+                        const size = Math.floor(minEdge * 0.75);
                         return { width: size, height: size };
                     },
                     rememberLastUsedCamera: true
