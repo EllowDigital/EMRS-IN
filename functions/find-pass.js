@@ -161,7 +161,7 @@ exports.handler = async (event) => {
         }
 
     } catch (error) {
-        console.error('Database search error:', error.message);
+        console.error('Database search error:', error);
         return {
             statusCode: 500,
             body: JSON.stringify({ message: 'An internal error occurred.', error: error.message }),
