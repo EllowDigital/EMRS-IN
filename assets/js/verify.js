@@ -594,4 +594,81 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
         });
     }
+    // --- Mobile nav & accessibility (verify page) ---
+    function openMobileNav() {
+        const nav = document.getElementById('mobile-nav');
+        const backdrop = document.getElementById('mobile-nav-backdrop');
+        if (!nav || !backdrop) return;
+        nav.classList.add('open');
+        backdrop.classList.remove('d-none');
+        nav.setAttribute('aria-hidden', 'false');
+        document.querySelectorAll('#menu-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'true'));
+        trapFocus(nav);
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileNav() {
+        const nav = document.getElementById('mobile-nav');
+        const backdrop = document.getElementById('mobile-nav-backdrop');
+        if (!nav || !backdrop) return;
+        nav.classList.remove('open');
+        backdrop.classList.add('d-none');
+        nav.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('#menu-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
+        releaseFocusTrap();
+        document.body.style.overflow = '';
+    }
+
+    let _focusTrap = null;
+    function trapFocus(container) {
+        const focusable = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+        const nodes = Array.from(container.querySelectorAll(focusable)).filter(n => n.offsetParent !== null);
+        if (nodes.length === 0) return;
+        const first = nodes[0];
+        const last = nodes[nodes.length - 1];
+        _focusTrap = function (e) {
+            if (e.key === 'Tab') {
+                if (e.shiftKey) {
+                    if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+                } else {
+                    if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+                }
+            } else if (e.key === 'Escape') {
+                closeMobileNav();
+            }
+        };
+        document.addEventListener('keydown', _focusTrap);
+        setTimeout(() => first.focus(), 50);
+    }
+
+    function releaseFocusTrap() { if (_focusTrap) { document.removeEventListener('keydown', _focusTrap); _focusTrap = null; } }
+
+    const menuToggle = document.getElementById('menu-toggle');
+    const mobileBackdrop = document.getElementById('mobile-nav-backdrop');
+    const mobileNavClose = document.getElementById('mobile-nav-close');
+    const mobileLogout = document.getElementById('mobile-logout');
+    if (menuToggle) menuToggle.addEventListener('click', (e) => { e.preventDefault(); openMobileNav(); });
+    if (mobileBackdrop) mobileBackdrop.addEventListener('click', closeMobileNav);
+    if (mobileNavClose) mobileNavClose.addEventListener('click', (e) => { e.preventDefault(); closeMobileNav(); });
+    if (mobileLogout) mobileLogout.addEventListener('click', (e) => { e.preventDefault(); sessionStorage.removeItem('emrs-staff-logged-in'); window.location.href = '/'; });
+
+    // header ripple micro-interaction
+    function initHeaderRipples() {
+        const headerBtns = document.querySelectorAll('.app-header .btn');
+        headerBtns.forEach(btn => {
+            btn.classList.add('ripple');
+            btn.addEventListener('pointerdown', function (ev) {
+                const rect = this.getBoundingClientRect();
+                const circle = document.createElement('span');
+                circle.className = 'ripple-effect';
+                const size = Math.max(rect.width, rect.height) * 1.2;
+                circle.style.width = circle.style.height = size + 'px';
+                circle.style.left = (ev.clientX - rect.left - size / 2) + 'px';
+                circle.style.top = (ev.clientY - rect.top - size / 2) + 'px';
+                this.appendChild(circle);
+                setTimeout(() => circle.remove(), 700);
+            });
+        });
+    }
+    initHeaderRipples();
 });

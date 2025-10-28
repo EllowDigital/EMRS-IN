@@ -76,6 +76,23 @@
         </div>
     </header>
 
+    <!-- Mobile slide-out nav -->
+    <div id="mobile-nav-backdrop" class="mobile-nav-backdrop d-none" tabindex="-1"></div>
+    <nav id="mobile-nav" class="mobile-nav" aria-hidden="true" aria-label="Mobile navigation">
+        <div class="mobile-nav-inner">
+            <div class="mobile-nav-header d-flex justify-content-between align-items-center">
+                <div class="fw-bold">Menu</div>
+                <button id="mobile-nav-close" class="btn btn-sm btn-light" aria-label="Close menu"><i class="bi bi-x"></i></button>
+            </div>
+            <ul class="list-unstyled mt-3">
+                <li><a href="/admin.html" class="mobile-nav-link">📊 Admin Dashboard</a></li>
+                <li><a href="#" class="mobile-nav-link" data-nav-target="start-scan">📷 Start Scan</a></li>
+                <li><a href="#manual-lookup-form" class="mobile-nav-link">🔎 Manual Lookup</a></li>
+                <li><button id="mobile-logout" class="btn btn-danger w-100 mt-3">Logout</button></li>
+            </ul>
+        </div>
+    </nav>
+
     <main class="content-wrapper">
         <div class="container">
             <div class="row">

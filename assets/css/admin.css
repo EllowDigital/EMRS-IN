@@ -188,3 +188,22 @@ button.btn { min-height: 40px; }
     .app-header .btn.btn-outline-light { padding: 0.45rem 0.5rem; }
     .app-header .btn.btn-outline-light span { display: none; }
 }
+
+/* Mobile slide-out nav */
+.mobile-nav-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1040; transition: opacity 220ms ease; }
+.mobile-nav-backdrop.d-none { display: none; }
+.mobile-nav { position: fixed; top: 0; left: -320px; width: 280px; height: 100%; background: #fff; z-index: 1050; box-shadow: 6px 0 24px rgba(0,0,0,0.12); transition: transform 260ms cubic-bezier(.2,.8,.2,1); transform: translateX(0); }
+.mobile-nav.open { transform: translateX(320px); left: 0; }
+.mobile-nav-inner { padding: 1rem; display:flex; flex-direction:column; height:100%; }
+.mobile-nav-header { border-bottom: 1px solid #eee; padding-bottom: 0.5rem; }
+.mobile-nav .mobile-nav-link { display:block; padding: 0.65rem 0.25rem; color: #07203a; text-decoration:none; font-weight:600; }
+.mobile-nav .mobile-nav-link:hover { background: #f4f7fb; color: var(--bs-primary); }
+.mobile-nav .btn { border-radius: 6px; }
+
+/* Focus outline for accessible focus trap */
+.mobile-nav a:focus, .mobile-nav button:focus { outline: 3px solid rgba(0,102,204,0.18); outline-offset: 2px; }
+
+/* Ripple micro-interaction */
+.ripple { position: relative; overflow: hidden; }
+.ripple .ripple-effect { position: absolute; border-radius: 50%; transform: scale(0); background: rgba(255,255,255,0.4); animation: ripple 600ms linear; pointer-events:none; }
+@keyframes ripple { to { transform: scale(2.5); opacity: 0; } }
