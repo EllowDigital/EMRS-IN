@@ -13,8 +13,10 @@ let sql;
 try {
     sql = postgres(process.env.DATABASE_URL, {
         ssl: 'require',
-        connect_timeout: 5, // 5-second connection timeout
-        idle_timeout: 10,   // Close idle connections after 10 seconds
+        // --- FIX ---
+        connect_timeout: 15, // Allow 15 seconds for a new connection
+        idle_timeout: 30,   // Keep connections alive for 30 seconds of idle time
+        // --- END FIX ---
     });
 } catch (error) {
     console.error("Failed to initialize database connection:", error.message);
