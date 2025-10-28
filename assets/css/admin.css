@@ -134,3 +134,32 @@ body[data-ui-state="dashboard"] #staff-login-modal {
 /* Table header spinner */
 #attendee-table-controls { margin-bottom: 0.5rem; }
 #attendee-table-spinner { margin-right: 0.5rem; }
+
+/* Responsive: convert table to card list on small screens for better usability */
+@media (max-width: 768px) {
+    .table-responsive table thead { display: none; }
+    .table-responsive table tbody tr { display: block; margin-bottom: 0.75rem; background: #fff; border-radius: 8px; padding: 0.75rem; box-shadow: 0 6px 18px rgba(0,0,0,0.04); }
+    .table-responsive table tbody td { display: block; border: none; padding: 0.25rem 0; }
+    .table-responsive table tbody td:first-child { margin-bottom: 0.5rem; }
+    .table-responsive { padding: 0 0.5rem; }
+    .attendee-avatar { width: 48px; height:48px; }
+}
+
+/* Skeleton rows for loading state */
+.skeleton-row { display: flex; gap: 0.75rem; align-items: center; background: #fff; padding: 0.75rem; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.03); }
+.skeleton-avatar { width: 48px; height:48px; border-radius:50%; background: linear-gradient(90deg,#e9ecef,#f8f9fa,#e9ecef); background-size:200% 100%; animation: shimmer 1.2s linear infinite; }
+.skeleton-line { height: 12px; flex:1; background: linear-gradient(90deg,#e9ecef,#f8f9fa,#e9ecef); background-size:200% 100%; animation: shimmer 1.2s linear infinite; border-radius:6px; }
+@keyframes shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+
+/* Larger touch targets on mobile */
+button.btn { min-height: 40px; }
+
+/* Improve header / stat sizing on small screens */
+@media (max-width: 576px) {
+    .stat-card .display-4 { font-size: 1.4rem; }
+    .app-header { padding: 0.75rem; }
+    .content-wrapper { padding: 1rem; }
+}
+
+/* Accessible toast notice */
+.toast-notice { padding: 0.75rem 1rem; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); font-weight:600; }

@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         pageSize: 15,
         totalPages: 1,
         totalResults: 0,
+        isLoadingAttendees: false,
     };
 
     // --- DOM Element Cache ---
@@ -101,6 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const toast = document.createElement('div');
             toast.className = `toast-notice position-fixed top-0 end-0 m-3 p-2 rounded shadow ${isError ? 'bg-danger text-white' : 'bg-success text-white'}`;
+            toast.setAttribute('role', 'status');
+            toast.setAttribute('aria-live', isError ? 'assertive' : 'polite');
             toast.style.zIndex = 1060;
             toast.textContent = message;
             document.body.appendChild(toast);
@@ -153,6 +156,37 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.totalCheckedIn.textContent = checked_in_count;
         ui.totalPending.textContent = pending;
         ui.checkInPercentage.textContent = `${percentage}%`;
+    }
+
+    // Restore staff token from sessionStorage if available and not expired
+    function restoreTokenFromSession() {
+        try {
+            const token = sessionStorage.getItem('staff_token');
+            if (!token) return false;
+            // Try to parse token payload (header.payload.sig)
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                appState.staffToken = token; // unknown format, accept it
+                window.__STAFF_TOKEN = token;
+                appState.isLoggedIn = true;
+                return true;
+            }
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+            const now = Math.floor(Date.now() / 1000);
+            if (payload.exp && payload.exp < now) {
+                // expired
+                sessionStorage.removeItem('staff_token');
+                return false;
+            }
+            appState.staffToken = token;
+            window.__STAFF_TOKEN = token;
+            appState.isLoggedIn = true;
+            return true;
+        } catch (e) {
+            // Could not parse token; clear to be safe
+            try { sessionStorage.removeItem('staff_token'); } catch (_) {}
+            return false;
+        }
     }
 
     function updateSystemControlsUI() {
@@ -318,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 appState.isLoggedIn = true;
                 // Keep token only in-memory; optionally persist to sessionStorage for seamless tabs
                 appState.staffToken = result.token;
-                try { sessionStorage.setItem('staff_token', result.token); } catch (e) { /* ignore */ }
+                try { sessionStorage.setItem('staff_token', result.token); window.__STAFF_TOKEN = result.token; } catch (e) { /* ignore */ }
                 setUIState('dashboard');
                 initializeAppDashboard();
             }
@@ -442,8 +476,18 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.attendeeTableBody.innerHTML = '';
             return;
         }
-        // show loading placeholder in the table area
-        ui.attendeeTablePlaceholder.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+        // show loading placeholder in the table area (skeletons)
+        appState.isLoadingAttendees = true;
+        const skeletons = Array.from({ length: Math.min(6, appState.pageSize) }).map(() => `
+            <div class="skeleton-row">
+                <div class="skeleton-avatar"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:8px;">
+                    <div class="skeleton-line" style="width:60%"></div>
+                    <div class="skeleton-line" style="width:40%"></div>
+                </div>
+            </div>
+        `).join('');
+        ui.attendeeTablePlaceholder.innerHTML = skeletons;
         ui.attendeeTablePlaceholder.style.display = 'block';
         ui.attendeeTableBody.innerHTML = '';
 
@@ -469,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = await response.json();
             // API returns an object { attendees, total, page, limit }
             appState.attendees = Array.isArray(payload.attendees) ? payload.attendees : (Array.isArray(payload) ? payload : []);
+            appState.isLoadingAttendees = false;
             appState.totalResults = payload.total || 0;
             appState.currentPage = payload.page || appState.currentPage || 1;
             appState.pageSize = payload.limit || appState.pageSize || 15;
@@ -499,6 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Failed to search attendees:", error);
             const message = error.message || 'Could not load attendee data.';
+            appState.isLoadingAttendees = false;
             ui.attendeeTablePlaceholder.innerHTML = `<p class="text-danger">${message}</p>`;
             ui.attendeeTablePlaceholder.style.display = 'block';
             ui.attendeeTableBody.innerHTML = '';
@@ -725,8 +771,24 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function init() {
-        // Always require login on page load (hard refresh will require re-entering password)
-        setUIState('login');
+        // Try to restore an existing token from sessionStorage so refreshes stay logged in
+        const restored = restoreTokenFromSession();
+        if (restored) {
+            setUIState('dashboard');
+            initializeAppDashboard();
+        } else {
+            setUIState('login');
+        }
+
+        // Network online/offline handling
+        window.addEventListener('online', () => {
+            showToast('Network connection restored. Refreshing data...');
+            hideAdminStatus();
+            fetchDashboardData();
+        });
+        window.addEventListener('offline', () => {
+            showAdminStatus('You are offline. Some features are disabled.', 0);
+        });
     }
 
     init();
