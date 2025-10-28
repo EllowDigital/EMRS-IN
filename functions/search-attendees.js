@@ -10,7 +10,7 @@ exports.handler = async (event, context) => {
 
     let sql;
     try {
-        sql = postgres(process.env.NEON_DATABASE_URL, {
+        sql = postgres(process.env.DATABASE_URL, {
             ssl: 'require',
         });
 

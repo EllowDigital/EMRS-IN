@@ -3,7 +3,7 @@ const postgres = require('postgres');
 exports.handler = async (event, context) => {
     let sql;
     try {
-        sql = postgres(process.env.NEON_DATABASE_URL, { ssl: 'require' });
+    sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
 
         const configResult = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
         

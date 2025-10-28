@@ -13,7 +13,7 @@ exports.handler = async (event, context) => {
             return { statusCode: 400, body: 'Bad Request: Invalid key or value.' };
         }
 
-        sql = postgres(process.env.NEON_DATABASE_URL, { ssl: 'require' });
+    sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
 
         await sql`
             INSERT INTO system_config (key, value, updated_at) 
