@@ -1,20 +1,22 @@
 // Service Worker (sw.js)
 
-const CACHE_NAME = 'epass-verify-shell-v1.1'; // <-- Added version
+const CACHE_NAME = 'epass-verify-shell-v1.2'; // Version updated
 const ASSETS_TO_CACHE = [
-    '/', // Cache the root (usually index.html)
-    '/index.html', // Explicitly cache index.html
+    '/',
+    '/index.html',
     '/verify.html',
-    '/manifest.json', // Cache the manifest file
+    '/offline.html', // <-- Added offline fallback page
+    '/manifest.json',
     // Core CSS/JS Libraries
     'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css',
     'https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js',
-    'https://unpkg.com/html5-qrcode', // QR Scanner
-    'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.5.2/qrcode.min.js', // QR Generator (for index.html)
-    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js', // E-Pass Download (for index.html)
-    // Font
-    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap',
-    // Core Icons/Favicons (add all essential ones)
+    'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css', // <-- Added Font Awesome
+    'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.5.2/qrcode.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+    // Fonts
+    'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;700;900&display=swap',
+    // Core Icons/Favicons
     '/assets/favicon/favicon.ico',
     '/assets/favicon/favicon-16x16.png',
     '/assets/favicon/favicon-32x32.png',
@@ -65,68 +67,76 @@ self.addEventListener('activate', event => {
     );
 });
 
-// --- FETCH: Serve from cache, but always fetch API calls ---
+// --- FETCH: Serve from cache, but use network-first for HTML and API ---
 self.addEventListener('fetch', event => {
     const url = new URL(event.request.url);
+    const request = event.request;
 
-    // 1. API Calls: Network-first strategy (Always try network)
-    // This ensures data like check-in status is always fresh.
+    // 1. API Calls: Network-only, with a JSON error response on failure.
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
-            fetch(event.request)
-                .catch(err => {
-                    // Network failed, return a standard error response
-                    console.error('[SW] API Fetch Failed:', event.request.url, err);
-                    return new Response(JSON.stringify({ message: 'Network error: Could not connect to API.' }), {
-                        status: 503, // Service Unavailable
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                })
-        );
-        return; // Don't process further for API calls
-    }
-
-    // 2. App Shell / Assets: Cache-first, falling back to network ("Cache, falling back to Network" strategy)
-    // Serve from cache if available, otherwise fetch from network and cache it.
-    // Good for static assets that don't change often.
-    event.respondWith(
-        caches.match(event.request)
-            .then(cachedResponse => {
-                // Return cached response if found
-                if (cachedResponse) {
-                    // console.log('[SW] Serving from cache:', event.request.url);
-                    return cachedResponse;
-                }
-
-                // Not in cache, fetch from network
-                // console.log('[SW] Fetching from network:', event.request.url);
-                return fetch(event.request).then(
-                    networkResponse => {
-                        // Check if we received a valid response
-                        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic' && networkResponse.type !== 'cors') {
-                            return networkResponse; // Don't cache invalid responses
-                        }
-
-                        // IMPORTANT: Clone the response. A response is a stream
-                        // and because we want the browser to consume the response
-                        // as well as the cache consuming the response, we need
-                        // to clone it so we have two streams.
-                        const responseToCache = networkResponse.clone();
-
-                        caches.open(CACHE_NAME)
-                            .then(cache => {
-                                // Cache the new response
-                                cache.put(event.request, responseToCache);
-                            });
-
-                        return networkResponse; // Return the original network response
+            fetch(request)
+            .catch(err => {
+                console.error('[SW] API Fetch Failed:', request.url, err);
+                return new Response(JSON.stringify({
+                    message: 'You are offline. The operation could not be completed.'
+                }), {
+                    status: 503, // Service Unavailable
+                    headers: {
+                        'Content-Type': 'application/json'
                     }
-                ).catch(err => {
-                    // Network fetch failed (e.g., offline)
-                    console.error('[SW] Network fetch failed:', event.request.url, err);
-                    // Optionally, you could return a custom offline page here
-                    // return caches.match('/offline.html'); 
                 });
             })
+        );
+        return;
+    }
+
+    // 2. HTML Navigation: Network-first, falling back to cache, then to offline page.
+    // This ensures users get the latest page version if online.
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            fetch(request)
+            .then(response => {
+                // If fetch is successful, cache the new response for next time
+                const responseClone = response.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(request, responseClone);
+                });
+                return response;
+            })
+            .catch(() => {
+                // Network failed, try to serve from cache
+                return caches.match(request)
+                    .then(cachedResponse => {
+                        // Return from cache or show the offline page if not cached
+                        return cachedResponse || caches.match('/offline.html');
+                    });
+            })
+        );
+        return;
+    }
+
+    // 3. Static Assets (CSS, JS, Fonts, Images): Cache-first, falling back to network.
+    // This is fast and efficient for assets that don't change often.
+    event.respondWith(
+        caches.match(request)
+        .then(cachedResponse => {
+            // Return from cache if found
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            // Not in cache, fetch from network and cache it for next time
+            return fetch(request).then(networkResponse => {
+                // Don't cache opaque or error responses
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type === 'error') {
+                    return networkResponse;
+                }
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(request, responseToCache);
+                });
+                return networkResponse;
+            });
+        })
     );
 });

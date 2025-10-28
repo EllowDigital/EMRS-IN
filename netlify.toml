@@ -62,11 +62,22 @@
     # Like the service worker, ensure this is checked frequently.
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Cache settings for static assets (images, icons in /assets/)
+# Cache settings for static assets (CSS, JS, images, etc.)
+# This is a fallback for any assets not covered by more specific rules below.
 [[headers]]
-  # Apply to all files within the /assets/ directory and its subdirectories.
   for = "/assets/*"
   [headers.values]
-    # Cache "forever" (1 year). Browsers won't even check for updates
-    # unless you change the filename. Good for versioned assets or favicons.
+    # Cache for a long time. 'immutable' tells the browser the file will not change.
     Cache-Control = "public, max-age=31536000, immutable"
+
+# Specific, aggressive cache settings for CSS files.
+[[headers]]
+  for = "/assets/css/*"
+  [headers.values]
+    Cache-control = "public, max-age=31536000, immutable"
+
+# Specific, aggressive cache settings for JS files.
+[[headers]]
+  for = "/assets/js/*"
+  [headers.values]
+    Cache-control = "public, max-age=31536000, immutable"

@@ -10,6 +10,10 @@
         integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.5.2/qrcode.min.js"
         integrity="sha512-c3HC2N32Up+KwxhFN2dZkoDWSdxWqwzDJCnroUffjS/HBQHf5Ou1uFpqIT0rOIJ5fW8TxHmUpCDndH2A6xNhpQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
@@ -34,218 +38,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;700;900&display=swap"
         rel="stylesheet" />
 
-    <style>
-        /* --- General UI Styles --- */
-        body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
-                Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f0f2f5;
-            /* Light grey */
-            padding-top: 1rem;
-            /* Add some padding at the top */
-            padding-bottom: 1rem;
-            /* Add some padding at the bottom */
-        }
-
-        .btn-success {
-            background-color: #198754;
-            border-color: #198754;
-        }
-
-        .btn-success:hover {
-            background-color: #157347;
-            border-color: #146c43;
-        }
-
-        .text-success {
-            color: #157347 !important;
-        }
-
-        /* --- Avatar Picker --- */
-        .avatar-picker {
-            position: relative;
-            display: inline-block;
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            cursor: pointer;
-            border: 3px solid #dee2e6;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            transition: all 0.3s ease;
-            overflow: hidden;
-        }
-
-        .avatar-picker:hover {
-            border-color: #0d6efd;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .avatar-picker.is-invalid {
-            border-color: #dc3545;
-            box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-        }
-
-        #avatar-preview {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            border-radius: 50%;
-        }
-
-        .avatar-picker::before {
-            content: "Change";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background-color: rgba(0, 0, 0, 0.4);
-            color: white;
-            font-weight: 600;
-            border-radius: 50%;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            font-size: 1.1rem;
-            pointer-events: none;
-        }
-
-        .avatar-picker:hover::before {
-            opacity: 1;
-        }
-
-        #profile-pic {
-            display: none;
-        }
-
-        /* --- Heartbeat Animation --- */
-        .heart {
-            color: #e53935;
-            animation: heartbeat 1.5s ease-in-out infinite;
-            display: inline-block;
-        }
-
-        @keyframes heartbeat {
-
-            0%,
-            100% {
-                transform: scale(1);
-            }
-
-            10%,
-            30% {
-                transform: scale(0.9);
-            }
-
-            20% {
-                transform: scale(1.1);
-            }
-        }
-
-        /* --- New E-Pass Design Styles --- */
-        .epass-container {
-            font-family: "Roboto", "Arial", sans-serif;
-        }
-
-        .bg-pass-header {
-            background-color: #000033;
-            /* Dark Navy Blue */
-        }
-
-        .bg-pass-footer {
-            background-color: #4a4a4a;
-            /* Dark Charcoal Grey */
-        }
-
-        .text-reg-id {
-            color: #e53935 !important;
-            /* Strong Red */
-        }
-
-        .pass-card {
-            max-width: 450px;
-            border-radius: 20px;
-            overflow: hidden;
-            width: 100%;
-            margin-left: auto;
-            margin-right: auto;
-            background-color: #ffffff;
-            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-            border: none;
-        }
-
-        .pass-handle {
-            width: 60px;
-            height: 10px;
-            background-color: white;
-            border-radius: 5px;
-            margin: 0 auto 15px;
-        }
-
-        .pass-title {
-            font-size: 2.75rem;
-            font-weight: 900;
-        }
-
-        #epass-avatar {
-            width: 110px;
-            height: 110px;
-            object-fit: cover;
-            border: 3px solid #eee;
-            border-radius: 50%;
-            box-shadow: none;
-            margin-bottom: 0.75rem;
-        }
-
-        .user-details .label {
-            font-weight: 400;
-            color: #555;
-            font-size: 0.85rem;
-            display: block;
-            margin-bottom: -4px;
-        }
-
-        .user-details .value {
-            font-weight: 700;
-            margin-left: 0;
-            font-size: 0.95rem;
-            line-height: 1.3;
-            word-wrap: break-word;
-            /* Prevent long values overflowing */
-        }
-
-        .user-details p {
-            margin-bottom: 0.5rem;
-        }
-
-        #epass-name {
-            font-weight: 900 !important;
-            font-size: 1.15rem !important;
-            color: #000;
-            display: block;
-        }
-
-        #epass-reg-id {
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-        }
-
-        #qrcode-container img {
-            max-width: 140px;
-            width: 100%;
-            height: auto;
-            padding: 5px;
-            background-color: white;
-            border: 1px solid #eee;
-        }
-
-        /* Ensure forms take full width on smaller screens */
-        .needs-validation {
-            width: 100%;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/style.css" />
 </head>
 
 <body>
@@ -259,69 +52,97 @@
                         </h1>
                         <div id="message-box-container"></div>
 
+                        <!-- System Status Banner -->
+                        <div id="status-banner" class="alert alert-warning text-center d-none" role="alert">
+                            <strong id="status-message"></strong>
+                        </div>
+
                         <div id="registration-section">
-                            <form id="registration-form" class="needs-validation" novalidate>
-                                <div class="mb-3 text-center">
-                                    <label for="profile-pic" class="form-label avatar-picker" id="avatar-picker-label">
-                                        <img id="avatar-preview"
-                                            src="https://placehold.co/150x150/6c757d/white?text=No+Photo"
-                                            class="img-fluid" alt="Profile Picture Preview" />
-                                    </label>
-                                    <input class="form-control" type="file" id="profile-pic" name="profilePic"
-                                        accept="image/*" />
-                                    <small class="form-text text-muted d-block mt-2">Click image to upload (Max
-                                        10MB)</small>
-                                    <div class="invalid-feedback d-block" id="avatar-feedback"></div>
-                                </div>
-                                <div class="mb-3">
-                                    <label for="name" class="form-label">Full Name</label>
-                                    <input type="text" class="form-control" id="name" name="name" required />
-                                    <div class="invalid-feedback">
-                                        Please enter your full name.
+                            <div id="registration-form-container">
+                                <form id="registration-form" class="needs-validation" novalidate>
+                                    <div class="mb-4 text-center">
+                                        <label for="profile-pic" class="form-label avatar-picker" id="avatar-picker-label">
+                                            <img id="avatar-preview"
+                                                src="https://placehold.co/150x150/6c757d/white?text=No+Photo"
+                                                class="img-fluid" alt="Profile Picture Preview" />
+                                        </label>
+                                        <input class="form-control" type="file" id="profile-pic" name="profilePic"
+                                            accept="image/*" />
+                                        <small class="form-text text-muted d-block mt-2">Click image to upload (Max
+                                            10MB)</small>
+                                        <div class="invalid-feedback d-block" id="avatar-feedback"></div>
                                     </div>
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="phone" class="form-label">Phone Number</label>
-                                        <input type="tel" class="form-control" id="phone" name="phone" required
-                                            pattern="[0-9]{10,15}" />
+
+                                    <div class="form-floating mb-3">
+                                        <i class="fas fa-user input-icon"></i>
+                                        <input type="text" class="form-control" id="name" name="name"
+                                            placeholder="Full Name" required />
+                                        <label for="name">Full Name</label>
                                         <div class="invalid-feedback">
-                                            Please enter a valid phone number (10-15 digits).
+                                            Please enter your full name.
                                         </div>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="email" class="form-label">Email Address</label>
-                                        <input type="email" class="form-control" id="email" name="email" required />
-                                        <div class="invalid-feedback">
-                                            Please enter a valid email address.
+
+                                    <div class="row g-3">
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-floating">
+                                                <i class="fas fa-phone input-icon"></i>
+                                                <input type="tel" class="form-control" id="phone" name="phone"
+                                                    placeholder="Phone Number" required pattern="[0-9]{10}" maxlength="10"
+                                                    inputmode="numeric" />
+                                                <label for="phone">Phone Number</label>
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid 10-digit phone number.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-floating">
+                                                <i class="fas fa-envelope input-icon"></i>
+                                                <input type="email" class="form-control" id="email" name="email"
+                                                    placeholder="Email Address" required />
+                                                <label for="email">Email Address</label>
+                                                <div class="invalid-feedback">
+                                                    Please enter a valid email address.
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="row g-3">
-                                    <div class="col-md-6 mb-3">
-                                        <label for="city" class="form-label">City</label>
-                                        <input type="text" class="form-control" id="city" name="city" required />
-                                        <div class="invalid-feedback">
-                                            Please enter your city.
+
+                                    <div class="row g-3">
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-floating">
+                                                <i class="fas fa-city input-icon"></i>
+                                                <input type="text" class="form-control" id="city" name="city"
+                                                    placeholder="City" required />
+                                                <label for="city">City</label>
+                                                <div class="invalid-feedback">
+                                                    Please enter your city.
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="form-floating">
+                                                <i class="fas fa-map-marker-alt input-icon"></i>
+                                                <input type="text" class="form-control" id="state" name="state"
+                                                    placeholder="State" required />
+                                                <label for="state">State</label>
+                                                <div class="invalid-feedback">
+                                                    Please enter your state.
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="col-md-6 mb-3">
-                                        <label for="state" class="form-label">State</label>
-                                        <input type="text" class="form-control" id="state" name="state" required />
-                                        <div class="invalid-feedback">
-                                            Please enter your state.
+                                    <button type="submit" id="submit-btn"
+                                        class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center mt-3 rounded-pill">
+                                        <span id="submit-btn-text">Register</span>
+                                        <div class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"
+                                            id="spinner">
+                                            <span class="visually-hidden">Loading...</span>
                                         </div>
-                                    </div>
-                                </div>
-                                <button type="submit" id="submit-btn"
-                                    class="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center mt-3 rounded-pill">
-                                    <span id="submit-btn-text">Register</span>
-                                    <div class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"
-                                        id="spinner">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                </button>
-                            </form>
+                                    </button>
+                                </form>
+                            </div>
                         </div>
 
                         <div id="find-pass-section">
@@ -338,12 +159,14 @@
                                         <label class="btn btn-outline-primary" for="search-type-email">Email</label>
                                     </div>
                                 </div>
-                                <div class="mb-3">
-                                    <label for="find-pass-input" class="form-label visually-hidden">Search Value</label>
+                                <div class="form-floating mb-3">
+                                    <i class="fas fa-search input-icon" id="find-pass-icon"></i>
                                     <input type="tel" class="form-control" id="find-pass-input"
-                                        placeholder="Enter your phone number" required />
+                                        placeholder="Enter your phone number" required pattern="[0-9]{10}"
+                                        maxlength="10" inputmode="numeric" />
+                                    <label for="find-pass-input" id="find-pass-label">Phone Number</label>
                                     <div class="invalid-feedback">
-                                        Please enter a value to search.
+                                        Please enter a valid 10-digit phone number or a valid email.
                                     </div>
                                 </div>
                                 <button type="submit" id="find-pass-btn"
@@ -423,461 +246,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
         integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
-    <script>
-        document.addEventListener("DOMContentLoaded", () => {
-            // --- DOM Element Selectors ---
-            const registrationForm = document.getElementById("registration-form");
-            const submitButton = document.getElementById("submit-btn");
-            const submitButtonText = document.getElementById("submit-btn-text");
-            const spinner = document.getElementById("spinner");
-            const messageBoxContainer = document.getElementById(
-                "message-box-container"
-            );
-            const registrationSection = document.getElementById(
-                "registration-section"
-            );
-            const findPassSection = document.getElementById("find-pass-section");
-            const epassSection = document.getElementById("epass-section");
-            const backToHomeButton = document.getElementById("back-to-home-btn");
-            const profilePicInput = document.getElementById("profile-pic");
-            const avatarPreview = document.getElementById("avatar-preview");
-            const avatarPickerLabel = document.getElementById(
-                "avatar-picker-label"
-            );
-            const avatarFeedback = document.getElementById("avatar-feedback");
-            const defaultAvatarSrc =
-                "https://placehold.co/150x150/6c757d/white?text=No+Photo";
-            const epassCardElement = document.getElementById("epass-card");
-            const epassAvatar = document.getElementById("epass-avatar");
-            const epassName = document.getElementById("epass-name");
-            const epassRegId = document.getElementById("epass-reg-id");
-            const qrCodeContainer = document.getElementById("qrcode-container");
-            const downloadButton = document.getElementById("download-btn");
-            const findPassForm = document.getElementById("find-pass-form");
-            const findPassButton = document.getElementById("find-pass-btn");
-            const findPassButtonText =
-                document.getElementById("find-pass-btn-text");
-            const findPassSpinner = document.getElementById("find-pass-spinner");
-            const findPassInput = document.getElementById("find-pass-input");
-            const findPassToggles = document.querySelectorAll(
-                'input[name="search-type"]'
-            );
-
-            const REQUEST_TIMEOUT = 9500;
-            let currentMessageTimeout = null;
-
-            // --- Helper Functions ---
-            function showMessage(message, type = "info") {
-                /* ... Auto-hide logic ... */
-                if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
-                const wrapper = document.createElement("div");
-                wrapper.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
-                messageBoxContainer.innerHTML = "";
-                messageBoxContainer.append(wrapper);
-                window.scrollTo(0, 0);
-                currentMessageTimeout = setTimeout(() => {
-                    const alert = wrapper.querySelector(".alert");
-                    if (alert) {
-                        try {
-                            new bootstrap.Alert(alert).close();
-                        } catch (e) {
-                            /*ignore*/
-                        }
-                    }
-                }, 5000);
-            }
-            function clearMessage() {
-                /* ... Clear timeout logic ... */
-                if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
-                messageBoxContainer.innerHTML = "";
-            }
-            async function fetchWithTimeout(
-                url,
-                options,
-                timeout = REQUEST_TIMEOUT
-            ) {
-                /* ... no-cache logic ... */
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
-                const updatedOptions = {
-                    ...options,
-                    signal: controller.signal,
-                    cache: "no-store",
-                };
-                const response = await fetch(url, updatedOptions);
-                clearTimeout(id);
-                return response;
-            }
-            function getFriendlyErrorMessage(error, context = "registration") {
-                /* ... unchanged ... */
-                const defaultMessages = {
-                    registration: "Unknown error.",
-                    find: "Pass not found.",
-                };
-                if (error.name === "AbortError") return "Request timed out.";
-                if (error instanceof TypeError) return "Network error.";
-                return error.message || defaultMessages[context];
-            }
-            function generateQRCode(regId, phone) {
-                /* ... unchanged ... */
-                const qrData = JSON.stringify({ regId, phone });
-                qrCodeContainer.innerHTML = "";
-                try {
-                    const qr = qrcode(0, "M");
-                    qr.addData(qrData);
-                    qr.make();
-                    qrCodeContainer.innerHTML = qr.createImgTag(4, 8);
-                } catch (e) {
-                    console.error("QR fail:", e);
-                    qrCodeContainer.innerHTML = "<small>QR Error</small>";
-                }
-            }
-            function compressImage(file) {
-                /* ... unchanged ... */
-                return new Promise((resolve, reject) => {
-                    const MAX_WIDTH = 300;
-                    const TARGET_QUALITY = 0.6;
-                    const MAX_SIZE_KB = 70;
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        const image = new Image();
-                        image.onload = () => {
-                            let { width, height } = image;
-                            if (width > height) {
-                                if (width > MAX_WIDTH) {
-                                    height *= MAX_WIDTH / width;
-                                    width = MAX_WIDTH;
-                                }
-                            } else {
-                                if (height > MAX_WIDTH) {
-                                    width *= MAX_WIDTH / height;
-                                    height = MAX_WIDTH;
-                                }
-                            }
-                            const canvas = document.createElement("canvas");
-                            canvas.width = width;
-                            canvas.height = height;
-                            const ctx = canvas.getContext("2d");
-                            ctx.drawImage(image, 0, 0, width, height);
-                            canvas.toBlob(
-                                (blob) => {
-                                    if (!blob) return reject(new Error("Canvas fail."));
-                                    console.log(
-                                        `%cImage Compress:`,
-                                        "color:#0d6efd;font-weight:bold;"
-                                    );
-                                    console.log(
-                                        ` - Original: ${(file.size / 1024).toFixed(2)} KB`
-                                    );
-                                    console.log(
-                                        ` - Compressed: ${(blob.size / 1024).toFixed(2)} KB`
-                                    );
-                                    if (blob.size / 1024 > MAX_SIZE_KB)
-                                        console.warn(
-                                            `Compressed (${(blob.size / 1024).toFixed(
-                                                2
-                                            )}KB) > ${MAX_SIZE_KB}KB`
-                                        );
-                                    const dataUrlReader = new FileReader();
-                                    dataUrlReader.onloadend = () =>
-                                        resolve(dataUrlReader.result);
-                                    dataUrlReader.onerror = reject;
-                                    dataUrlReader.readAsDataURL(blob);
-                                },
-                                "image/jpeg",
-                                TARGET_QUALITY
-                            );
-                        };
-                        image.onerror = (err) =>
-                            reject(new Error("Img load fail:" + err));
-                        image.src = event.target.result;
-                    };
-                    reader.onerror = (err) =>
-                        reject(new Error("FileReader fail:" + err));
-                    reader.readAsDataURL(file);
-                });
-            }
-            function resetForms() {
-                /* ... unchanged ... */
-                registrationForm.reset();
-                registrationForm.classList.remove("was-validated");
-                avatarPreview.src = defaultAvatarSrc;
-                avatarPickerLabel.classList.remove("is-invalid");
-                avatarFeedback.textContent = "";
-                findPassForm.reset();
-                findPassForm.classList.remove("was-validated");
-                findPassInput.placeholder = "Enter phone number";
-                findPassInput.type = "tel";
-                findPassInput.pattern = "[0-9]{10,15}";
-                document.getElementById("search-type-phone").checked = true;
-                clearMessage();
-            }
-
-            // --- UPDATE populateEpass (Phone/Email Display Removed) ---
-            function populateEpass(attendee, imageSrc) {
-                epassAvatar.src =
-                    imageSrc ||
-                    attendee.profile_pic_url ||
-                    "https://placehold.co/110x110/6c757d/white?text=No+Photo";
-                epassName.textContent = attendee.full_name
-                    ? attendee.full_name.toUpperCase()
-                    : "N/A";
-                epassRegId.textContent = attendee.registration_id || "N/A";
-
-                // Still generate QR with phone number, even if not displayed
-                generateQRCode(attendee.registration_id, attendee.phone_number);
-
-                registrationSection.classList.add("d-none");
-                findPassSection.classList.add("d-none");
-                clearMessage();
-                epassSection.classList.remove("d-none");
-                window.scrollTo(0, 0); // Scroll to top
-            }
-
-            // --- Event Listeners ---
-            profilePicInput.addEventListener("change", async (e) => {
-                /* ... unchanged ... */
-                const file = e.target.files[0];
-                if (!file) return;
-                if (!file.type.startsWith("image/")) {
-                    showMessage("Invalid image file.", "danger");
-                    profilePicInput.value = "";
-                    return;
-                }
-                const MAX_FILE_SIZE = 10 * 1024 * 1024;
-                if (file.size > MAX_FILE_SIZE) {
-                    showMessage("Image too large (Max 10MB).", "danger");
-                    profilePicInput.value = "";
-                    return;
-                }
-                avatarFeedback.textContent = "";
-                avatarPickerLabel.classList.remove("is-invalid");
-                try {
-                    avatarPreview.src =
-                        "https://placehold.co/150x150/f0f0f0/a0a0a0?text=Processing...";
-                    const compressedDataUrl = await compressImage(file);
-                    avatarPreview.src = compressedDataUrl;
-                } catch (error) {
-                    console.error("Image processing failed:", error);
-                    showMessage("Could not process image.", "danger");
-                    avatarPreview.src = defaultAvatarSrc;
-                    profilePicInput.value = "";
-                }
-            });
-
-            registrationForm.addEventListener("submit", async (e) => {
-                /* ... unchanged ... */
-                e.preventDefault();
-                e.stopPropagation();
-                clearMessage();
-                let isFormValid = registrationForm.checkValidity();
-                let isImageValid =
-                    avatarPreview.src !== defaultAvatarSrc &&
-                    !avatarPreview.src.includes("Processing");
-                if (!isImageValid) {
-                    avatarFeedback.textContent = "Upload picture.";
-                    avatarPickerLabel.classList.add("is-invalid");
-                } else {
-                    avatarFeedback.textContent = "";
-                    avatarPickerLabel.classList.remove("is-invalid");
-                }
-                registrationForm.classList.add("was-validated");
-                if (!isFormValid || !isImageValid) {
-                    showMessage("Fix errors & upload picture.", "warning");
-                    const firstInvalid = registrationForm.querySelector(":invalid");
-                    if (firstInvalid) firstInvalid.focus();
-                    return;
-                }
-                const formData = new FormData(registrationForm);
-                const name = formData.get("name"),
-                    phone = formData.get("phone"),
-                    email = formData.get("email"),
-                    city = formData.get("city"),
-                    state = formData.get("state");
-                const imageBase64 = avatarPreview.src;
-                const postData = { name, phone, email, city, state, imageBase64 };
-                submitButton.disabled = true;
-                spinner.classList.remove("d-none");
-                submitButtonText.innerText = "Registering...";
-                let isReloading = false;
-                try {
-                    const response = await fetchWithTimeout("/api/register", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(postData),
-                    });
-                    const result = await response.json();
-                    if (!response.ok) {
-                        throw new Error(
-                            result.message ||
-                            `Registration failed (Status: ${response.status})`
-                        );
-                    }
-                    populateEpass(result.data, imageBase64);
-                } catch (error) {
-                    console.error("Registration failed:", error);
-                    if (error.name === "AbortError") {
-                        isReloading = true;
-                        showMessage("Timeout. Retrying...", "warning");
-                        setTimeout(() => location.reload(), 5000);
-                    } else {
-                        const friendlyMessage = getFriendlyErrorMessage(
-                            error,
-                            "registration"
-                        );
-                        showMessage(friendlyMessage, "danger");
-                    }
-                } finally {
-                    if (!isReloading) {
-                        submitButton.disabled = false;
-                        spinner.classList.add("d-none");
-                        submitButtonText.innerText = "Register";
-                    }
-                }
-            });
-
-            findPassToggles.forEach((toggle) => {
-                toggle.addEventListener("change", (e) => {
-                    const isPhone = e.target.value === "phone";
-                    // Find the invalid-feedback div that belongs to this input
-                    const feedbackElement = findPassInput.nextElementSibling;
-
-                    if (isPhone) {
-                        // Set properties for PHONE
-                        findPassInput.placeholder = "Enter your phone number";
-                        findPassInput.type = "tel";
-                        findPassInput.setAttribute("pattern", "[0-9]{10,15}");
-                        if (feedbackElement) {
-                            feedbackElement.textContent =
-                                "Please enter a valid phone number (10-15 digits).";
-                        }
-                    } else {
-                        // Set properties for EMAIL
-                        findPassInput.placeholder = "Enter your email address";
-                        findPassInput.type = "email";
-                        findPassInput.removeAttribute("pattern"); // Let type="email" handle validation
-                        if (feedbackElement) {
-                            feedbackElement.textContent =
-                                "Please enter a valid email address.";
-                        }
-                    }
-
-                    // Reset validation state
-                    findPassInput.value = "";
-                    findPassForm.classList.remove("was-validated");
-                });
-            });
-
-            findPassForm.addEventListener("submit", async (e) => {
-                /* ... unchanged ... */
-                e.preventDefault();
-                e.stopPropagation();
-                clearMessage();
-                if (!findPassForm.checkValidity()) {
-                    findPassForm.classList.add("was-validated");
-                    return;
-                }
-                findPassForm.classList.add("was-validated");
-                const searchType = document.querySelector(
-                    'input[name="search-type"]:checked'
-                ).value;
-                const searchValue = findPassInput.value.trim();
-                const postData =
-                    searchType === "phone"
-                        ? { phone: searchValue }
-                        : { email: searchValue };
-                findPassButton.disabled = true;
-                findPassSpinner.classList.remove("d-none");
-                findPassButtonText.innerText = "Searching...";
-                let isReloading = false;
-                try {
-                    const response = await fetchWithTimeout("/api/find-pass", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(postData),
-                    });
-                    const result = await response.json();
-                    if (!response.ok) {
-                        throw new Error(
-                            result.message ||
-                            `Find Pass failed (Status: ${response.status})`
-                        );
-                    }
-                    populateEpass(result.data, null);
-                } catch (error) {
-                    console.error("Find Pass failed:", error);
-                    if (error.name === "AbortError") {
-                        isReloading = true;
-                        showMessage("Timeout. Retrying...", "warning");
-                        setTimeout(() => location.reload(), 5000);
-                    } else {
-                        const friendlyMessage = getFriendlyErrorMessage(error, "find");
-                        showMessage(friendlyMessage, "danger");
-                    }
-                } finally {
-                    if (!isReloading) {
-                        findPassButton.disabled = false;
-                        findPassSpinner.classList.add("d-none");
-                        findPassButtonText.innerText = "Find My Pass";
-                    }
-                }
-            });
-
-            // Download Button Logic
-            downloadButton.addEventListener("click", () => {
-                /* ... unchanged ... */
-                const passElement = epassCardElement;
-                const regIdText = epassRegId.textContent;
-                const filename = `E-PASS-${regIdText || "event"}.png`;
-                const scale = 2.5;
-                const originalStyle = passElement.style.cssText;
-                const cardWidth = passElement.offsetWidth;
-                passElement.style.width = `${cardWidth}px`;
-                passElement.style.maxWidth = `${cardWidth}px`;
-                passElement.style.margin = "10px auto";
-                downloadButton.disabled = true;
-                downloadButton.textContent = "Downloading...";
-                html2canvas(passElement, {
-                    useCORS: true,
-                    scale: scale,
-                    backgroundColor: "#f0f2f5",
-                    logging: false,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: document.documentElement.offsetWidth,
-                })
-                    .then((canvas) => {
-                        const link = document.createElement("a");
-                        link.href = canvas.toDataURL("image/png");
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        showMessage("E-Pass downloaded successfully!", "success");
-                    })
-                    .catch((err) => {
-                        console.error("Download failed:", err);
-                        showMessage("Could not download E-Pass.", "danger");
-                    })
-                    .finally(() => {
-                        passElement.style.cssText = originalStyle;
-                        downloadButton.disabled = false;
-                        downloadButton.textContent = "Download E-Pass";
-                    });
-            });
-
-            // Back to Home Button
-            backToHomeButton.addEventListener("click", () => {
-                /* ... unchanged ... */
-                epassSection.classList.add("d-none");
-                registrationSection.classList.remove("d-none");
-                findPassSection.classList.remove("d-none");
-                resetForms();
-                window.scrollTo(0, 0);
-            });
-        }); // End DOMContentLoaded
-    </script>
+    <script src="assets/js/main.js"></script>
 
     <script>
         if ("serviceWorker" in navigator) {

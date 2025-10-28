@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="assets/css/admin.css">
+    <link rel="icon" href="assets/favicon/favicon.ico">
+</head>
+
+<body data-ui-state="login">
+
+    <!-- Staff Login Modal -->
+    <div id="staff-login-modal">
+        <div class="login-card">
+            <h1 class="h3 mb-3 fw-bold text-primary">Admin Access</h1>
+            <p class="text-muted mb-4">Enter the password to access the dashboard.</p>
+            <form id="staff-login-form" novalidate>
+                <div class="form-floating mb-3">
+                    <input type="password" class="form-control" id="staff-password-input" placeholder="Password" required>
+                    <label for="staff-password-input">Password</label>
+                    <div class="invalid-feedback">A password is required.</div>
+                </div>
+                <button type="submit" id="staff-login-btn" class="btn btn-primary w-100 btn-lg">
+                    <span id="login-spinner" class="spinner-border spinner-border-sm d-none me-2"></span>
+                    <span id="login-btn-text">Login</span>
+                </button>
+            </form>
+            <div id="login-message" class="mt-3"></div>
+        </div>
+    </div>
+
+    <header class="app-header">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <h1 class="h4 mb-0 fw-bold text-white">
+                <i class="bi bi-shield-lock-fill me-2"></i>Admin Dashboard
+            </h1>
+            <a href="/verify.html" class="btn btn-outline-light btn-sm">
+                <i class="bi bi-qr-code-scan me-2"></i>Go to Check-In
+            </a>
+        </div>
+    </header>
+
+    <main class="content-wrapper">
+        <div class="container-fluid">
+            <!-- Real-Time Monitoring -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title text-muted">Total Registrations</h5>
+                                    <p id="total-registrations" class="display-4 fw-bold mb-0">0</p>
+                                </div>
+                                <i class="bi bi-people-fill display-4 text-primary"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title text-muted">Checked-In</h5>
+                                    <p id="total-checked-in" class="display-4 fw-bold mb-0">0</p>
+                                </div>
+                                <i class="bi bi-person-check-fill display-4 text-success"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title text-muted">Pending</h5>
+                                    <p id="total-pending" class="display-4 fw-bold mb-0">0</p>
+                                </div>
+                                <i class="bi bi-person-x-fill display-4 text-warning"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <div class="stat-card card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title text-muted">Check-In %</h5>
+                                    <p id="check-in-percentage" class="display-4 fw-bold mb-0">0%</p>
+                                </div>
+                                <i class="bi bi-pie-chart-fill display-4 text-info"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Controls & Health -->
+            <div class="row g-4 mb-4">
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0"><i class="bi bi-gear-fill me-2"></i>System Controls</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group">
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">Registration Status</h6>
+                                        <small class="text-muted">Allow or prevent new user registrations.</small>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="registration-switch">
+                                        <label class="form-check-label" for="registration-switch" id="registration-label">Paused</label>
+                                    </div>
+                                </div>
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-1">Maintenance Mode</h6>
+                                        <small class="text-muted">Take the entire system offline for updates.</small>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="maintenance-switch">
+                                        <label class="form-check-label" for="maintenance-switch" id="maintenance-label">Disabled</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="card h-100">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0"><i class="bi bi-heart-pulse-fill me-2"></i>System Health</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-group" id="system-health-list">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Netlify Functions API
+                                    <span class="badge bg-secondary" id="health-api">Checking...</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Neon Database
+                                    <span class="badge bg-secondary" id="health-db">Checking...</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    Cloudinary Service
+                                    <span class="badge bg-secondary" id="health-cloudinary">Checking...</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendee Management -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="bi bi-people-fill me-2"></i>Attendee Management</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <input type="text" id="search-attendee-input" class="form-control" placeholder="Search by Name, Email, or Reg. ID...">
+                        </div>
+                        <div class="col-md-4">
+                            <select id="filter-attendee-select" class="form-select">
+                                <option value="all" selected>All Attendees</option>
+                                <option value="checked_in">Checked-In</option>
+                                <option value="not_checked_in">Not Checked-In</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Attendee</th>
+                                    <th>Registration ID</th>
+                                    <th>Contact</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendee-table-body">
+                                <!-- Rows will be injected by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div id="attendee-table-placeholder" class="text-center p-5">
+                        <p>Search for an attendee to see results.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/admin.js"></script>
+</body>
+
+</html>

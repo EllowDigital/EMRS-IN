@@ -17,6 +17,9 @@ const crypto = require('crypto');
 
 // --- CONSTANTS ---
 const MAX_PAYLOAD_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
+const PHONE_REGEX = /^[0-9]{10}$/; // Exactly 10 digits
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Simple email format check
+const BASE64_IMAGE_REGEX = /^data:image\/(png|jpeg|jpg|gif);base64,/;
 
 // --- OPTIMIZATION: Connection Re-use ---
 let sql;
@@ -26,8 +29,6 @@ try {
         connect_timeout: 5,
         idle_timeout: 30,
         max: 5,
-        // Set an 8-second timeout for all DB queries
-        // This is safely below the 9.5s client timeout and 10s function timeout.
         set_local: { statement_timeout: '8s' }
     });
     console.log("Database connection pool initialized successfully.");
@@ -76,9 +77,6 @@ function sendConfirmationEmail(attendee, formSubmitEmail) {
         <div class="details"> Name: ${full_name}<br> Email: ${email}<br> Registration ID: <span class="reg-id">${registration_id}</span> </div>
         <p>We look forward to seeing you!</p> </body></html>`;
 
-    // Use an IIFE (Immediately Invoked Function Expression) async wrapper
-    // This is still "fire-and-forget" but allows for cleaner async/await
-    // and more robust error handling within the promise chain.
     (async () => {
         try {
             console.log(`Sending confirmation email to ${email} via FormSubmit...`);
@@ -103,62 +101,70 @@ function sendConfirmationEmail(attendee, formSubmitEmail) {
         } catch (err) {
             console.error('FormSubmit fetch network error:', err.message);
         }
-    })(); // Execute the async function immediately
+    })();
 }
 
 
 // --- Netlify Function Handler ---
 exports.handler = async (event) => {
-    // --- Check critical configurations ---
+    const headers = {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    };
+
     if (!sql) {
         console.error("Handler Error: Database connection is not available.");
-        return { statusCode: 500, body: JSON.stringify({ message: 'Database service unavailable.' }) };
+        return { statusCode: 500, headers, body: JSON.stringify({ message: 'Database service unavailable.' }) };
     }
     if (!cloudinary.config()?.api_key) {
         console.error("Handler Error: Cloudinary configuration is incomplete or missing.");
-        return { statusCode: 500, body: JSON.stringify({ message: 'Image service unavailable.' }) };
+        return { statusCode: 500, headers, body: JSON.stringify({ message: 'Image service unavailable.' }) };
     }
 
-    // --- Check method ---
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+        return { statusCode: 405, headers, body: JSON.stringify({ message: 'Method Not Allowed' }) };
     }
 
-    // --- Payload Size Check ---
     const contentLength = event.headers['content-length'];
     if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE_BYTES) {
         console.warn(`Handler Warn: Payload size (${contentLength} bytes) exceeds limit.`);
-        return { statusCode: 413, body: JSON.stringify({ message: 'Payload is too large. Image may be too big.' }) };
+        return { statusCode: 413, headers, body: JSON.stringify({ message: 'Payload is too large. Image may be too big.' }) };
     }
 
-    // --- Parse and Validate Body ---
     let body;
     let name, phone, email, city, state, imageBase64, normalizedEmail;
     try {
         body = JSON.parse(event.body);
 
-        // Trim all inputs and validate for empty strings
-        name = body.name ? body.name.trim() : "";
-        phone = body.phone ? body.phone.trim() : "";
-        email = body.email ? body.email.trim() : "";
-        city = body.city ? body.city.trim() : "";
-        state = body.state ? body.state.trim() : "";
-        imageBase64 = body.imageBase64; // No trim needed
+        name = body.name ? String(body.name).trim() : "";
+        phone = body.phone ? String(body.phone).trim() : "";
+        email = body.email ? String(body.email).trim() : "";
+        city = body.city ? String(body.city).trim() : "";
+        state = body.state ? String(body.state).trim() : "";
+        imageBase64 = body.imageBase64;
 
-        if (!name || !phone || !email || !city || !state) {
-            console.warn("Handler Warn: Missing required fields after parsing/trimming.");
-            return { statusCode: 400, body: JSON.stringify({ message: 'Missing required registration details.' }) };
+        if (!name || !phone || !email || !city || !state || !imageBase64) {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: 'All fields, including a profile picture, are required.' }) };
+        }
+        if (!PHONE_REGEX.test(phone)) {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: 'Invalid phone number format. Please use 10 digits.' }) };
+        }
+        if (!EMAIL_REGEX.test(email)) {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: 'Invalid email address format.' }) };
+        }
+        if (imageBase64 && !BASE64_IMAGE_REGEX.test(imageBase64)) {
+            return { statusCode: 400, headers, body: JSON.stringify({ message: 'Invalid image format. Please upload a valid image.' }) };
         }
 
         normalizedEmail = email.toLowerCase();
 
     } catch (error) {
         console.warn("Handler Warn: Could not parse request body.", error.message);
-        return { statusCode: 400, body: JSON.stringify({ message: 'Invalid request format.' }) };
+        return { statusCode: 400, headers, body: JSON.stringify({ message: 'Invalid request format.' }) };
     }
 
     try {
-        // --- OPTIMIZATION: Check for duplicate phone *before* image upload ---
         console.log(`Checking for duplicate phone: ${phone}`);
         const existingPhone = await sql`
             SELECT registration_id FROM attendees WHERE phone_number = ${phone} LIMIT 1
@@ -167,22 +173,19 @@ exports.handler = async (event) => {
         if (existingPhone.count > 0) {
             console.log(`Duplicate phone found (Reg ID: ${existingPhone[0].registration_id}). Aborting.`);
             return {
-                statusCode: 409, // Conflict
+                statusCode: 409, headers,
                 body: JSON.stringify({ message: 'This phone number is already registered.' }),
             };
         }
         console.log(`Phone number ${phone} is unique. Proceeding...`);
 
-        // --- Image Upload (only if imageBase64 is provided) ---
         let imageUrl = null;
-        if (imageBase64 && typeof imageBase64 === 'string' && imageBase64.startsWith('data:image')) {
+        if (imageBase64) {
             console.log('Image data provided. Uploading to Cloudinary...');
             try {
                 const uploadResult = await cloudinary.uploader.upload(imageBase64, {
                     folder: 'event-attendees',
                     resource_type: 'image',
-
-                    // Enforce server-side transformation as a safety net
                     transformation: [
                         { width: 300, height: 300, crop: "fill", gravity: "face" },
                         { fetch_format: "auto", quality: "auto" }
@@ -192,17 +195,13 @@ exports.handler = async (event) => {
                 console.log(`Cloudinary upload successful. Image URL: ${imageUrl}`);
             } catch (uploadError) {
                 console.error('Cloudinary upload error:', uploadError.message);
-                return { statusCode: 500, body: JSON.stringify({ message: 'Failed to process profile picture.' }) };
+                return { statusCode: 500, headers, body: JSON.stringify({ message: 'Failed to process profile picture.' }) };
             }
-        } else {
-            console.log('No valid image data provided. Skipping Cloudinary upload.');
         }
 
-        // --- Generate (slightly) stronger Unique Registration ID ---
-        const regId = `UP25-${crypto.randomBytes(5).toString('hex').toUpperCase()}`; // 5 bytes = 10 hex chars
+        const regId = `UP25-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
         console.log(`Generated Registration ID: ${regId}`);
 
-        // --- Insert Attendee into Database ---
         console.log(`Inserting attendee (${name}, ${phone}) into database...`);
         const [attendee] = await sql`
             INSERT INTO attendees (
@@ -214,12 +213,10 @@ exports.handler = async (event) => {
         `;
         console.log('Attendee database insertion successful:', { regId: attendee.registration_id, phone: attendee.phone_number });
 
-        // --- Send Confirmation Email (Fire-and-forget) ---
         sendConfirmationEmail(attendee, process.env.FORMSUBMIT_EMAIL);
 
-        // --- Send Success Response to Frontend ---
         return {
-            statusCode: 200, // OK
+            statusCode: 200, headers,
             body: JSON.stringify({
                 message: 'Registration successful!',
                 data: attendee,
@@ -229,44 +226,38 @@ exports.handler = async (event) => {
     } catch (error) {
         console.error('Handler Error:', error.message);
 
-        // Check constraint name for specific 409 error
-        if (error.code === '23505') { // PostgreSQL unique violation code
-            // Check your schema for the correct constraint name
-            // In your provided schema, it was 'unique_phone'
+        if (error.code === '23505') {
             if (error.constraint_name === 'unique_phone') {
                 console.warn(`Database: Duplicate phone ${phone} detected during INSERT.`);
                 return {
-                    statusCode: 409, // Conflict
+                    statusCode: 409, headers,
                     body: JSON.stringify({ message: 'This phone number is already registered.' }),
                 };
             }
-            // Check for the email constraint
             if (error.constraint_name === 'unique_email') {
                 console.warn(`Database: Duplicate email ${normalizedEmail} detected during INSERT.`);
                 return {
-                    statusCode: 409, // Conflict
+                    statusCode: 409, headers,
                     body: JSON.stringify({ message: 'This email address is already registered.' }),
                 };
             }
             console.error(`Database unique constraint violation: ${error.constraint_name}`);
             return {
-                statusCode: 500,
+                statusCode: 500, headers,
                 body: JSON.stringify({ message: 'A server error occurred. Please try again.' }),
             };
         }
 
-        // Handle statement timeout error from database
-        if (error.code === '57014') { // PostgreSQL query_canceled code
+        if (error.code === '57014') {
             console.error('Database query timed out (8s).');
             return {
-                statusCode: 504, // Gateway Timeout
+                statusCode: 504, headers,
                 body: JSON.stringify({ message: 'The request timed out while processing. Please try again.' }),
             };
         }
 
-        // Generic internal server error
         return {
-            statusCode: 500,
+            statusCode: 500, headers,
             body: JSON.stringify({ message: 'An internal server error occurred during registration.' }),
         };
     }

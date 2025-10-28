@@ -1,8 +1,8 @@
 {
-  "name": "event-app-backend",
-  "version": "2.0.4",
-  "description": "Backend functions for the event app",
-  "main": "functions/register.js",
+  "name": "emrs-in-app",
+  "version": "2.2.0",
+  "description": "A full-stack event management and registration system with a PWA frontend and serverless backend.",
+  "main": "index.html",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },

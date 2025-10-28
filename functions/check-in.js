@@ -12,7 +12,8 @@
 const postgres = require('postgres');
 
 // --- CONSTANTS ---
-const MAX_PAYLOAD_SIZE_BYTES = 1 * 1024; // 1KB (generous for a small JSON request)
+const MAX_PAYLOAD_SIZE_BYTES = 1 * 1024; // 1KB
+const REG_ID_REGEX = /^UP25-[A-F0-9]{10}$/; // Matches 'UP25-' followed by 10 hex characters
 
 // --- OPTIMIZATION: Connection Re-use ---
 let sql;
@@ -22,7 +23,7 @@ try {
         connect_timeout: 5,
         idle_timeout: 20,
         max: 5,
-        set_local: { statement_timeout: '8s' } // 8-second query timeout
+        set_local: { statement_timeout: '8s' }
     });
     console.log("Database connection pool initialized successfully (check-in.js).");
 } catch (error) {
@@ -33,14 +34,12 @@ try {
 // --- Netlify Function Handler ---
 
 exports.handler = async (event) => {
-    // --- Define Cache Header ---
     const cacheHeaders = {
         'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0'
     };
 
-    // 1. Check for critical DB configuration
     if (!sql) {
         console.error("Handler Error: Database connection is not available.");
         return {
@@ -50,7 +49,6 @@ exports.handler = async (event) => {
         };
     }
 
-    // 2. Check HTTP Method
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
@@ -59,7 +57,6 @@ exports.handler = async (event) => {
         };
     }
 
-    // 3. Payload Size Check
     const contentLength = event.headers['content-length'];
     if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE_BYTES) {
         console.warn(`Handler Warn: Payload size (${contentLength} bytes) exceeds limit.`);
@@ -70,18 +67,23 @@ exports.handler = async (event) => {
         };
     }
 
-    // 4. Parse and Validate Body
     let registrationId;
     try {
         const body = JSON.parse(event.body);
-        registrationId = body.registrationId ? body.registrationId.trim().toUpperCase() : "";
+        registrationId = body.registrationId ? String(body.registrationId).trim().toUpperCase() : "";
 
         if (!registrationId) {
-            console.warn("Handler Warn: Missing registrationId in request body.");
             return {
                 statusCode: 400,
                 headers: cacheHeaders,
                 body: JSON.stringify({ message: 'Registration ID is required.' })
+            };
+        }
+        if (!REG_ID_REGEX.test(registrationId)) {
+            return {
+                statusCode: 400,
+                headers: cacheHeaders,
+                body: JSON.stringify({ message: 'Invalid Registration ID format.' })
             };
         }
 
@@ -94,13 +96,9 @@ exports.handler = async (event) => {
         };
     }
 
-    // 5. Execute Database Query
     try {
         console.log(`Attempting check-in for: ${registrationId}`);
 
-        // This query finds the attendee's UUID (id) from their registration_id
-        // and inserts that UUID into the check_ins table.
-        // The 'verified_by' field is good for auditing.
         const result = await sql`
             INSERT INTO check_ins (attendee_id, verified_by)
             SELECT id, 'Staff Scanner'
@@ -109,9 +107,7 @@ exports.handler = async (event) => {
             RETURNING id, check_in_time
         `;
 
-        // 6. Handle Results
         if (result.count > 0) {
-            // Success! The INSERT...SELECT found a user and inserted them.
             console.log(`Check-in successful for ${registrationId}. Check-in ID: ${result[0].id}`);
             return {
                 statusCode: 200,
@@ -125,8 +121,6 @@ exports.handler = async (event) => {
                 }),
             };
         } else {
-            // The INSERT...SELECT ran, but the SELECT part found 0 attendees.
-            // This means the registrationId was invalid.
             console.warn(`Check-in failed: No attendee found with Registration ID: ${registrationId}`);
             return {
                 statusCode: 404,
@@ -138,7 +132,6 @@ exports.handler = async (event) => {
     } catch (error) {
         console.error('Database check-in error:', error.message);
 
-        // Handle unique constraint violation (already checked in)
         if (error.code === '23505' && error.constraint_name === 'unique_attendee_check_in') {
             console.warn(`Check-in failed: Attendee ${registrationId} is already checked in.`);
             return {
@@ -148,7 +141,6 @@ exports.handler = async (event) => {
             };
         }
 
-        // Handle statement timeout error
         if (error.code === '57014') {
             console.error('Database query timed out (8s).');
             return {
@@ -158,7 +150,6 @@ exports.handler = async (event) => {
             };
         }
 
-        // Generic error
         return {
             statusCode: 500,
             headers: cacheHeaders,

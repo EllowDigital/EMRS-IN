@@ -1,0 +1,239 @@
+/* --- General UI Styles --- */
+body {
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5;
+    /* Light grey */
+    padding-top: 1rem;
+    /* Add some padding at the top */
+    padding-bottom: 1rem;
+    /* Add some padding at the bottom */
+}
+
+.btn-success {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+.btn-success:hover {
+    background-color: #157347;
+    border-color: #146c43;
+}
+
+.text-success {
+    color: #157347 !important;
+}
+
+/* --- Avatar Picker --- */
+.avatar-picker {
+    position: relative;
+    display: inline-block;
+    width: 150px;
+    height: 150px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid #dee2e6;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.avatar-picker:hover {
+    border-color: #0d6efd;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.avatar-picker.is-invalid {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+
+#avatar-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.avatar-picker::before {
+    content: "Change";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.4);
+    color: white;
+    font-weight: 600;
+    border-radius: 50%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    font-size: 1.1rem;
+    pointer-events: none;
+}
+
+.avatar-picker:hover::before {
+    opacity: 1;
+}
+
+#profile-pic {
+    display: none;
+}
+
+/* --- Heartbeat Animation --- */
+.heart {
+    color: #e53935;
+    animation: heartbeat 1.5s ease-in-out infinite;
+    display: inline-block;
+}
+
+@keyframes heartbeat {
+
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    10%,
+    30% {
+        transform: scale(0.9);
+    }
+
+    20% {
+        transform: scale(1.1);
+    }
+}
+
+/* --- New E-Pass Design Styles --- */
+.epass-container {
+    font-family: "Roboto", "Arial", sans-serif;
+}
+
+.bg-pass-header {
+    background-color: #000033;
+    /* Dark Navy Blue */
+}
+
+.bg-pass-footer {
+    background-color: #4a4a4a;
+    /* Dark Charcoal Grey */
+}
+
+.text-reg-id {
+    color: #e53935 !important;
+    /* Strong Red */
+}
+
+.pass-card {
+    max-width: 450px;
+    border-radius: 20px;
+    overflow: hidden;
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    background-color: #ffffff;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border: none;
+}
+
+.pass-handle {
+    width: 60px;
+    height: 10px;
+    background-color: white;
+    border-radius: 5px;
+    margin: 0 auto 15px;
+}
+
+.pass-title {
+    font-size: 2.75rem;
+    font-weight: 900;
+}
+
+#epass-avatar {
+    width: 110px;
+    height: 110px;
+    object-fit: cover;
+    border: 3px solid #eee;
+    border-radius: 50%;
+    box-shadow: none;
+    margin-bottom: 0.75rem;
+}
+
+.user-details .label {
+    font-weight: 400;
+    color: #555;
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: -4px;
+}
+
+.user-details .value {
+    font-weight: 700;
+    margin-left: 0;
+    font-size: 0.95rem;
+    line-height: 1.3;
+    word-wrap: break-word;
+    /* Prevent long values overflowing */
+}
+
+.user-details p {
+    margin-bottom: 0.5rem;
+}
+
+#epass-name {
+    font-weight: 900 !important;
+    font-size: 1.15rem !important;
+    color: #000;
+    display: block;
+}
+
+#epass-reg-id {
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+}
+
+#qrcode-container img {
+    max-width: 140px;
+    width: 100%;
+    height: auto;
+    padding: 5px;
+    background-color: white;
+    border: 1px solid #eee;
+}
+
+/* Ensure forms take full width on smaller screens */
+.needs-validation {
+    width: 100%;
+}
+
+/* --- Floating Label & Icon Styles --- */
+.form-floating {
+    position: relative;
+}
+
+.form-floating .form-control {
+    padding-left: 2.5rem;
+    /* Space for icon */
+}
+
+.form-floating>label {
+    padding-left: 2.5rem;
+    /* Align label with text */
+}
+
+.form-floating .input-icon {
+    position: absolute;
+    top: 50%;
+    left: 0.75rem;
+    transform: translateY(-50%);
+    color: #6c757d;
+    pointer-events: none;
+}
+
+.form-floating .form-control:focus~.input-icon,
+.form-floating .form-control:not(:placeholder-shown)~.input-icon {
+    color: #0d6efd;
+}
