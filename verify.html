@@ -14,7 +14,8 @@
         integrity="sha512-t7Few9xlddEmgd3oKZQahkNI4dS6l80+eGEzFQiqtyVYdvcSG2D3Iub77R20BdotfRPA9caaRkg1tyaJiPmO0g=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
+    
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0d6efd">
     <meta name="mobile-web-app-capable" content="yes">
@@ -149,6 +150,11 @@
                 transform: translateY(calc(100% - 3px));
             }
         }
+        
+        /* --- NEW: Zoom Controls --- */
+        #zoom-controls {
+            transition: opacity 0.3s ease;
+        }
 
         /* --- Attendee Result Card --- */
         .result-card {
@@ -244,7 +250,16 @@
                                 <div id="qr-reader-container">
                                     <div id="qr-reader"></div>
                                 </div>
-                                <button class="btn btn-primary w-100 rounded-pill py-2" id="start-scan-btn">
+
+                                <div id="zoom-controls" class="mt-2" style="display: none;">
+                                    <label for="zoom-slider" class="form-label mb-1 small text-muted">Zoom</label>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-zoom-out me-2"></i>
+                                        <input type="range" class="form-range" id="zoom-slider" min="1" max="5" step="0.1">
+                                        <i class="bi bi-zoom-in ms-2"></i>
+                                    </div>
+                                </div>
+                                <button class="btn btn-primary w-100 rounded-pill py-2 mt-3" id="start-scan-btn">
                                     <i class="bi bi-qr-code-scan me-2"></i>
                                     <span id="start-scan-btn-text">Start Camera Scan</span>
                                 </button>
@@ -354,6 +369,10 @@
                 startScanBtn: document.getElementById("start-scan-btn"),
                 startScanBtnText: document.getElementById("start-scan-btn-text"),
                 qrReader: document.getElementById("qr-reader"),
+                
+                // NEW: Zoom controls
+                zoomControls: document.getElementById("zoom-controls"),
+                zoomSlider: document.getElementById("zoom-slider"),
 
                 // Lookup Form
                 manualForm: document.getElementById("manual-lookup-form"),
@@ -646,7 +665,7 @@
 
             function onScanSuccess(decodedText, decodedResult) {
                 console.log(`Scan result: ${decodedText}`);
-                // stopScanner(); // <-- FIX: Removed redundant call. This is now handled by setUIState() via fetchAttendee().
+                // stopScanner() is implicitly called by setUIState('result') inside fetchAttendee
 
                 try {
                     // Try to parse as JSON first (e.g., { "regId": "UP25-..." })
@@ -673,10 +692,37 @@
                 // console.warn(`Scan failure: ${error}`);
             }
 
+            /**
+             * NEW: Initializes zoom controls if supported by the camera.
+             */
+            function initializeZoomControls() {
+                try {
+                    const capabilities = appState.scanner.getRunningTrackCameraCapabilities();
+                    const settings = appState.scanner.getRunningTrackCameraSettings();
+
+                    if (capabilities && capabilities.zoom) {
+                        const { min, max, step } = capabilities.zoom;
+                        ui.zoomSlider.min = min;
+                        ui.zoomSlider.max = max;
+                        ui.zoomSlider.step = step;
+                        ui.zoomSlider.value = settings.zoom || min;
+                        ui.zoomControls.style.display = 'block'; // Show controls
+                        console.log(`Zoom enabled: min=${min}, max=${max}, current=${settings.zoom}`);
+                    } else {
+                        console.warn("Zoom is not supported by this camera.");
+                        ui.zoomControls.style.display = 'none'; // Hide if not supported
+                    }
+                } catch (err) {
+                    console.error("Error getting camera capabilities:", err);
+                    ui.zoomControls.style.display = 'none'; // Hide on error
+                }
+            }
+
             function startScanner() {
                 if (appState.isScannerRunning) return;
 
                 if (!appState.scanner) {
+                    // Use the Html5Qrcode class from the script
                     appState.scanner = new Html5Qrcode("qr-reader");
                 }
 
@@ -689,6 +735,7 @@
                         ui.startScanBtnText.textContent = "Scanning... (Point at QR Code)";
                         ui.startScanBtn.disabled = true;
                         setUIState('scanning'); // Ensure state is correct
+                        initializeZoomControls(); // NEW: Check for zoom
                     })
                     .catch((err) => {
                         console.warn("Back camera failed, trying any camera:", err);
@@ -700,6 +747,7 @@
                                 ui.startScanBtnText.textContent = "Scanning... (Point at QR Code)";
                                 ui.startScanBtn.disabled = true;
                                 setUIState('scanning'); // Ensure state is correct
+                                initializeZoomControls(); // NEW: Check for zoom
                             })
                             .catch((err2) => {
                                 console.error("Failed to start any camera:", err2);
@@ -710,6 +758,8 @@
             }
 
             function stopScanner() {
+                ui.zoomControls.style.display = 'none'; // NEW: Always hide zoom controls when stopping
+                
                 if (appState.scanner && appState.isScannerRunning) {
                     try {
                         appState.scanner.stop().then(() => {
@@ -734,6 +784,21 @@
 
             ui.startScanBtn.addEventListener("click", () => {
                 setUIState('scanning');
+            });
+
+            // NEW: Zoom Slider Listener
+            ui.zoomSlider.addEventListener('input', () => {
+                if (appState.scanner && appState.isScannerRunning) {
+                    try {
+                        const zoomValue = parseFloat(ui.zoomSlider.value);
+                        // Apply constraints to the running video track
+                        appState.scanner.applyVideoConstraints({
+                            advanced: [{ zoom: zoomValue }]
+                        });
+                    } catch (err) {
+                        console.warn("Could not apply zoom:", err);
+                    }
+                }
             });
 
             ui.manualForm.addEventListener("submit", (e) => {
