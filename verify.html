@@ -5,49 +5,182 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Verify & Check-In</title>
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
         integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css"
+        integrity="sha512-t7Few9xlddEmgd3oKZQahkNI4dS6l80+eGEzFQiqtyVYdvcSG2D3Iub77R20BdotfRPA9caaRkg1tyaJiPmO0g=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <link rel="manifest" href="/manifest.json"> <meta name="theme-color" content="#ffffff">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="mobile-web-app-capable" content="yes">
     <link rel="apple-touch-icon" href="assets/favicon/apple-touch-icon.png">
-    <meta name="apple-mobile-web-app-capable" content="yes"> <meta name="apple-mobile-web-app-status-bar-style" content="black"> <meta name="apple-mobile-web-app-title" content="E-Pass Verify"> <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="E-Pass">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png">
-    <link rel="icon" href="assets/favicon/favicon.ico"> <style>
+    <link rel="icon" href="assets/favicon/favicon.ico">
+
+    <style>
         /* Inter font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+        :root {
+            --bs-font-sans-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --bs-primary-rgb: 13, 110, 253;
+            --bs-border-radius: 0.5rem;
+            --bs-border-radius-lg: 0.75rem;
+            --bs-border-radius-pill: 50rem;
+            --app-bg: #f8f9fa;
+        }
+
         body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f8f9fa;
+            background-color: var(--app-bg);
+            /* This data-attribute will control the entire UI state */
+            data-ui-state: "lookup";
+        }
+
+        /* --- App Header --- */
+        .app-header {
+            background-color: #fff;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        /* --- Toast Notification Container --- */
+        #message-box-container {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1080;
+            /* Above modals */
+            width: 90%;
+            max-width: 600px;
+        }
+
+        .alert {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        /* --- Main Content Wrapper --- */
+        .content-wrapper {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        /* --- Section Styling & Transitions --- */
+        #scanner-section,
+        #results-section {
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+            display: none;
+            /* Hide by default */
+        }
+
+        /* --- UI State Control --- */
+        body[data-ui-state="lookup"] #scanner-section,
+        body[data-ui-state="scanning"] #scanner-section,
+        body[data-ui-state="result"] #results-section,
+        body[data-ui-state="loading"] #scanner-section {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        /* Show a spinner over the lookup form while loading */
+        body[data-ui-state="loading"] #manual-lookup-form {
+            opacity: 0.5;
+            pointer-events: none;
         }
 
         /* --- QR Reader Styles --- */
         #qr-reader-container {
             max-width: 500px;
-            margin: 0 auto;
+            margin: 0 auto 1rem;
             position: relative;
             overflow: hidden;
-            border-radius: 8px;
+            border-radius: var(--bs-border-radius-lg);
+            background: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
         }
 
         #qr-reader {
             width: 100%;
-            border: 4px solid #dee2e6;
-            border-radius: 8px;
+            border: none;
+        }
+
+        /* Active Scan Line Animation */
+        #qr-reader-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 10px;
+            right: 10px;
+            height: 3px;
+            background: rgba(var(--bs-primary-rgb), 0.7);
+            box-shadow: 0 0 10px rgba(var(--bs-primary-rgb), 0.7);
+            border-radius: 3px;
+            transform: translateY(-100%);
+            animation: scanline 2.5s ease-in-out infinite alternate;
+            display: none;
+            /* Hidden by default */
+        }
+
+        /* Show scan line only when scanning */
+        body[data-ui-state="scanning"] #qr-reader-container::after {
+            display: block;
+        }
+
+        @keyframes scanline {
+            0% {
+                transform: translateY(0%);
+            }
+
+            100% {
+                transform: translateY(calc(100% - 3px));
+            }
         }
 
         /* --- Attendee Result Card --- */
+        .result-card {
+            position: relative;
+        }
+
+        #clear-btn-top {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            z-index: 10;
+        }
+
+        #result-status-badge {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.5em 1em;
+            border-radius: var(--bs-border-radius-pill);
+            margin-bottom: -1.5rem;
+            /* Pull up over the avatar */
+            position: relative;
+            z-index: 5;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
         #result-avatar {
             width: 120px;
             height: 120px;
             object-fit: cover;
             border-radius: 50%;
             border: 4px solid #fff;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
         }
 
         .epass-info-block {
@@ -56,10 +189,10 @@
 
         .epass-info-block p {
             margin-bottom: 0.5rem;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
 
-        /* Heartbeat Animation */
+        /* Heartbeat Animation (Unchanged) */
         .heart {
             color: #e53935;
             animation: heartbeat 1.5s ease-in-out infinite;
@@ -85,139 +218,219 @@
     </style>
 </head>
 
-<body>
+<body data-ui-state="lookup">
 
-    <div class="container my-5">
-        <div class="row">
-            <div class="col-lg-6 offset-lg-3">
+    <div id="message-box-container" aria-live="polite"></div>
 
-                <div class="card shadow-sm border-0 rounded-4">
-                    <div class="card-body p-4 p-md-5">
+    <header class="app-header p-3">
+        <div class="container-fluid">
+            <h1 class="h4 mb-0 fw-bold text-primary">
+                <i class="bi bi-person-check-fill me-2"></i>E-Pass Check-In
+            </h1>
+        </div>
+    </header>
 
-                        <h1 class="display-6 fw-bold text-center mb-4">Verify & Check-In</h1>
+    <main class="content-wrapper">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 offset-lg-3">
 
-                        <div id="message-box-container"></div>
+                    <div class="card shadow-sm border-0 rounded-4">
+                        <div class="card-body p-4 p-md-5">
 
-                        <div id="scanner-section">
-                            <div id="qr-reader-container" class="mb-3">
-                                <div id="qr-reader"></div>
-                            </div>
-                            <button class="btn btn-primary w-100 rounded-pill" id="start-scan-btn">
-                                Start Camera Scan
-                            </button>
+                            <section id="scanner-section">
+                                <h2 class="display-6 fw-bold text-center mb-4">Verify Attendee</h2>
 
-                            <hr class="my-4">
-                            <h3 class="text-center fs-5 fw-medium mb-3">Or, Manual Lookup</h3>
-
-                            <form id="manual-lookup-form" novalidate>
-                                <div class="mb-3">
-                                    <label for="reg-id-input" class="form-label">Registration ID</label>
-                                    <input type="text" class="form-control" id="reg-id-input"
-                                        placeholder="e.g., UP25-..." required>
-                                    <div class="invalid-feedback">
-                                        Please enter a registration ID.
-                                    </div>
+                                <div id="qr-reader-container">
+                                    <div id="qr-reader"></div>
                                 </div>
-                                <button type="submit" id="lookup-btn"
-                                    class="btn btn-outline-primary w-100 rounded-pill d-flex align-items-center justify-content-center">
-                                    <span id="lookup-btn-text">Find Attendee</span>
-                                    <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status"
-                                        id="lookup-spinner">
+                                <button class="btn btn-primary w-100 rounded-pill py-2" id="start-scan-btn">
+                                    <i class="bi bi-qr-code-scan me-2"></i>
+                                    <span id="start-scan-btn-text">Start Camera Scan</span>
+                                </button>
+
+                                <hr class="my-4">
+                                <h3 class="text-center fs-5 fw-medium mb-3 text-muted">Or, Manual Lookup</h3>
+
+                                <form id="manual-lookup-form" novalidate>
+                                    <div class="mb-3">
+                                        <label for="reg-id-input" class="form-label">Registration ID</label>
+                                        <input type="text" class="form-control" id="reg-id-input"
+                                            placeholder="e.g., UP25-..." required>
+                                        <div class="invalid-feedback">
+                                            Please enter a registration ID.
+                                        </div>
+                                    </div>
+                                    <button type="submit" id="lookup-btn"
+                                        class="btn btn-outline-primary w-100 rounded-pill py-2 d-flex align-items-center justify-content-center">
+                                        <span id="lookup-btn-text">Find Attendee</span>
+                                        <div class="spinner-border spinner-border-sm text-primary ms-2 d-none"
+                                            role="status" id="lookup-spinner">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </button>
+                                </form>
+                            </section>
+
+                            <section id="results-section" class="text-center">
+
+                                <button type="button" class="btn-close" id="clear-btn-top" aria-label="Close"
+                                    title="Scan Next"></button>
+
+                                <div id="result-status-badge" class="bg-success text-white">
+                                    <i class="bi bi-check-circle-fill me-2"></i>VERIFIED
+                                </div>
+
+                                <img id="result-avatar" src="https://placehold.co/150x150/6c757d/white?text=No+Photo"
+                                    class="img-fluid my-4" alt="Profile Picture">
+
+                                <h2 id="result-name" class="fw-bold fs-3 mb-3"></h2>
+
+                                <div class="epass-info-block text-start bg-light p-3 rounded-3">
+                                    <p class="mb-2"><strong>Reg. ID:</strong> <span id="result-reg-id"
+                                            class="text-danger fw-bold"></span></p>
+                                    <p class="mb-2"><strong>Phone:</strong> <span id="result-phone"></span></p>
+                                    <p class="mb-0"><strong>Email:</strong> <span id="result-email"></span></p>
+                                </div>
+
+                                <button id="checkin-btn"
+                                    class="btn btn-success btn-lg w-100 rounded-pill mt-4 py-2 d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-person-plus-fill me-2"></i>
+                                    <span id="checkin-btn-text">Confirm Check-In</span>
+                                    <div class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"
+                                        id="checkin-spinner">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
                                 </button>
-                            </form>
-                        </div>
 
-                        <div id="results-section" class="d-none text-center">
-
-                            <div class="d-flex justify-content-end mb-2">
-                                <button id="clear-btn-top" class="btn btn-sm btn-outline-secondary rounded-pill">
-                                    &larr; Scan Next
+                                <button id="clear-btn-bottom"
+                                    class="btn btn-outline-secondary w-100 rounded-pill mt-2 py-2">
+                                    <i class="bi bi-arrow-left me-2"></i>Scan Next Attendee
                                 </button>
-                            </div>
-
-                            <div id="checkin-status-alert"></div>
-
-                            <img id="result-avatar" src="https://placehold.co/150x150/6c757d/white?text=No+Photo"
-                                class="img-fluid my-3" alt="Profile Picture">
-
-                            <h2 id="result-name" class="fw-bold fs-3 mb-3"></h2>
-
-                            <div class="epass-info-block text-start bg-light p-3 rounded-3">
-                                <p class="mb-2"><strong>Reg. ID:</strong> <span id="result-reg-id"
-                                        class="text-danger fw-bold"></span></p>
-                                <p class="mb-2"><strong>Phone:</strong> <span id="result-phone"></span></p>
-                                <p class="mb-0"><strong>Email:</strong> <span id="result-email"></span></p>
-                            </div>
-
-                            <button id="checkin-btn"
-                                class="btn btn-success btn-lg w-100 rounded-pill mt-4 d-flex align-items-center justify-content-center">
-                                <span id="checkin-btn-text">Confirm Check-In</span>
-                                <div class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"
-                                    id="checkin-spinner">
-                                    <span class="visually-hidden">Loading...</span>
-                                </div>
-                            </button>
-
-                            <button id="clear-btn-bottom" class="btn btn-outline-secondary w-100 rounded-pill mt-2">
-                                Clear & Scan Next
-                            </button>
+                            </section>
                         </div>
                     </div>
-                </div>
 
-                <footer class="text-center text-muted mt-4">
-                    <small>Made with <span class="heart">&hearts;</span> by EllowDigital</small>
-                </footer>
+                    <footer class="text-center text-muted mt-4">
+                        <small>Made with <span class="heart">&hearts;</span> by EllowDigital</small>
+                    </footer>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
         integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
     <script>
         document.addEventListener("DOMContentLoaded", () => {
 
-            // --- DOM Elements ---
-            const clearBtnTop = document.getElementById("clear-btn-top");
-            const clearBtnBottom = document.getElementById("clear-btn-bottom");
-            const scannerSection = document.getElementById("scanner-section");
-            const resultsSection = document.getElementById("results-section");
-            const startScanBtn = document.getElementById("start-scan-btn");
-            const qrReaderElement = document.getElementById("qr-reader");
-            const manualLookupForm = document.getElementById("manual-lookup-form");
-            const regIdInput = document.getElementById("reg-id-input");
-            const lookupBtn = document.getElementById("lookup-btn");
-            const lookupBtnText = document.getElementById("lookup-btn-text");
-            const lookupSpinner = document.getElementById("lookup-spinner");
-            const messageBoxContainer = document.getElementById("message-box-container");
-            const checkinStatusAlert = document.getElementById("checkin-status-alert");
-            const resultAvatar = document.getElementById("result-avatar");
-            const resultName = document.getElementById("result-name");
-            const resultRegId = document.getElementById("result-reg-id");
-            const resultPhone = document.getElementById("result-phone");
-            const resultEmail = document.getElementById("result-email");
-            const checkinBtn = document.getElementById("checkin-btn");
-            const checkinBtnText = document.getElementById("checkin-btn-text");
-            const checkinSpinner = document.getElementById("checkin-spinner");
-            
-            const REQUEST_TIMEOUT = 9500;
-            let currentAttendeeRegId = null;
-            let html5QrCode = null;
-            let currentMessageTimeout = null; // <-- ADDED for auto-hiding messages
+            // --- State & Config ---
+            const config = {
+                api: {
+                    verify: '/api/verify',
+                    checkIn: '/api/check-in',
+                    timeout: 9500,
+                },
+                placeholders: {
+                    avatar: 'https://placehold.co/150x150/6c757d/white?text=No+Photo'
+                }
+            };
 
-            // --- Helper Functions (Updated) ---
+            const appState = {
+                currentAttendeeRegId: null,
+                scanner: null,
+                isScannerRunning: false,
+                messageTimeout: null
+            };
+
+            // --- DOM Element Cache ---
+            const ui = {
+                body: document.body,
+                messageBox: document.getElementById("message-box-container"),
+
+                // Scanner Section
+                scannerSection: document.getElementById("scanner-section"),
+                startScanBtn: document.getElementById("start-scan-btn"),
+                startScanBtnText: document.getElementById("start-scan-btn-text"),
+                qrReader: document.getElementById("qr-reader"),
+
+                // Lookup Form
+                manualForm: document.getElementById("manual-lookup-form"),
+                regIdInput: document.getElementById("reg-id-input"),
+                lookupBtn: document.getElementById("lookup-btn"),
+                lookupBtnText: document.getElementById("lookup-btn-text"),
+                lookupSpinner: document.getElementById("lookup-spinner"),
+
+                // Results Section
+                resultsSection: document.getElementById("results-section"),
+                clearBtnTop: document.getElementById("clear-btn-top"),
+                clearBtnBottom: document.getElementById("clear-btn-bottom"),
+                resultStatusBadge: document.getElementById("result-status-badge"),
+                resultAvatar: document.getElementById("result-avatar"),
+                resultName: document.getElementById("result-name"),
+                resultRegId: document.getElementById("result-reg-id"),
+                resultPhone: document.getElementById("result-phone"),
+                resultEmail: document.getElementById("result-email"),
+                checkinBtn: document.getElementById("checkin-btn"),
+                checkinBtnText: document.getElementById("checkin-btn-text"),
+                checkinSpinner: document.getElementById("checkin-spinner"),
+            };
+
+            // --- UI Helper Functions ---
 
             /**
-             * --- IMPROVEMENT: Auto-hiding messages ---
+             * Sets the entire application UI state.
+             * This is the core function for controlling the UI.
+             * @param {'lookup' | 'scanning' | 'loading' | 'result'} state
+             */
+            function setUIState(state) {
+                ui.body.dataset.uiState = state;
+
+                if (state === 'scanning') {
+                    startScanner();
+                } else {
+                    stopScanner();
+                }
+
+                if (state === 'lookup') {
+                    // Reset form fields and state
+                    appState.currentAttendeeRegId = null;
+                    ui.manualForm.reset();
+                    ui.manualForm.classList.remove("was-validated");
+                }
+            }
+
+            /**
+             * Resets the entire UI back to the initial lookup state.
+             */
+            function resetUI() {
+                clearMessage();
+
+                // Reset result fields
+                ui.resultAvatar.src = config.placeholders.avatar;
+                ui.resultName.textContent = "";
+                ui.resultRegId.textContent = "";
+                ui.resultPhone.textContent = "";
+                ui.resultEmail.textContent = "";
+
+                // Reset check-in button
+                ui.checkinBtn.disabled = false;
+                ui.checkinBtn.classList.replace('btn-secondary', 'btn-success');
+                ui.checkinBtnText.textContent = "Confirm Check-In";
+
+                // Set state back to lookup
+                setUIState('lookup');
+            }
+
+            /**
+             * Shows an auto-hiding toast message.
+             * @param {string} message The message to display.
+             * @param {'info' | 'success' | 'warning' | 'danger'} type The alert type.
              */
             function showMessage(message, type = 'info') {
-                // Clear any existing timeout
-                if (currentMessageTimeout) {
-                    clearTimeout(currentMessageTimeout);
+                if (appState.messageTimeout) {
+                    clearTimeout(appState.messageTimeout);
                 }
 
                 const wrapper = document.createElement('div');
@@ -227,50 +440,96 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 `;
-                messageBoxContainer.innerHTML = ''; // Clear previous messages
-                messageBoxContainer.append(wrapper);
-                window.scrollTo(0, 0);
+
+                // Clear previous messages and append new one
+                ui.messageBox.innerHTML = '';
+                ui.messageBox.append(wrapper);
+                window.scrollTo(0, 0); // Scroll up to see it
 
                 // Auto-hide after 5 seconds
-                currentMessageTimeout = setTimeout(() => {
-                    if (wrapper) {
-                        const alert = wrapper.querySelector('.alert');
-                        if (alert) {
-                            const bsAlert = new bootstrap.Alert(alert);
-                            bsAlert.close();
-                        }
+                appState.messageTimeout = setTimeout(() => {
+                    const alert = wrapper.querySelector('.alert');
+                    if (alert) {
+                        new bootstrap.Alert(alert).close();
                     }
-                }, 5000); // 5000 milliseconds = 5 seconds
+                }, 5000);
             }
 
             /**
-             * --- IMPROVEMENT: Clear message timeout ---
+             * Clears any active message.
              */
             function clearMessage() {
-                if (currentMessageTimeout) {
-                    clearTimeout(currentMessageTimeout);
+                if (appState.messageTimeout) {
+                    clearTimeout(appState.messageTimeout);
                 }
-                messageBoxContainer.innerHTML = '';
+                ui.messageBox.innerHTML = '';
             }
 
             /**
-             * --- IMPROVEMENT: Added 'cache: no-store' ---
+             * Controls the loading spinner state for buttons.
+             * @param {boolean} isLoading True to show spinner, false to hide.
+             * @param {'lookup' | 'checkin'} type The button type.
              */
-            async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT) {
-                const controller = new AbortController();
-                const id = setTimeout(() => controller.abort(), timeout);
+            function setLoadingState(isLoading, type) {
+                const isCheckin = type === 'checkin';
+                const spinner = isCheckin ? ui.checkinSpinner : ui.lookupSpinner;
+                const button = isCheckin ? ui.checkinBtn : ui.lookupBtn;
+                const btnText = isCheckin ? ui.checkinBtnText : ui.lookupBtnText;
 
-                const updatedOptions = {
-                    ...options,
-                    signal: controller.signal,
-                    cache: 'no-store' // <-- CRITICAL: Prevents browser caching
-                };
+                const loadingText = isCheckin ? "Checking In..." : "Searching...";
+                const defaultText = isCheckin ? "Confirm Check-In" : "Find Attendee";
 
-                const response = await fetch(url, updatedOptions);
-                clearTimeout(id);
-                return response;
+                if (isLoading) {
+                    spinner.classList.remove("d-none");
+                    button.disabled = true;
+                    btnText.textContent = loadingText;
+                    if (type === 'lookup') setUIState('loading'); // Special state for lookup
+                } else {
+                    spinner.classList.add("d-none");
+                    button.disabled = false;
+                    btnText.textContent = defaultText;
+                    if (type === 'lookup') setUIState('lookup'); // Revert state
+                }
             }
 
+            /**
+             * Populates the results card with attendee data.
+             * @param {object} attendee The attendee data object.
+             * @param {boolean} isCheckedIn The check-in status.
+             */
+            function displayResults(attendee, isCheckedIn) {
+                appState.currentAttendeeRegId = attendee.registration_id;
+
+                // Populate data
+                ui.resultAvatar.src = attendee.profile_pic_url || config.placeholders.avatar;
+                ui.resultName.textContent = attendee.full_name;
+                ui.resultRegId.textContent = attendee.registration_id;
+                ui.resultPhone.textContent = attendee.phone_number || 'N/A';
+                ui.resultEmail.textContent = attendee.email || 'N/A';
+
+                // Update status badge and check-in button
+                if (isCheckedIn) {
+                    ui.resultStatusBadge.className = 'bg-warning text-dark';
+                    ui.resultStatusBadge.innerHTML = `<i class="bi bi-person-check-fill me-2"></i>ALREADY CHECKED IN`;
+                    ui.checkinBtn.disabled = true;
+                    ui.checkinBtn.classList.replace('btn-success', 'btn-secondary');
+                    ui.checkinBtnText.textContent = "Already Checked-In";
+                } else {
+                    ui.resultStatusBadge.className = 'bg-success text-white';
+                    ui.resultStatusBadge.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>VERIFIED - NOT CHECKED IN`;
+                    ui.checkinBtn.disabled = false;
+                    ui.checkinBtn.classList.replace('btn-secondary', 'btn-success');
+                    ui.checkinBtnText.textContent = "Confirm Check-In";
+                }
+
+                // Show the results
+                setUIState('result');
+            }
+
+            /**
+             * Gets a user-friendly error message.
+             * @param {Error} error The error object.
+             */
             function getFriendlyErrorMessage(error) {
                 if (error.name === 'AbortError') {
                     return "The request timed out. Network might be slow. Please try again.";
@@ -281,8 +540,32 @@
                 return error.message || "An unknown error occurred. Please try again.";
             }
 
-            // --- Core Logic Functions ---
+            // --- API & Data Logic ---
 
+            /**
+             * A fetch wrapper with a timeout and no-cache policy.
+             * @param {string} url The URL to fetch.
+             * @param {object} options The fetch options.
+             * @param {number} timeout The timeout in milliseconds.
+             */
+            async function fetchWithTimeout(url, options, timeout = config.api.timeout) {
+                const controller = new AbortController();
+                const id = setTimeout(() => controller.abort(), timeout);
+
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal,
+                    cache: 'no-store' // CRITICAL: Prevents caching
+                });
+
+                clearTimeout(id);
+                return response;
+            }
+
+            /**
+             * Fetches attendee data from the API.
+             * @param {string} registrationId The ID to look up.
+             */
             async function fetchAttendee(registrationId) {
                 if (!registrationId) {
                     showMessage("Invalid Registration ID.", "danger");
@@ -293,7 +576,7 @@
                 setLoadingState(true, 'lookup');
 
                 try {
-                    const response = await fetchWithTimeout(`/api/verify`, {
+                    const response = await fetchWithTimeout(config.api.verify, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ registrationId: registrationId.trim().toUpperCase() })
@@ -304,7 +587,11 @@
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP error! Status: ${response.status}`);
                     }
-                    
+
+                    if (!result.data || !result.data.attendee) {
+                        throw new Error("Invalid data received from server.");
+                    }
+
                     displayResults(result.data.attendee, result.data.isCheckedIn);
 
                 } catch (error) {
@@ -316,44 +603,19 @@
                 }
             }
 
-            function displayResults(attendee, isCheckedIn) {
-                currentAttendeeRegId = attendee.registration_id;
-
-                resultAvatar.src = attendee.profile_pic_url || "https://placehold.co/150x150/6c757d/white?text=No+Photo";
-                resultName.textContent = attendee.full_name;
-                resultRegId.textContent = attendee.registration_id;
-                resultPhone.textContent = attendee.phone_number;
-                resultEmail.textContent = attendee.email;
-
-                if (isCheckedIn) {
-                    checkinStatusAlert.innerHTML = `<div class="alert alert-warning fw-bold" role="alert">ALREADY CHECKED IN</div>`;
-                    checkinBtn.disabled = true;
-                    checkinBtn.classList.remove('btn-success');
-                    checkinBtn.classList.add('btn-secondary');
-                    checkinBtnText.textContent = "Already Checked-In";
-                } else {
-                    checkinStatusAlert.innerHTML = `<div class="alert alert-success fw-bold" role="alert">VERIFIED - Not Checked In</div>`;
-                    checkinBtn.disabled = false;
-                    checkinBtn.classList.add('btn-success');
-                    checkinBtn.classList.remove('btn-secondary');
-                    checkinBtnText.textContent = "Confirm Check-In";
-                }
-
-                scannerSection.classList.add("d-none");
-                resultsSection.classList.remove("d-none");
-                stopScanner(); 
-            }
-
+            /**
+             * Performs the check-in API call.
+             */
             async function performCheckIn() {
-                if (!currentAttendeeRegId) return;
+                if (!appState.currentAttendeeRegId) return;
 
                 setLoadingState(true, 'checkin');
 
                 try {
-                    const response = await fetchWithTimeout(`/api/check-in`, {
+                    const response = await fetchWithTimeout(config.api.checkIn, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ registrationId: currentAttendeeRegId })
+                        body: JSON.stringify({ registrationId: appState.currentAttendeeRegId })
                     });
 
                     const result = await response.json();
@@ -361,168 +623,150 @@
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP error! Status: ${response.status}`);
                     }
-                    
-                    showMessage("Check-In Successful!", "success"); // Will auto-hide
-                    checkinStatusAlert.innerHTML = `<div class="alert alert-success fw-bold" role="alert">CHECK-IN COMPLETE</div>`;
-                    checkinBtn.disabled = true;
-                    checkinBtn.classList.remove('btn-success');
-                    checkinBtn.classList.add('btn-secondary');
-                    checkinBtnText.textContent = "Checked-In";
+
+                    showMessage("Check-In Successful!", "success");
+
+                    // Update UI to reflect successful check-in
+                    ui.resultStatusBadge.className = 'bg-success text-white';
+                    ui.resultStatusBadge.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>CHECK-IN COMPLETE`;
+                    ui.checkinBtn.disabled = true;
+                    ui.checkinBtn.classList.replace('btn-success', 'btn-secondary');
+                    ui.checkinBtnText.textContent = "Checked-In";
 
                 } catch (error) {
                     console.error("Check-In failed:", error);
                     const friendlyMessage = getFriendlyErrorMessage(error);
-                    showMessage(friendlyMessage, "danger"); // Will auto-hide
+                    showMessage(friendlyMessage, "danger");
                 } finally {
                     setLoadingState(false, 'checkin');
                 }
             }
 
-            function resetUI() {
-                clearMessage(); // <-- UPDATED (now clears timeout)
-                currentAttendeeRegId = null;
-
-                manualLookupForm.reset();
-                manualLookupForm.classList.remove("was-validated");
-
-                resultAvatar.src = "https://placehold.co/150x150/6c757d/white?text=No+Photo";
-                resultName.textContent = "";
-                resultRegId.textContent = "";
-                resultPhone.textContent = "";
-                resultEmail.textContent = "";
-                checkinStatusAlert.innerHTML = "";
-
-                checkinBtn.disabled = false;
-                checkinBtn.classList.add('btn-success');
-                checkinBtn.classList.remove('btn-secondary');
-                checkinBtnText.textContent = "Confirm Check-In";
-
-                resultsSection.classList.add("d-none");
-                scannerSection.classList.remove("d-none");
-                startScanBtn.disabled = false;
-                startScanBtn.textContent = "Start Camera Scan";
-            }
-
-            function setLoadingState(isLoading, type) {
-                const spinner = (type === 'checkin') ? checkinSpinner : lookupSpinner;
-                const button = (type === 'checkin') ? checkinBtn : lookupBtn;
-                const btnText = (type === 'checkin') ? checkinBtnText : lookupBtnText;
-                const defaultText = (type === 'checkin') ? "Confirm Check-In" : "Find Attendee";
-
-                if (isLoading) {
-                    spinner.classList.remove("d-none");
-                    button.disabled = true;
-                    btnText.textContent = (type === 'checkin') ? "Checking In..." : "Searching...";
-                } else {
-                    spinner.classList.add("d-none");
-                    button.disabled = false;
-                    btnText.textContent = defaultText;
-                }
-            }
-
-            // --- QR Scanner ---
+            // --- QR Scanner Logic ---
 
             function onScanSuccess(decodedText, decodedResult) {
                 console.log(`Scan result: ${decodedText}`);
-                stopScanner();
+                // stopScanner(); // <-- FIX: Removed redundant call. This is now handled by setUIState() via fetchAttendee().
 
                 try {
+                    // Try to parse as JSON first (e.g., { "regId": "UP25-..." })
                     const data = JSON.parse(decodedText);
                     if (data && data.regId) {
                         fetchAttendee(data.regId);
                     } else {
-                        throw new Error("Invalid QR code format.");
+                        throw new Error("Invalid QR code format (JSON).");
                     }
-                } catch (error) {
-                    console.error("QR Parse Error:", error);
-                    showMessage("Invalid E-Pass QR Code. Please try manual lookup.", "danger");
+                } catch (jsonError) {
+                    // If not JSON, assume it's a plain text ID
+                    console.warn("QR code is not JSON, treating as plain text ID.");
+                    if (decodedText && decodedText.trim().length > 0) {
+                        fetchAttendee(decodedText);
+                    } else {
+                        console.error("QR Parse Error:", jsonError);
+                        showMessage("Invalid E-Pass QR Code. Please try manual lookup.", "danger");
+                    }
                 }
             }
 
             function onScanFailure(error) {
-                // This will fire continuously. It's safe to ignore.
+                // This fires continuously. It's safe to ignore.
+                // console.warn(`Scan failure: ${error}`);
             }
 
             function startScanner() {
-                if (!html5QrCode) {
-                    html5QrCode = new Html5Qrcode("qr-reader");
+                if (appState.isScannerRunning) return;
+
+                if (!appState.scanner) {
+                    appState.scanner = new Html5Qrcode("qr-reader");
                 }
 
-                const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+                const config = { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true };
 
-                html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+                appState.scanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
                     .then(() => {
                         console.log("Scanner started with back camera.");
-                        startScanBtn.textContent = "Scanning... (Point at QR Code)";
-                        startScanBtn.disabled = true;
+                        appState.isScannerRunning = true;
+                        ui.startScanBtnText.textContent = "Scanning... (Point at QR Code)";
+                        ui.startScanBtn.disabled = true;
+                        setUIState('scanning'); // Ensure state is correct
                     })
                     .catch((err) => {
                         console.warn("Back camera failed, trying any camera:", err);
-                        html5QrCode.start({}, config, onScanSuccess, onScanFailure)
+                        // Fallback to any camera
+                        appState.scanner.start({}, config, onScanSuccess, onScanFailure)
                             .then(() => {
                                 console.log("Scanner started with default camera.");
-                                startScanBtn.textContent = "Scanning... (Point at QR Code)";
-                                startScanBtn.disabled = true;
+                                appState.isScannerRunning = true;
+                                ui.startScanBtnText.textContent = "Scanning... (Point at QR Code)";
+                                ui.startScanBtn.disabled = true;
+                                setUIState('scanning'); // Ensure state is correct
                             })
                             .catch((err2) => {
                                 console.error("Failed to start any camera:", err2);
-                                showMessage("Could not start camera. Please grant camera permissions or use manual lookup.", "danger");
+                                showMessage("Could not start camera. Please grant permissions or use manual lookup.", "danger");
+                                setUIState('lookup'); // Go back to lookup state
                             });
                     });
             }
 
             function stopScanner() {
-                if (html5QrCode) {
+                if (appState.scanner && appState.isScannerRunning) {
                     try {
-                        html5QrCode.stop().then(() => {
+                        appState.scanner.stop().then(() => {
                             console.log("Scanner stopped.");
-                            startScanBtn.textContent = "Start Camera Scan";
-                            startScanBtn.disabled = false;
                         }).catch(err => {
                             console.warn("Scanner already stopped or failed to stop:", err);
+                        }).finally(() => {
+                            appState.isScannerRunning = false;
+                            ui.startScanBtnText.textContent = "Start Camera Scan";
+                            ui.startScanBtn.disabled = false;
                         });
                     } catch (err) {
                         console.warn("Scanner stop error:", err);
+                        appState.isScannerRunning = false;
+                        ui.startScanBtnText.textContent = "Start Camera Scan";
+                        ui.startScanBtn.disabled = false;
                     }
                 }
             }
 
-            // --- Event Listeners ---
+            // --- Event Listeners (Initialization) ---
 
-            startScanBtn.addEventListener("click", startScanner);
+            ui.startScanBtn.addEventListener("click", () => {
+                setUIState('scanning');
+            });
 
-            manualLookupForm.addEventListener("submit", (e) => {
+            ui.manualForm.addEventListener("submit", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
 
-                if (!manualLookupForm.checkValidity()) {
-                    manualLookupForm.classList.add("was-validated");
+                if (!ui.manualForm.checkValidity()) {
+                    ui.manualForm.classList.add("was-validated");
                     return;
                 }
-                manualLookupForm.classList.add("was-validated");
-                fetchAttendee(regIdInput.value);
+                ui.manualForm.classList.add("was-validated");
+                fetchAttendee(ui.regIdInput.value);
             });
 
-            checkinBtn.addEventListener("click", performCheckIn);
+            ui.checkinBtn.addEventListener("click", performCheckIn);
 
-            // --- UI IMPROVEMENT: Both clear buttons now call resetUI ---
-            clearBtnTop.addEventListener("click", resetUI);
-            clearBtnBottom.addEventListener("click", resetUI);
+            // Both clear buttons do the same thing
+            ui.clearBtnTop.addEventListener("click", resetUI);
+            ui.clearBtnBottom.addEventListener("click", resetUI);
+
+            // --- Service Worker Registration ---
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js')
+                        .then(registration => {
+                            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                        })
+                        .catch(error => {
+                            console.log('ServiceWorker registration failed: ', error);
+                        });
+                });
+            }
         });
-    </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js')
-                    .then(registration => {
-                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                    })
-                    .catch(error => {
-                        console.log('ServiceWorker registration failed: ', error);
-                    });
-            });
-        }
     </script>
 </body>
 
