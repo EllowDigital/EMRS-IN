@@ -2,7 +2,14 @@ const postgres = require('postgres');
 
 exports.handler = async (event, context) => {
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
+        return { statusCode: 405, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+    }
+
+    // Require admin Authorization header
+    const auth = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
+    const expected = process.env.STAFF_LOGIN_PASSWORD || '';
+    if (!auth.startsWith('Bearer ') || auth.split(' ')[1] !== expected) {
+        return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
     }
 
     let sql;

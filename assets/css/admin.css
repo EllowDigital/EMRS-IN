@@ -117,3 +117,20 @@ body[data-ui-state="dashboard"] #staff-login-modal {
     object-fit: cover;
     border-radius: 50%;
 }
+
+/* Global loader overlay */
+#global-loader { position: fixed; inset: 0; z-index: 2500; display: flex; align-items: center; justify-content: center; }
+#global-loader.d-none { display: none; }
+.global-loader-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.25); }
+.global-loader-center { position: relative; z-index: 2501; display:flex; flex-direction:column; align-items:center; gap:0.5rem; padding:1rem 1.25rem; background: #fff; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+
+/* Small spinner in button */
+.spinning { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+/* Pagination small adjustments */
+#attendee-pagination { margin-top: 0.5rem; }
+#attendee-page-info { min-width: 120px; text-align: center; }
+/* Table header spinner */
+#attendee-table-controls { margin-bottom: 0.5rem; }
+#attendee-table-spinner { margin-right: 0.5rem; }

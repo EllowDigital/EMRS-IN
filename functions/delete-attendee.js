@@ -2,19 +2,19 @@ const postgres = require('postgres');
 
 exports.handler = async (event) => {
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: 'Method Not Allowed' };
+        return { statusCode: 405, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Method Not Allowed' }) };
     }
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { registration_id, password } = body;
-        if (!registration_id || !password) return { statusCode: 400, body: 'registration_id and password required' };
+        const { registration_id } = body;
+        if (!registration_id) return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'registration_id required' }) };
 
-    const expected = process.env.STAFF_LOGIN_PASSWORD || '';
-    // Accept either a password in body (confirmation) or Authorization: Bearer <password>
+    // Require Authorization: Bearer <password> header only
     const authHeader = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
+    const expected = process.env.STAFF_LOGIN_PASSWORD || '';
     const bearer = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-    if (password !== expected && bearer !== expected) return { statusCode: 403, body: 'Invalid admin password' };
+    if (!bearer || bearer !== expected) return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
 
     // Use default connect behavior for admin-initiated delete operations to avoid aggressive timeouts
     const sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
@@ -35,7 +35,7 @@ exports.handler = async (event) => {
                 if (lc.includes('pass') || lc.includes('reg')) { regCol = c; break; }
             }
         }
-        if (!regCol) return { statusCode: 500, body: 'No registration id column found' };
+    if (!regCol) return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'No registration id column found' }) };
 
         let del;
         if (regCol === 'registration_id') {
@@ -44,18 +44,18 @@ exports.handler = async (event) => {
             del = await sql`DELETE FROM attendees WHERE pass_id = ${registration_id} RETURNING 1`;
         } else {
             // Only support the common identifier columns for safety
-            return { statusCode: 500, body: 'Unsupported registration id column: ' + regCol };
+            return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unsupported registration id column: ' + regCol }) };
         }
         if (!del || del.length === 0) {
-            return { statusCode: 404, body: 'Attendee not found' };
+            return { statusCode: 404, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Attendee not found' }) };
         }
 
-        return { statusCode: 200, body: JSON.stringify({ success: true }) };
+        return { statusCode: 200, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ success: true }) };
     } catch (error) {
         console.error('delete-attendee error:', error);
         if (error && (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH')) {
-            return { statusCode: 503, body: 'Database unreachable' };
+            return { statusCode: 503, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Database unreachable' }) };
         }
-        return { statusCode: 500, body: 'Internal Server Error' };
+        return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Internal Server Error' }) };
     }
 };

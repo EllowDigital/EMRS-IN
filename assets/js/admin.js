@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         attendees: [],
         debounceTimer: null,
+        // pagination
+        currentPage: 1,
+        pageSize: 15,
+        totalPages: 1,
+        totalResults: 0,
     };
 
     // --- DOM Element Cache ---
@@ -107,6 +112,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.warn('Could not show toast:', e);
         }
+    }
+
+    // Global loader helpers
+    function showLoader() {
+        const el = document.getElementById('global-loader');
+        if (!el) return;
+        el.classList.remove('d-none');
+    }
+    function hideLoader() {
+        const el = document.getElementById('global-loader');
+        if (!el) return;
+        el.classList.add('d-none');
     }
 
     function setUIState(state) {
@@ -209,7 +226,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Event delegation for edit/delete buttons in the attendee table
-    ui.attendeeTableBody.addEventListener('click', (e) => {
+    if (ui.attendeeTableBody) {
+        ui.attendeeTableBody.addEventListener('click', (e) => {
         const editBtn = e.target.closest('.edit-btn');
         if (editBtn) {
             const regId = editBtn.dataset.regid;
@@ -224,7 +242,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (attendee) openDeleteModal(attendee);
             return;
         }
-    });
+        });
+    }
 
     // Modal helpers (Bootstrap)
     const editModal = ui.editModalEl ? new bootstrap.Modal(ui.editModalEl) : null;
@@ -253,6 +272,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const response = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(id);
         return response;
+    }
+
+    // Generic fetch with retries (exponential backoff)
+    async function retryFetch(url, options = {}, tries = 3, backoff = 500) {
+        let attempt = 0;
+        let lastError = null;
+        while (attempt < tries) {
+            try {
+                // use fetchWithTimeout so individual attempts also timeout
+                const res = await fetchWithTimeout(url, options);
+                if (!res.ok && (res.status === 503 || res.status === 504)) {
+                    // treat as transient and retry
+                    lastError = new Error(`HTTP ${res.status}`);
+                    throw lastError;
+                }
+                return res;
+            } catch (err) {
+                lastError = err;
+                attempt += 1;
+                // If last attempt, break and rethrow afterwards
+                if (attempt >= tries) break;
+                // Wait exponential backoff
+                const wait = backoff * Math.pow(2, attempt - 1);
+                await new Promise(r => setTimeout(r, wait));
+            }
+        }
+        throw lastError;
     }
 
     async function handleLogin(password) {
@@ -284,10 +330,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchDashboardData() {
         try {
             const authHeader = { 'Authorization': `Bearer ${appState.staffPassword || ''}` };
+            // Use retryFetch for transient DB/network issues
             const [statsRes, statusRes, healthRes] = await Promise.all([
-                fetchWithTimeout(config.api.getStats, { headers: authHeader }),
-                fetchWithTimeout(config.api.getSystemStatus, { headers: authHeader }),
-                fetchWithTimeout(config.api.getSystemStatus, { headers: authHeader }) // This can be a dedicated health check endpoint later
+                retryFetch(config.api.getStats, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'stats', err: e }; }),
+                retryFetch(config.api.getSystemStatus, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'status', err: e }; }),
+                retryFetch(config.api.getSystemStatus, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'health', err: e }; }) // reuse system-status as health for now
             ]);
 
             if (statsRes.ok) {
@@ -320,9 +367,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Failed to fetch dashboard data:", error);
-            // Show status banner on network/timeout errors and attempt auto-retry
-            const msg = error && error.message ? error.message : 'Network or database error.';
-            showAdminStatus(`Connection error: ${msg}`);
+            // If thrown from our retryFetch wrapper, it may be an object with stage
+            const rawErr = error && error.err ? error.err : error;
+            const msg = rawErr && rawErr.message ? rawErr.message : 'Network or database error.';
+            showAdminStatus(`Connection error: ${msg}`, 15);
         }
     }
 
@@ -335,6 +383,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.adminStatusBanner.classList.remove('d-none');
         // Clear any existing timer
         if (adminStatusTimer) clearInterval(adminStatusTimer);
+                        hideLoader();
         let remaining = seconds;
         adminStatusTimer = setInterval(() => {
             remaining -= 1;
@@ -391,13 +440,19 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.attendeeTableBody.innerHTML = '';
             return;
         }
-        
+        // show loading placeholder in the table area
+        ui.attendeeTablePlaceholder.innerHTML = '<div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div>';
+        ui.attendeeTablePlaceholder.style.display = 'block';
+        ui.attendeeTableBody.innerHTML = '';
+
         try {
-            const response = await fetchWithTimeout(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}`, {
+            const page = appState.currentPage || 1;
+            const limit = appState.pageSize || 15;
+            const response = await retryFetch(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}&page=${page}&limit=${limit}`, {
                 headers: {
                     'Authorization': `Bearer ${appState.staffPassword || ''}`
                 }
-            });
+            }, 3, 300);
             if (!response.ok) {
                     const raw = await response.text().catch(() => `HTTP ${response.status}`);
                     let msg = raw;
@@ -412,6 +467,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const payload = await response.json();
             // API returns an object { attendees, total, page, limit }
             appState.attendees = Array.isArray(payload.attendees) ? payload.attendees : (Array.isArray(payload) ? payload : []);
+            appState.totalResults = payload.total || 0;
+            appState.currentPage = payload.page || appState.currentPage || 1;
+            appState.pageSize = payload.limit || appState.pageSize || 15;
+            appState.totalPages = payload.totalPages || Math.max(1, Math.ceil(appState.totalResults / appState.pageSize));
             // If we have a query, try to prioritize a close match (reg id or exact name) to the top
             if (query && query.length > 0 && appState.attendees.length > 1) {
                 const q = query.toLowerCase();
@@ -422,6 +481,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
             renderAttendeeTable();
+            // update pagination UI
+            const pageInfo = document.getElementById('attendee-page-info');
+            if (pageInfo) pageInfo.textContent = `Page ${appState.currentPage} of ${appState.totalPages} (${appState.totalResults} results)`;
+            // enable/disable prev/next
+            const prevBtn = document.getElementById('attendee-prev-btn');
+            const nextBtn = document.getElementById('attendee-next-btn');
+            if (prevBtn) prevBtn.disabled = appState.currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = appState.currentPage >= appState.totalPages;
             // show not-found modal for explicit query with zero results
             if ((query && query.length > 0) && appState.attendees.length === 0) {
                 ui.notFoundMessage.textContent = `No attendees found for "${query}".`;
@@ -433,6 +500,17 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.attendeeTablePlaceholder.innerHTML = `<p class="text-danger">${message}</p>`;
             ui.attendeeTablePlaceholder.style.display = 'block';
             ui.attendeeTableBody.innerHTML = '';
+            // hide header spinner if present
+            const headerSpinner = document.getElementById('attendee-table-spinner');
+            if (headerSpinner) headerSpinner.classList.add('d-none');
+            // If this looks like a DB/network unreachable error, show the admin banner with retry
+            try {
+                const raw = error && (error.err || error) ;
+                const txt = raw && raw.message ? raw.message : String(raw);
+                if (txt.includes('503') || txt.toLowerCase().includes('database unreachable') || txt.toLowerCase().includes('timed out') || txt.toLowerCase().includes('timeout')) {
+                    showAdminStatus(`Database unreachable: ${txt}`, 15);
+                }
+            } catch (e) { /* ignore */ }
         }
     }
 
@@ -448,6 +526,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 phone_number: ui.editPhone.value,
             };
             try {
+                showLoader();
                 const res = await fetch('/api/update-attendee', {
                     method: 'POST',
                     headers: {
@@ -457,8 +536,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     body: JSON.stringify(payload)
                 });
                 if (!res.ok) {
-                    const txt = await res.text().catch(() => `HTTP ${res.status}`);
-                    throw new Error(txt || 'Failed to update attendee');
+                    let errTxt = `HTTP ${res.status}`;
+                    try { const parsed = await res.json(); if (parsed && parsed.message) errTxt = parsed.message; }
+                    catch (e) { errTxt = await res.text().catch(() => errTxt); }
+                    throw new Error(errTxt || 'Failed to update attendee');
                 }
                 const updated = await res.json();
                 showToast('Attendee updated');
@@ -470,6 +551,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error('Update attendee error', err);
                 showToast(err.message || 'Could not update attendee', true);
+            } finally {
+                hideLoader();
             }
         });
     }
@@ -482,14 +565,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = ui.deletePasswordInput.value;
             ui.deleteError.textContent = '';
             try {
+                showLoader();
                 const res = await fetch('/api/delete-attendee', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ registration_id: regId, password })
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appState.staffPassword || ''}` },
+                    body: JSON.stringify({ registration_id: regId })
                 });
                 if (!res.ok) {
-                    const txt = await res.text().catch(() => `HTTP ${res.status}`);
-                    throw new Error(txt || 'Failed to delete attendee');
+                    let errTxt = `HTTP ${res.status}`;
+                    try { const parsed = await res.json(); if (parsed && parsed.message) errTxt = parsed.message; }
+                    catch (e) { errTxt = await res.text().catch(() => errTxt); }
+                    throw new Error(errTxt || 'Failed to delete attendee');
                 }
                 showToast('Attendee deleted');
                 if (deleteModal) deleteModal.hide();
@@ -499,6 +585,8 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (err) {
                 console.error('Delete error', err);
                 ui.deleteError.textContent = err.message || 'Could not delete attendee';
+            } finally {
+                hideLoader();
             }
         });
     }
@@ -524,6 +612,12 @@ document.addEventListener('DOMContentLoaded', () => {
         appState.debounceTimer = setTimeout(searchAttendees, 500);
     });
 
+    // Show header spinner when starting a search (debounced input will call searchAttendees)
+    ui.searchInput.addEventListener('keydown', () => {
+        const headerSpinner = document.getElementById('attendee-table-spinner');
+        if (headerSpinner) headerSpinner.classList.remove('d-none');
+    });
+
     ui.filterSelect.addEventListener('change', searchAttendees);
 
     // Search button: trigger immediate search when clicked
@@ -532,16 +626,45 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             // cancel any debounce and search immediately
             clearTimeout(appState.debounceTimer);
+            const headerSpinner = document.getElementById('attendee-table-spinner');
+            if (headerSpinner) headerSpinner.classList.remove('d-none');
             searchAttendees();
         });
     }
 
     // Refresh stats button (always visible) - fetch stats without full page reload
     if (ui.refreshStatsBtn) {
-        ui.refreshStatsBtn.addEventListener('click', (e) => {
+        ui.refreshStatsBtn.addEventListener('click', async (e) => {
             e.preventDefault();
-            showToast('Refreshing stats...');
-            fetchDashboardData();
+            // Disable while refreshing to avoid duplicate clicks
+            ui.refreshStatsBtn.disabled = true;
+            const originalText = ui.refreshStatsBtn.innerHTML;
+            ui.refreshStatsBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1 spinning"></i>Refreshing...';
+            showToast('Refreshing stats and attendee list...');
+            try {
+                // Show global loader and run stats and current attendee search in parallel
+                showLoader();
+                // show header spinner so the attendee table reflects activity
+                const headerSpinner = document.getElementById('attendee-table-spinner');
+                if (headerSpinner) headerSpinner.classList.remove('d-none');
+                await Promise.allSettled([
+                    fetchDashboardData(),
+                    (async () => {
+                        clearTimeout(appState.debounceTimer);
+                        await searchAttendees();
+                    })()
+                ]);
+                showToast('Refresh complete');
+            } catch (err) {
+                console.error('Refresh error', err);
+                showToast('Refresh encountered errors', true);
+            } finally {
+                hideLoader();
+                const headerSpinner2 = document.getElementById('attendee-table-spinner');
+                if (headerSpinner2) headerSpinner2.classList.add('d-none');
+                ui.refreshStatsBtn.disabled = false;
+                ui.refreshStatsBtn.innerHTML = originalText;
+            }
         });
     }
 
@@ -573,6 +696,24 @@ document.addEventListener('DOMContentLoaded', () => {
             hideAdminStatus();
         });
     }
+
+    // Pagination controls
+    const prevBtn = document.getElementById('attendee-prev-btn');
+    const nextBtn = document.getElementById('attendee-next-btn');
+    if (prevBtn) prevBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (appState.currentPage > 1) {
+            appState.currentPage -= 1;
+            searchAttendees();
+        }
+    });
+    if (nextBtn) nextBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (appState.currentPage < appState.totalPages) {
+            appState.currentPage += 1;
+            searchAttendees();
+        }
+    });
 
     // --- Initializer ---
     function initializeAppDashboard() {

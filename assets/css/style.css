@@ -258,3 +258,83 @@ body {
         padding: 1rem;
     }
 }
+
+/* --- Message Hero (modern app-like notices) --- */
+.message-hero {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 8px 24px rgba(13, 110, 253, 0.08);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    border: 1px solid rgba(13,110,253,0.08);
+}
+
+/* message hero card for center-screen notices */
+.message-hero {
+    max-width: 720px;
+    margin: 1.5rem auto;
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    background: linear-gradient(180deg, #ffffff, #fbfdff);
+    border: 1px solid rgba(0,0,0,0.04);
+}
+.message-hero .icon {
+    font-size: 28px;
+    width: 48px;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.03);
+}
+.message-hero .content {
+    flex: 1 1 auto;
+}
+.message-hero .title {
+    font-weight: 600;
+    margin-bottom: 0.125rem;
+}
+.message-hero .text {
+    color: #444;
+    font-size: 0.95rem;
+}
+.message-hero.success { border-left: 4px solid #16a34a; }
+.message-hero.danger  { border-left: 4px solid #dc2626; }
+.message-hero.warning { border-left: 4px solid #f59e0b; }
+.message-hero .mh-icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: white;
+}
+.message-hero .mh-body {
+    flex: 1 1 auto;
+}
+.message-hero .mh-title {
+    font-weight: 700;
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+}
+.message-hero .mh-text {
+    margin: 0; color: #555; font-size: 0.95rem;
+}
+.mh-cta {
+    margin-left: 0.75rem;
+}
+
+/* Types */
+.mh-info .mh-icon { background: linear-gradient(135deg,#0d6efd,#3b82f6);} 
+.mh-success .mh-icon { background: linear-gradient(135deg,#16a34a,#059669);} 
+.mh-warning .mh-icon { background: linear-gradient(135deg,#f59e0b,#f97316);} 
+.mh-danger .mh-icon { background: linear-gradient(135deg,#ef4444,#dc2626);} 

@@ -140,31 +140,69 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // --- Helper Functions ---
-    function showMessage(message, type = "info", autoHide = true) {
+    function showMessage(message, type = "info", autoHide = true, options = {}) {
         if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
-        const wrapper = document.createElement("div");
-        wrapper.innerHTML = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">${message}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button></div>`;
-        messageBoxContainer.innerHTML = "";
+        // If message is an HTML string or an object with title/text
+        let title = options.title || '';
+        let text = '';
+        if (typeof message === 'object') {
+            title = message.title || title;
+            text = message.text || message.message || '';
+        } else {
+            text = message;
+        }
+
+        // Build hero card markup for nicer UX
+        const wrapper = document.createElement('div');
+        const cssType = `${type}`; // maps to CSS classes: success, danger, warning
+        wrapper.innerHTML = `
+            <div class="message-hero ${cssType} p-3">
+                <div class="icon" aria-hidden="true">${getIconForType(type)}</div>
+                <div class="content">
+                    ${title ? `<div class="title">${escapeHtml(title)}</div>` : ''}
+                    <div class="text">${escapeHtml(text)}</div>
+                </div>
+                <div class="cta">
+                    <button type="button" class="btn btn-sm btn-outline-primary mh-action">OK</button>
+                </div>
+            </div>
+        `;
+        messageBoxContainer.innerHTML = '';
         messageBoxContainer.append(wrapper);
-        window.scrollTo(0, 0);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const actionBtn = wrapper.querySelector('.mh-action');
+    if (actionBtn) actionBtn.addEventListener('click', () => clearMessage());
 
         if (autoHide) {
             currentMessageTimeout = setTimeout(() => {
-                const alert = wrapper.querySelector(".alert");
-                if (alert) {
-                    try {
-                        new bootstrap.Alert(alert).close();
-                    } catch (e) {
-                        /*ignore*/
-                    }
-                }
-            }, 6000); // Increased display time
+                clearMessage();
+            }, options.duration || 6000);
         }
     }
     function clearMessage() {
         /* ... Clear timeout logic ... */
         if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
         messageBoxContainer.innerHTML = "";
+    }
+
+    function getIconForType(type) {
+        switch (type) {
+            case 'success': return '&#10004;';
+            case 'danger': return '&#9888;';
+            case 'warning': return '&#9888;';
+            default: return '&#8505;';
+        }
+    }
+
+    function escapeHtml(unsafe) {
+        if (!unsafe) return '';
+        return String(unsafe)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
     async function fetchWithTimeout(
         url,

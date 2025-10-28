@@ -1,6 +1,13 @@
 const postgres = require('postgres');
 
 exports.handler = async (event, context) => {
+    // Require admin Authorization header
+    const auth = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
+    const expected = process.env.STAFF_LOGIN_PASSWORD || '';
+    if (!auth.startsWith('Bearer ') || auth.split(' ')[1] !== expected) {
+        return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
+    }
+
     let sql;
     try {
     // For admin stats prefer the default connection behavior (avoid overly aggressive timeouts while an admin session is active)

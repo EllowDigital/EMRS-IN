@@ -5,6 +5,13 @@ exports.handler = async (event, context) => {
         return { statusCode: 405, body: 'Method Not Allowed' };
     }
 
+    // Require admin Authorization header for attendee searches
+    const auth = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
+    const expected = process.env.STAFF_LOGIN_PASSWORD || '';
+    if (!auth.startsWith('Bearer ') || auth.split(' ')[1] !== expected) {
+        return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
+    }
+
     // Support both 'q' and 'query' (admin sends 'query') and coerce numeric params
     const params = event.queryStringParameters || {};
     const q = params.q || params.query || '';
