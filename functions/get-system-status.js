@@ -3,8 +3,8 @@ const postgres = require('postgres');
 exports.handler = async (event, context) => {
     let sql;
     try {
-    // Use a short connect timeout so admin page doesn't hang when DB is unreachable
-    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', connect_timeout: 5, max: 2 });
+    // For admin UI, prefer default connect behavior to reduce unnecessary timeouts while admin is active
+    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
 
         const configResult = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
         

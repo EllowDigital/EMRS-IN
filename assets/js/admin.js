@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Attendees
         searchInput: document.getElementById('search-attendee-input'),
+    searchBtn: document.getElementById('search-attendee-btn'),
         filterSelect: document.getElementById('filter-attendee-select'),
         attendeeTableBody: document.getElementById('attendee-table-body'),
         attendeeTablePlaceholder: document.getElementById('attendee-table-placeholder'),
@@ -70,6 +71,22 @@ document.addEventListener('DOMContentLoaded', () => {
         adminStatusSubtext: document.getElementById('admin-status-subtext'),
         adminStatusRefresh: document.getElementById('admin-status-refresh'),
         adminStatusDismiss: document.getElementById('admin-status-dismiss'),
+        // Modals
+        editModalEl: document.getElementById('edit-attendee-modal'),
+        editForm: document.getElementById('edit-attendee-form'),
+        editRegistrationId: document.getElementById('edit-registration-id'),
+        editFullName: document.getElementById('edit-full-name'),
+        editEmail: document.getElementById('edit-email'),
+        editPhone: document.getElementById('edit-phone'),
+
+        deleteModalEl: document.getElementById('confirm-delete-modal'),
+        deleteForm: document.getElementById('confirm-delete-form'),
+        deleteRegistrationId: document.getElementById('delete-registration-id'),
+        deletePasswordInput: document.getElementById('delete-password-input'),
+        deleteError: document.getElementById('delete-error'),
+
+        notFoundModalEl: document.getElementById('not-found-modal'),
+        notFoundMessage: document.getElementById('not-found-message'),
     };
 
     // --- UI Helper Functions ---
@@ -162,28 +179,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
         ui.attendeeTablePlaceholder.style.display = 'none';
         ui.attendeeTableBody.innerHTML = appState.attendees.map(attendee => `
-            <tr>
+            <tr data-regid="${attendee.registration_id}">
                 <td>
                     <div class="d-flex align-items-center">
                         <img src="${attendee.profile_pic_url || config.placeholders.avatar}" class="attendee-avatar me-3" alt="Avatar">
                         <div>
-                            <div class="fw-bold">${attendee.full_name}</div>
-                            <div class="text-muted small">${attendee.email}</div>
+                            <div class="fw-bold">${attendee.full_name || '—'}</div>
+                            <div class="text-muted small">${attendee.email || ''}</div>
                         </div>
                     </div>
                 </td>
-                <td>${attendee.registration_id}</td>
-                <td>${attendee.phone_number}</td>
+                <td>${attendee.registration_id || '—'}</td>
+                <td>${attendee.phone_number || ''}</td>
                 <td>
-                    <span class="badge ${attendee.is_checked_in ? 'bg-success' : 'bg-warning'}">
-                        ${attendee.is_checked_in ? 'Checked-In' : 'Not Checked-In'}
-                    </span>
+                    ${(() => {
+                        // Normalize checked-in value across schema variants ('checked_in', 'is_checked_in', boolean, text 't')
+                        const raw = attendee.is_checked_in ?? attendee.checked_in ?? attendee.checkedIn ?? false;
+                        const isChecked = (raw === true) || (raw === 't') || (raw === 'true') || (raw === 1) || (String(raw).toLowerCase() === 'true');
+                        return `<span class="badge ${isChecked ? 'bg-success' : 'bg-warning'}">${isChecked ? 'Checked-In' : 'Not Checked-In'}</span>`;
+                    })()}
                 </td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="alert('Edit action for ${attendee.registration_id}')">Edit</button>
+                    <button class="btn btn-sm btn-outline-primary edit-btn" data-regid="${attendee.registration_id}">Edit</button>
+                    <button class="btn btn-sm btn-outline-danger ms-2 delete-btn" data-regid="${attendee.registration_id}">Delete</button>
                 </td>
             </tr>
         `).join('');
+    }
+
+    // Event delegation for edit/delete buttons in the attendee table
+    ui.attendeeTableBody.addEventListener('click', (e) => {
+        const editBtn = e.target.closest('.edit-btn');
+        if (editBtn) {
+            const regId = editBtn.dataset.regid;
+            const attendee = appState.attendees.find(a => a.registration_id === regId);
+            if (attendee) openEditModal(attendee);
+            return;
+        }
+        const deleteBtn = e.target.closest('.delete-btn');
+        if (deleteBtn) {
+            const regId = deleteBtn.dataset.regid;
+            const attendee = appState.attendees.find(a => a.registration_id === regId);
+            if (attendee) openDeleteModal(attendee);
+            return;
+        }
+    });
+
+    // Modal helpers (Bootstrap)
+    const editModal = ui.editModalEl ? new bootstrap.Modal(ui.editModalEl) : null;
+    const deleteModal = ui.deleteModalEl ? new bootstrap.Modal(ui.deleteModalEl) : null;
+    const notFoundModal = ui.notFoundModalEl ? new bootstrap.Modal(ui.notFoundModalEl) : null;
+
+    function openEditModal(attendee) {
+        ui.editRegistrationId.value = attendee.registration_id || '';
+        ui.editFullName.value = attendee.full_name || '';
+        ui.editEmail.value = attendee.email || '';
+        ui.editPhone.value = attendee.phone_number || '';
+        if (editModal) editModal.show();
+    }
+
+    function openDeleteModal(attendee) {
+        ui.deleteRegistrationId.value = attendee.registration_id || '';
+        ui.deletePasswordInput.value = '';
+        ui.deleteError.textContent = '';
+        if (deleteModal) deleteModal.show();
     }
 
     // --- API & Data Logic ---
@@ -339,13 +398,34 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
             if (!response.ok) {
-                const text = await response.text().catch(() => `HTTP ${response.status}`);
-                throw new Error(`Failed to fetch attendees: ${response.status} ${text}`);
+                    const raw = await response.text().catch(() => `HTTP ${response.status}`);
+                    let msg = raw;
+                    try {
+                        const parsed = JSON.parse(raw);
+                        msg = parsed.message || raw;
+                    } catch (e) {
+                        // not JSON, leave raw
+                    }
+                    throw new Error(`Failed to fetch attendees: ${response.status} ${msg}`);
             }
             const payload = await response.json();
             // API returns an object { attendees, total, page, limit }
             appState.attendees = Array.isArray(payload.attendees) ? payload.attendees : (Array.isArray(payload) ? payload : []);
+            // If we have a query, try to prioritize a close match (reg id or exact name) to the top
+            if (query && query.length > 0 && appState.attendees.length > 1) {
+                const q = query.toLowerCase();
+                const idx = appState.attendees.findIndex(a => (a.registration_id && a.registration_id.toLowerCase() === q) || (a.full_name && a.full_name.toLowerCase().includes(q)) || (a.email && a.email.toLowerCase().includes(q)));
+                if (idx > 0) {
+                    const [found] = appState.attendees.splice(idx, 1);
+                    appState.attendees.unshift(found);
+                }
+            }
             renderAttendeeTable();
+            // show not-found modal for explicit query with zero results
+            if ((query && query.length > 0) && appState.attendees.length === 0) {
+                ui.notFoundMessage.textContent = `No attendees found for "${query}".`;
+                if (notFoundModal) notFoundModal.show();
+            }
         } catch (error) {
             console.error("Failed to search attendees:", error);
             const message = error.message || 'Could not load attendee data.';
@@ -353,6 +433,69 @@ document.addEventListener('DOMContentLoaded', () => {
             ui.attendeeTablePlaceholder.style.display = 'block';
             ui.attendeeTableBody.innerHTML = '';
         }
+    }
+
+    // Edit form submit -> update attendee
+    if (ui.editForm) {
+        ui.editForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const regId = ui.editRegistrationId.value;
+            const payload = {
+                registration_id: regId,
+                full_name: ui.editFullName.value,
+                email: ui.editEmail.value,
+                phone_number: ui.editPhone.value,
+            };
+            try {
+                const res = await fetch('/api/update-attendee', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${appState.staffPassword || ''}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const txt = await res.text().catch(() => `HTTP ${res.status}`);
+                    throw new Error(txt || 'Failed to update attendee');
+                }
+                const updated = await res.json();
+                showToast('Attendee updated');
+                if (editModal) editModal.hide();
+                // refresh list (simple approach: re-run search)
+                searchAttendees();
+            } catch (err) {
+                console.error('Update attendee error', err);
+                showToast(err.message || 'Could not update attendee', true);
+            }
+        });
+    }
+
+    // Delete form submit -> delete attendee after verifying password
+    if (ui.deleteForm) {
+        ui.deleteForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const regId = ui.deleteRegistrationId.value;
+            const password = ui.deletePasswordInput.value;
+            ui.deleteError.textContent = '';
+            try {
+                const res = await fetch('/api/delete-attendee', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ registration_id: regId, password })
+                });
+                if (!res.ok) {
+                    const txt = await res.text().catch(() => `HTTP ${res.status}`);
+                    throw new Error(txt || 'Failed to delete attendee');
+                }
+                showToast('Attendee deleted');
+                if (deleteModal) deleteModal.hide();
+                searchAttendees();
+            } catch (err) {
+                console.error('Delete error', err);
+                ui.deleteError.textContent = err.message || 'Could not delete attendee';
+            }
+        });
     }
 
     // --- Event Listeners ---
@@ -378,14 +521,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     ui.filterSelect.addEventListener('change', searchAttendees);
 
+    // Search button: trigger immediate search when clicked
+    if (ui.searchBtn) {
+        ui.searchBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            // cancel any debounce and search immediately
+            clearTimeout(appState.debounceTimer);
+            searchAttendees();
+        });
+    }
+
     // Logout handler: clear in-memory credentials and return to login
     if (ui.adminLogoutBtn) {
         ui.adminLogoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            // Clear all in-memory credentials and redirect to public index
             appState.staffPassword = null;
             appState.isLoggedIn = false;
-            setUIState('login');
-            showToast('Logged out. Please sign in again.');
+            // Try to clear any state and navigate away so session is clearly terminated
+            try { sessionStorage.clear(); localStorage.clear(); } catch (err) { /* ignore */ }
+            showToast('Logged out. Redirecting to home...');
+            // Small delay to show toast, then redirect
+            setTimeout(() => { window.location.href = '/index.html'; }, 600);
         });
     }
 

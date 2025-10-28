@@ -3,8 +3,8 @@ const postgres = require('postgres');
 exports.handler = async (event, context) => {
     let sql;
     try {
-    // Fail fast on network issues by setting a short connect timeout and small pool
-    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', connect_timeout: 5, max: 2 });
+    // For admin stats prefer the default connection behavior (avoid overly aggressive timeouts while an admin session is active)
+    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
         
         // Run total first, then attempt checked-in count with a graceful fallback if the column is missing
         const totalResult = await sql`SELECT COUNT(*) FROM attendees`;
