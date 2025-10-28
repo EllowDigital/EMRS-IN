@@ -237,3 +237,24 @@ body {
 .form-floating .form-control:not(:placeholder-shown)~.input-icon {
     color: #0d6efd;
 }
+
+/* --- Centered Status Card (maintenance/closed) --- */
+#status-center .card {
+    background-color: #ffffff;
+}
+#status-center .card-body {
+    padding: 1.5rem;
+}
+@media (min-width: 768px) {
+    #status-center .d-flex {
+        min-height: 40vh; /* vertically center on larger screens */
+    }
+}
+@media (max-width: 767px) {
+    #status-center .card {
+        margin: 0 0.5rem;
+    }
+    #status-center .card-body {
+        padding: 1rem;
+    }
+}

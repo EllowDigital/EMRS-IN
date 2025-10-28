@@ -6,13 +6,20 @@ exports.handler = async (event, context) => {
     // Fail fast on network issues by setting a short connect timeout and small pool
     sql = postgres(process.env.DATABASE_URL, { ssl: 'require', connect_timeout: 5, max: 2 });
         
-        const [totalResult, checkedInResult] = await Promise.all([
-            sql`SELECT COUNT(*) FROM attendees`,
-            sql`SELECT COUNT(*) FROM attendees WHERE checked_in = TRUE`
-        ]);
+        // Run total first, then attempt checked-in count with a graceful fallback if the column is missing
+        const totalResult = await sql`SELECT COUNT(*) FROM attendees`;
+        let checkedInCount = 0;
+        try {
+            const checkedInResult = await sql`SELECT COUNT(*) FROM attendees WHERE checked_in = TRUE`;
+            checkedInCount = parseInt(checkedInResult[0].count, 10);
+        } catch (innerErr) {
+            // If column does not exist (e.g., different schema), log and fallback to 0
+            console.warn('Checked-in column missing or query failed; returning 0 for checked-in count.', innerErr.message || innerErr);
+            checkedInCount = 0;
+        }
 
         const total_attendees = parseInt(totalResult[0].count, 10);
-        const checked_in_count = parseInt(checkedInResult[0].count, 10);
+        const checked_in_count = checkedInCount;
         
         return {
             statusCode: 200,

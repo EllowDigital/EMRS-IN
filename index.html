@@ -57,6 +57,21 @@
                             <strong id="status-message"></strong>
                         </div>
 
+                        <!-- Centered Status Container (used for maintenance/closed messaging) -->
+                        <div id="status-center" class="d-none w-100" aria-live="polite">
+                            <div class="d-flex flex-column align-items-center justify-content-center text-center py-5">
+                                <div class="card border-0 shadow-sm rounded-4 p-4" style="max-width:680px; width:100%">
+                                    <div class="card-body">
+                                        <h3 id="status-center-title" class="h4 fw-bold mb-3"></h3>
+                                        <p id="status-center-text" class="mb-0 text-muted"></p>
+                                        <div class="mt-4">
+                                            <button id="status-reload-btn" class="btn btn-outline-primary rounded-pill">Reload</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div id="registration-section">
                             <div id="registration-form-container">
                                 <form id="registration-form" class="needs-validation" novalidate>

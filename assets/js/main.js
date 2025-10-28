@@ -3,6 +3,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusBanner = document.getElementById('status-banner');
     const statusMessage = document.getElementById('status-message');
     const registrationFormContainer = document.getElementById('registration-form-container');
+    const statusCenter = document.getElementById('status-center');
+    const statusCenterTitle = document.getElementById('status-center-title');
+    const statusCenterText = document.getElementById('status-center-text');
+    const statusReloadBtn = document.getElementById('status-reload-btn');
 
     // --- DOM Element Selectors ---
     const registrationForm = document.getElementById("registration-form");
@@ -55,22 +59,42 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!response.ok) throw new Error('Could not fetch system status');
             const status = await response.json();
 
+            // Hide any previous status-center/banner
+            statusBanner.classList.add('d-none');
+            statusBanner.classList.remove('alert-danger', 'alert-warning');
+            if (statusCenter) statusCenter.classList.add('d-none');
+
+            // Priority: maintenance_mode (most severe)
             if (status.maintenance_mode) {
-                // Strict maintenance mode: hide all user-facing interactions and show a clear maintenance banner
+                // Show centered maintenance message and hide all interactive sections
                 registrationSection.classList.add('d-none');
                 findPassSection.classList.add('d-none');
                 epassSection.classList.add('d-none');
-                statusMessage.textContent = 'The system is currently down for maintenance. Please check back later.';
-                statusBanner.classList.remove('d-none', 'alert-warning');
-                statusBanner.classList.add('alert-danger');
+
+                if (statusCenter) {
+                    statusCenterTitle.textContent = 'Maintenance Mode';
+                    statusCenterText.textContent = 'The system is currently down for maintenance. Please check back later.';
+                    statusCenter.classList.remove('d-none');
+                } else {
+                    statusMessage.textContent = 'The system is currently down for maintenance. Please check back later.';
+                    statusBanner.classList.remove('d-none');
+                    statusBanner.classList.add('alert-danger');
+                }
             } else if (!status.registration_enabled) {
-                // Registrations are closed: hide registration form but allow find-pass
+                // Registrations are closed: show centered notice (no forms available)
                 registrationSection.classList.add('d-none');
-                findPassSection.classList.remove('d-none'); // Ensure find pass is visible
+                findPassSection.classList.add('d-none');
                 epassSection.classList.add('d-none');
-                statusMessage.textContent = 'New registrations are currently closed. You can still find your existing pass.';
-                statusBanner.classList.remove('d-none', 'alert-danger');
-                statusBanner.classList.add('alert-warning');
+
+                if (statusCenter) {
+                    statusCenterTitle.textContent = 'Registrations Closed';
+                    statusCenterText.textContent = 'New registrations are currently closed. Please check back later.';
+                    statusCenter.classList.remove('d-none');
+                } else {
+                    statusMessage.textContent = 'New registrations are currently closed. Please check back later.';
+                    statusBanner.classList.remove('d-none');
+                    statusBanner.classList.add('alert-warning');
+                }
             } else {
                 // Normal operation
                 statusBanner.classList.add('d-none');
@@ -102,6 +126,16 @@ document.addEventListener("DOMContentLoaded", () => {
             // Keep registration visible as a degraded fallback so users can still register.
             registrationForm.classList.remove('d-none');
         }
+    }
+
+    // Reload / Retry button in centered status card
+    if (statusReloadBtn) {
+        statusReloadBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (statusCenter) statusCenter.classList.add('d-none');
+            if (statusBanner) statusBanner.classList.add('d-none');
+            checkSystemStatus();
+        });
     }
 
 

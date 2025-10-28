@@ -165,10 +165,18 @@ exports.handler = async (event) => {
     }
 
     try {
-        // Server-side guard: check if registrations are enabled in system_config
+        // Server-side guard: check system_config for both registration_enabled and maintenance_mode
         try {
-            const cfg = await sql`SELECT value FROM system_config WHERE key = 'registration_enabled' LIMIT 1`;
-            if (cfg && cfg.length > 0 && cfg[0].value !== 'true') {
+            const cfg = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
+            const registrationCfg = cfg.find(c => c.key === 'registration_enabled');
+            const maintenanceCfg = cfg.find(c => c.key === 'maintenance_mode');
+
+            if (maintenanceCfg && maintenanceCfg.value === 'true') {
+                console.warn('Registration attempt blocked: system is in maintenance mode.');
+                return { statusCode: 503, headers, body: JSON.stringify({ message: 'Service is temporarily down for maintenance. Please try again later.' }) };
+            }
+
+            if (registrationCfg && registrationCfg.value !== 'true') {
                 console.warn('Registration attempt blocked: registrations are disabled in system_config.');
                 return { statusCode: 403, headers, body: JSON.stringify({ message: 'Registrations are currently closed.' }) };
             }

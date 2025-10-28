@@ -54,7 +54,8 @@ exports.handler = async (event, context) => {
         }
 
         if (conditions.length > 0) {
-            const whereClause = sql.join(conditions, ' AND ');
+            // Use the postgres client's sql.join helper correctly by passing a SQL fragment
+            const whereClause = sql.join(conditions, sql` AND `);
             query = sql`${query} WHERE ${whereClause}`;
             countQuery = sql`${countQuery} WHERE ${whereClause}`;
         }

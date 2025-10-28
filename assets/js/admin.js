@@ -65,6 +65,24 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- UI Helper Functions ---
+    // Small toast helper placed near top-right of the page
+    function showToast(message, isError = false, duration = 3000) {
+        try {
+            const toast = document.createElement('div');
+            toast.className = `toast-notice position-fixed top-0 end-0 m-3 p-2 rounded shadow ${isError ? 'bg-danger text-white' : 'bg-success text-white'}`;
+            toast.style.zIndex = 1060;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.transition = 'opacity 300ms';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 350);
+            }, duration);
+        } catch (e) {
+            console.warn('Could not show toast:', e);
+        }
+    }
+
     function setUIState(state) {
         if (!appState.isLoggedIn && state !== 'login') {
             ui.body.dataset.uiState = 'login';
@@ -232,13 +250,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             if (!response.ok) throw new Error('Failed to update system status');
             const data = await response.json();
-            renderSystemStatus(data);
+            // Update local app state and UI controls
+            appState.systemStatus = data;
+            updateSystemControlsUI();
             showToast('System status updated successfully.');
         } catch (error) {
             console.error('Error updating system status:', error);
-            showToast(error.message, true);
+            showToast(error.message || 'Failed to update system status', true);
             // On error, re-fetch to sync with the actual server state
-            fetchSystemStatus();
+            fetchDashboardData();
         }
     }
 
@@ -256,11 +276,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetchWithTimeout(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}`);
             if (!response.ok) throw new Error('Failed to fetch attendees.');
-            appState.attendees = await response.json();
+            const payload = await response.json();
+            // API returns an object { attendees, total, page, limit }
+            appState.attendees = Array.isArray(payload.attendees) ? payload.attendees : (Array.isArray(payload) ? payload : []);
             renderAttendeeTable();
         } catch (error) {
             console.error("Failed to search attendees:", error);
             ui.attendeeTablePlaceholder.innerHTML = '<p class="text-danger">Could not load attendee data.</p>';
+            ui.attendeeTablePlaceholder.style.display = 'block';
+            ui.attendeeTableBody.innerHTML = '';
         }
     }
 
