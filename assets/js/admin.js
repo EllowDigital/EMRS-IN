@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const appState = {
         isLoggedIn: false,
+        // store staff password in-memory only so a hard refresh requires re-login
+        staffPassword: null,
         systemStatus: {
             registration_enabled: false,
             maintenance_mode: false,
@@ -201,7 +203,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (result.success) {
                 appState.isLoggedIn = true;
-                sessionStorage.setItem('emrs-admin-logged-in', 'true');
+                // Keep password only in-memory so a hard refresh forces re-login
+                appState.staffPassword = password;
                 setUIState('dashboard');
                 initializeAppDashboard();
             }
@@ -244,7 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionStorage.getItem('staff_password')}`
+                    'Authorization': `Bearer ${appState.staffPassword || ''}`
                 },
                 body: JSON.stringify({ key, value })
             });
@@ -319,13 +322,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function init() {
-        if (sessionStorage.getItem('emrs-admin-logged-in') === 'true') {
-            appState.isLoggedIn = true;
-            setUIState('dashboard');
-            initializeAppDashboard();
-        } else {
-            setUIState('login');
-        }
+        // Always require login on page load (hard refresh will require re-entering password)
+        setUIState('login');
     }
 
     init();
