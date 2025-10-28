@@ -874,6 +874,23 @@ document.addEventListener('DOMContentLoaded', () => {
         closeMobileNav();
     });
 
+    // mobile tree section toggles (expand/collapse)
+    document.addEventListener('click', (e) => {
+        const toggle = e.target.closest('.mobile-nav-section-toggle');
+        if (!toggle) return;
+        e.preventDefault();
+        const expanded = toggle.getAttribute('aria-expanded') === 'true';
+        toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        const sub = toggle.parentElement.querySelector('.mobile-sublist');
+        if (sub) {
+            if (expanded) {
+                sub.classList.remove('open');
+            } else {
+                sub.classList.add('open');
+            }
+        }
+    });
+
     // Header ripple micro-interaction: add ripple on pointerdown for header buttons
     function initHeaderRipples() {
         const headerBtns = document.querySelectorAll('.app-header .btn');
