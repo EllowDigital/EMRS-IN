@@ -3,7 +3,7 @@ const postgres = require('postgres');
 exports.handler = async (event, context) => {
     let sql;
     try {
-        sql = postgres(process.env.NEON_DATABASE_URL, { ssl: 'require' });
+        sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
         
         const [totalResult, checkedInResult] = await Promise.all([
             sql`SELECT COUNT(*) FROM attendees`,
