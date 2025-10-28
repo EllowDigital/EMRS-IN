@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,13 +12,12 @@
 
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
 
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
+    <link rel="manifest" href="/manifest.json"> <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="assets/favicon/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes"> <meta name="apple-mobile-web-app-status-bar-style" content="black"> <meta name="apple-mobile-web-app-title" content="E-Pass Verify"> <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png">
-    <link rel="manifest" href="assets/favicon/site.webmanifest">
-
-    <style>
-        /* Inter font (copied from index.html) */
+    <link rel="icon" href="assets/favicon/favicon.ico"> <style>
+        /* Inter font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
         body {
@@ -59,7 +59,7 @@
             font-size: 1.1rem;
         }
 
-        /* Heartbeat Animation (copied from index.html) */
+        /* Heartbeat Animation */
         .heart {
             color: #e53935;
             animation: heartbeat 1.5s ease-in-out infinite;
@@ -67,9 +67,20 @@
         }
 
         @keyframes heartbeat {
-            0%, 100% { transform: scale(1); }
-            10%, 30% { transform: scale(0.9); }
-            20% { transform: scale(1.1); }
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            10%,
+            30% {
+                transform: scale(0.9);
+            }
+
+            20% {
+                transform: scale(1.1);
+            }
         }
     </style>
 </head>
@@ -101,14 +112,17 @@
                             <form id="manual-lookup-form" novalidate>
                                 <div class="mb-3">
                                     <label for="reg-id-input" class="form-label">Registration ID</label>
-                                    <input type="text" class="form-control" id="reg-id-input" placeholder="e.g., UP25-..." required>
+                                    <input type="text" class="form-control" id="reg-id-input"
+                                        placeholder="e.g., UP25-..." required>
                                     <div class="invalid-feedback">
                                         Please enter a registration ID.
                                     </div>
                                 </div>
-                                <button type="submit" id="lookup-btn" class="btn btn-outline-primary w-100 rounded-pill d-flex align-items-center justify-content-center">
+                                <button type="submit" id="lookup-btn"
+                                    class="btn btn-outline-primary w-100 rounded-pill d-flex align-items-center justify-content-center">
                                     <span id="lookup-btn-text">Find Attendee</span>
-                                    <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status" id="lookup-spinner">
+                                    <div class="spinner-border spinner-border-sm text-primary ms-2 d-none" role="status"
+                                        id="lookup-spinner">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
                                 </button>
@@ -116,27 +130,37 @@
                         </div>
 
                         <div id="results-section" class="d-none text-center">
-                            
+
+                            <div class="d-flex justify-content-end mb-2">
+                                <button id="clear-btn-top" class="btn btn-sm btn-outline-secondary rounded-pill">
+                                    &larr; Scan Next
+                                </button>
+                            </div>
+
                             <div id="checkin-status-alert"></div>
-                            
-                            <img id="result-avatar" src="https://placehold.co/150x150/6c757d/white?text=No+Photo" class="img-fluid my-3" alt="Profile Picture">
+
+                            <img id="result-avatar" src="https://placehold.co/150x150/6c757d/white?text=No+Photo"
+                                class="img-fluid my-3" alt="Profile Picture">
 
                             <h2 id="result-name" class="fw-bold fs-3 mb-3"></h2>
 
                             <div class="epass-info-block text-start bg-light p-3 rounded-3">
-                                <p class="mb-2"><strong>Reg. ID:</strong> <span id="result-reg-id" class="text-danger fw-bold"></span></p>
+                                <p class="mb-2"><strong>Reg. ID:</strong> <span id="result-reg-id"
+                                        class="text-danger fw-bold"></span></p>
                                 <p class="mb-2"><strong>Phone:</strong> <span id="result-phone"></span></p>
                                 <p class="mb-0"><strong>Email:</strong> <span id="result-email"></span></p>
                             </div>
 
-                            <button id="checkin-btn" class="btn btn-success btn-lg w-100 rounded-pill mt-4 d-flex align-items-center justify-content-center">
+                            <button id="checkin-btn"
+                                class="btn btn-success btn-lg w-100 rounded-pill mt-4 d-flex align-items-center justify-content-center">
                                 <span id="checkin-btn-text">Confirm Check-In</span>
-                                <div class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status" id="checkin-spinner">
+                                <div class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"
+                                    id="checkin-spinner">
                                     <span class="visually-hidden">Loading...</span>
                                 </div>
                             </button>
 
-                            <button id="clear-btn" class="btn btn-outline-secondary w-100 rounded-pill mt-2">
+                            <button id="clear-btn-bottom" class="btn btn-outline-secondary w-100 rounded-pill mt-2">
                                 Clear & Scan Next
                             </button>
                         </div>
@@ -156,40 +180,46 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            
+
             // --- DOM Elements ---
+            const clearBtnTop = document.getElementById("clear-btn-top");
+            const clearBtnBottom = document.getElementById("clear-btn-bottom");
             const scannerSection = document.getElementById("scanner-section");
             const resultsSection = document.getElementById("results-section");
             const startScanBtn = document.getElementById("start-scan-btn");
             const qrReaderElement = document.getElementById("qr-reader");
-            
             const manualLookupForm = document.getElementById("manual-lookup-form");
             const regIdInput = document.getElementById("reg-id-input");
             const lookupBtn = document.getElementById("lookup-btn");
             const lookupBtnText = document.getElementById("lookup-btn-text");
             const lookupSpinner = document.getElementById("lookup-spinner");
-
             const messageBoxContainer = document.getElementById("message-box-container");
             const checkinStatusAlert = document.getElementById("checkin-status-alert");
-            
             const resultAvatar = document.getElementById("result-avatar");
             const resultName = document.getElementById("result-name");
             const resultRegId = document.getElementById("result-reg-id");
             const resultPhone = document.getElementById("result-phone");
             const resultEmail = document.getElementById("result-email");
-            
             const checkinBtn = document.getElementById("checkin-btn");
             const checkinBtnText = document.getElementById("checkin-btn-text");
             const checkinSpinner = document.getElementById("checkin-spinner");
-            const clearBtn = document.getElementById("clear-btn");
-
+            
             const REQUEST_TIMEOUT = 9500;
             let currentAttendeeRegId = null;
             let html5QrCode = null;
+            let currentMessageTimeout = null; // <-- ADDED for auto-hiding messages
 
-            // --- Helper Functions ---
+            // --- Helper Functions (Updated) ---
 
+            /**
+             * --- IMPROVEMENT: Auto-hiding messages ---
+             */
             function showMessage(message, type = 'info') {
+                // Clear any existing timeout
+                if (currentMessageTimeout) {
+                    clearTimeout(currentMessageTimeout);
+                }
+
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
                     <div class="alert alert-${type} alert-dismissible fade show" role="alert">
@@ -197,19 +227,46 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 `;
-                messageBoxContainer.innerHTML = '';
+                messageBoxContainer.innerHTML = ''; // Clear previous messages
                 messageBoxContainer.append(wrapper);
                 window.scrollTo(0, 0);
+
+                // Auto-hide after 5 seconds
+                currentMessageTimeout = setTimeout(() => {
+                    if (wrapper) {
+                        const alert = wrapper.querySelector('.alert');
+                        if (alert) {
+                            const bsAlert = new bootstrap.Alert(alert);
+                            bsAlert.close();
+                        }
+                    }
+                }, 5000); // 5000 milliseconds = 5 seconds
             }
 
+            /**
+             * --- IMPROVEMENT: Clear message timeout ---
+             */
             function clearMessage() {
+                if (currentMessageTimeout) {
+                    clearTimeout(currentMessageTimeout);
+                }
                 messageBoxContainer.innerHTML = '';
             }
 
+            /**
+             * --- IMPROVEMENT: Added 'cache: no-store' ---
+             */
             async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT) {
                 const controller = new AbortController();
                 const id = setTimeout(() => controller.abort(), timeout);
-                const response = await fetch(url, { ...options, signal: controller.signal });
+
+                const updatedOptions = {
+                    ...options,
+                    signal: controller.signal,
+                    cache: 'no-store' // <-- CRITICAL: Prevents browser caching
+                };
+
+                const response = await fetch(url, updatedOptions);
                 clearTimeout(id);
                 return response;
             }
@@ -226,34 +283,28 @@
 
             // --- Core Logic Functions ---
 
-            /**
-             * Fetches attendee details AND their check-in status from the backend.
-             * This function is called by both the scanner and manual lookup.
-             */
             async function fetchAttendee(registrationId) {
                 if (!registrationId) {
                     showMessage("Invalid Registration ID.", "danger");
                     return;
                 }
-                
+
                 clearMessage();
                 setLoadingState(true, 'lookup');
-                
+
                 try {
-                    // This is the new backend endpoint we need to create
                     const response = await fetchWithTimeout(`/api/verify`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ registrationId: registrationId.trim().toUpperCase() })
                     });
-                    
+
                     const result = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP error! Status: ${response.status}`);
                     }
                     
-                    // Backend returns { attendee: {...}, isCheckedIn: true/false }
                     displayResults(result.data.attendee, result.data.isCheckedIn);
 
                 } catch (error) {
@@ -265,14 +316,9 @@
                 }
             }
 
-            /**
-             * Populates the results card with attendee data.
-             */
             function displayResults(attendee, isCheckedIn) {
-                // Store the ID for the check-in button
                 currentAttendeeRegId = attendee.registration_id;
 
-                // Populate fields
                 resultAvatar.src = attendee.profile_pic_url || "https://placehold.co/150x150/6c757d/white?text=No+Photo";
                 resultName.textContent = attendee.full_name;
                 resultRegId.textContent = attendee.registration_id;
@@ -280,64 +326,44 @@
                 resultEmail.textContent = attendee.email;
 
                 if (isCheckedIn) {
-                    // Attendee is ALREADY checked in
-                    checkinStatusAlert.innerHTML = `
-                        <div class="alert alert-warning fw-bold" role="alert">
-                            ALREADY CHECKED IN
-                        </div>
-                    `;
+                    checkinStatusAlert.innerHTML = `<div class="alert alert-warning fw-bold" role="alert">ALREADY CHECKED IN</div>`;
                     checkinBtn.disabled = true;
                     checkinBtn.classList.remove('btn-success');
                     checkinBtn.classList.add('btn-secondary');
                     checkinBtnText.textContent = "Already Checked-In";
                 } else {
-                    // Attendee is valid and NOT checked in
-                    checkinStatusAlert.innerHTML = `
-                        <div class="alert alert-success fw-bold" role="alert">
-                            VERIFIED - Not Checked In
-                        </div>
-                    `;
+                    checkinStatusAlert.innerHTML = `<div class="alert alert-success fw-bold" role="alert">VERIFIED - Not Checked In</div>`;
                     checkinBtn.disabled = false;
                     checkinBtn.classList.add('btn-success');
                     checkinBtn.classList.remove('btn-secondary');
                     checkinBtnText.textContent = "Confirm Check-In";
                 }
 
-                // Show results, hide scanner
                 scannerSection.classList.add("d-none");
                 resultsSection.classList.remove("d-none");
-                stopScanner(); // Stop camera if it's running
+                stopScanner(); 
             }
 
-            /**
-             * Performs the actual check-in by calling the backend.
-             */
             async function performCheckIn() {
                 if (!currentAttendeeRegId) return;
 
                 setLoadingState(true, 'checkin');
 
                 try {
-                    // This is the second new backend endpoint we need to create
                     const response = await fetchWithTimeout(`/api/check-in`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ registrationId: currentAttendeeRegId })
                     });
-                    
+
                     const result = await response.json();
-                    
+
                     if (!response.ok) {
                         throw new Error(result.message || `HTTP error! Status: ${response.status}`);
                     }
                     
-                    // SUCCESS!
-                    showMessage("Check-In Successful!", "success");
-                    checkinStatusAlert.innerHTML = `
-                        <div class="alert alert-success fw-bold" role="alert">
-                            CHECK-IN COMPLETE
-                        </div>
-                    `;
+                    showMessage("Check-In Successful!", "success"); // Will auto-hide
+                    checkinStatusAlert.innerHTML = `<div class="alert alert-success fw-bold" role="alert">CHECK-IN COMPLETE</div>`;
                     checkinBtn.disabled = true;
                     checkinBtn.classList.remove('btn-success');
                     checkinBtn.classList.add('btn-secondary');
@@ -346,24 +372,19 @@
                 } catch (error) {
                     console.error("Check-In failed:", error);
                     const friendlyMessage = getFriendlyErrorMessage(error);
-                    showMessage(friendlyMessage, "danger");
+                    showMessage(friendlyMessage, "danger"); // Will auto-hide
                 } finally {
                     setLoadingState(false, 'checkin');
                 }
             }
 
-            /**
-             * Resets the entire UI to the initial scanning state.
-             */
             function resetUI() {
-                clearMessage();
+                clearMessage(); // <-- UPDATED (now clears timeout)
                 currentAttendeeRegId = null;
-                
-                // Reset forms
+
                 manualLookupForm.reset();
                 manualLookupForm.classList.remove("was-validated");
 
-                // Reset result fields
                 resultAvatar.src = "https://placehold.co/150x150/6c757d/white?text=No+Photo";
                 resultName.textContent = "";
                 resultRegId.textContent = "";
@@ -371,13 +392,11 @@
                 resultEmail.textContent = "";
                 checkinStatusAlert.innerHTML = "";
 
-                // Reset check-in button
                 checkinBtn.disabled = false;
                 checkinBtn.classList.add('btn-success');
                 checkinBtn.classList.remove('btn-secondary');
                 checkinBtnText.textContent = "Confirm Check-In";
 
-                // Show scanner, hide results
                 resultsSection.classList.add("d-none");
                 scannerSection.classList.remove("d-none");
                 startScanBtn.disabled = false;
@@ -404,12 +423,10 @@
             // --- QR Scanner ---
 
             function onScanSuccess(decodedText, decodedResult) {
-                // `decodedText` is the raw string from the QR code
                 console.log(`Scan result: ${decodedText}`);
                 stopScanner();
-                
+
                 try {
-                    // Your QR code from index.html stores: JSON.stringify({ regId, phone })
                     const data = JSON.parse(decodedText);
                     if (data && data.regId) {
                         fetchAttendee(data.regId);
@@ -424,17 +441,15 @@
 
             function onScanFailure(error) {
                 // This will fire continuously. It's safe to ignore.
-                // console.warn(`QR scan error: ${error}`);
             }
 
             function startScanner() {
                 if (!html5QrCode) {
                     html5QrCode = new Html5Qrcode("qr-reader");
                 }
-                
+
                 const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-                
-                // Try starting with the back camera ("environment")
+
                 html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
                     .then(() => {
                         console.log("Scanner started with back camera.");
@@ -442,9 +457,8 @@
                         startScanBtn.disabled = true;
                     })
                     .catch((err) => {
-                        // If back camera fails, try starting with any camera
                         console.warn("Back camera failed, trying any camera:", err);
-                        html5QrCode.start({ }, config, onScanSuccess, onScanFailure)
+                        html5QrCode.start({}, config, onScanSuccess, onScanFailure)
                             .then(() => {
                                 console.log("Scanner started with default camera.");
                                 startScanBtn.textContent = "Scanning... (Point at QR Code)";
@@ -472,7 +486,7 @@
                     }
                 }
             }
-            
+
             // --- Event Listeners ---
 
             startScanBtn.addEventListener("click", startScanner);
@@ -480,7 +494,7 @@
             manualLookupForm.addEventListener("submit", (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
+
                 if (!manualLookupForm.checkValidity()) {
                     manualLookupForm.classList.add("was-validated");
                     return;
@@ -490,8 +504,26 @@
             });
 
             checkinBtn.addEventListener("click", performCheckIn);
-            clearBtn.addEventListener("click", resetUI);
+
+            // --- UI IMPROVEMENT: Both clear buttons now call resetUI ---
+            clearBtnTop.addEventListener("click", resetUI);
+            clearBtnBottom.addEventListener("click", resetUI);
         });
     </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
+    </script>
 </body>
+
 </html>

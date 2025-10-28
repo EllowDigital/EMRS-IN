@@ -231,11 +231,21 @@ exports.handler = async (event) => {
 
         // Check constraint name for specific 409 error
         if (error.code === '23505') { // PostgreSQL unique violation code
-            if (error.constraint_name === 'attendees_phone_number_key') {
-                console.warn(`Database race condition: Duplicate phone ${phone} detected during INSERT.`);
+            // Check your schema for the correct constraint name
+            // In your provided schema, it was 'unique_phone'
+            if (error.constraint_name === 'unique_phone') {
+                console.warn(`Database: Duplicate phone ${phone} detected during INSERT.`);
                 return {
                     statusCode: 409, // Conflict
                     body: JSON.stringify({ message: 'This phone number is already registered.' }),
+                };
+            }
+            // Check for the email constraint
+            if (error.constraint_name === 'unique_email') {
+                console.warn(`Database: Duplicate email ${normalizedEmail} detected during INSERT.`);
+                return {
+                    statusCode: 409, // Conflict
+                    body: JSON.stringify({ message: 'This email address is already registered.' }),
                 };
             }
             console.error(`Database unique constraint violation: ${error.constraint_name}`);

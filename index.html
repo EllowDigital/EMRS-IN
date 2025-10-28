@@ -13,16 +13,19 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.5.2/qrcode.min.js"
         integrity="sha512-c3HC2N32Up+KwxhFN2dZkoDWSdxWqwzDJCnroUffjS/HBQHf5Ou1uFpqIT0rOIJ5fW8TxHmUpCDndH2A6xNhpQ=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
         integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
         crossorigin="anonymous" referrerpolicy="no-referrer"></script>
 
-    <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="assets/favicon/apple-touch-icon.png">
+    <meta name.apple-mobile-web-app-capable" content="yes">
+    <meta name.apple-mobile-web-app-status-bar-style" content="black">
+    <meta name.apple-mobile-web-app-title" content="E-Pass">
     <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png">
-    <link rel="manifest" href="assets/favicon/site.webmanifest">
-
+    <link rel="icon" href="assets/favicon/favicon.ico">
     <style>
         /* Inter font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -397,11 +400,20 @@
             const findPassInput = document.getElementById("find-pass-input");
             const findPassToggles = document.querySelectorAll('input[name="search-type"]');
             const REQUEST_TIMEOUT = 9500;
+            let currentMessageTimeout = null; // <-- ADDED for auto-hiding messages
 
-            // --- Helper Functions ---
-            // ... (showMessage, clearMessage, fetchWithTimeout, getFriendlyErrorMessage, generateQRCode, populateEpass, compressImage, resetForms) ...
+            // --- Helper Functions (Updated) ---
 
+            /**
+             * --- IMPROVEMENT: Auto-hiding messages ---
+             * Shows a dismissible message that auto-hides after 5 seconds.
+             */
             function showMessage(message, type = 'info') {
+                // Clear any existing timeout to prevent old messages from closing new ones
+                if (currentMessageTimeout) {
+                    clearTimeout(currentMessageTimeout);
+                }
+
                 const wrapper = document.createElement('div');
                 wrapper.innerHTML = `
                     <div class="alert alert-${type} alert-dismissible fade show" role="alert">
@@ -409,19 +421,48 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 `;
-                messageBoxContainer.innerHTML = '';
+                messageBoxContainer.innerHTML = ''; // Clear previous messages
                 messageBoxContainer.append(wrapper);
                 window.scrollTo(0, 0);
+
+                // Auto-hide after 5 seconds
+                currentMessageTimeout = setTimeout(() => {
+                    if (wrapper) {
+                        const alert = wrapper.querySelector('.alert');
+                        if (alert) {
+                            // Use Bootstrap's dispose method to properly remove it
+                            const bsAlert = new bootstrap.Alert(alert);
+                            bsAlert.close();
+                        }
+                    }
+                }, 5000); // 5000 milliseconds = 5 seconds
             }
 
+            /**
+             * --- IMPROVEMENT: Clear message timeout ---
+             */
             function clearMessage() {
+                if (currentMessageTimeout) {
+                    clearTimeout(currentMessageTimeout);
+                }
                 messageBoxContainer.innerHTML = '';
             }
 
+            /**
+             * --- IMPROVEMENT: Added 'cache: no-store' ---
+             * This forces the browser to *always* get fresh data from the server.
+             */
             async function fetchWithTimeout(url, options, timeout = REQUEST_TIMEOUT) {
                 const controller = new AbortController();
                 const id = setTimeout(() => controller.abort(), timeout);
-                const response = await fetch(url, { ...options, signal: controller.signal });
+
+                const updatedOptions = {
+                    ...options,
+                    signal: controller.signal,
+                    cache: 'no-store' // <-- CRITICAL: Prevents browser caching
+                };
+
+                const response = await fetch(url, updatedOptions);
                 clearTimeout(id);
                 return response;
             }
@@ -459,7 +500,7 @@
 
                 registrationSection.classList.add("d-none");
                 findPassSection.classList.add("d-none");
-                clearMessage();
+                clearMessage(); // <-- UPDATED (now clears timeout)
                 epassSection.classList.remove("d-none");
                 window.scrollTo(0, 0);
             }
@@ -519,14 +560,13 @@
                 findPassInput.pattern = "[0-9]{10,15}";
                 document.getElementById('search-type-phone').checked = true;
 
-                clearMessage();
+                clearMessage(); // <-- UPDATED (now clears timeout)
             }
 
 
-            // --- Event Listeners ---
+            // --- Event Listeners (Logic now uses updated helper functions) ---
 
             profilePicInput.addEventListener("change", async (e) => {
-                // ... (same as before)
                 const file = e.target.files[0];
                 if (!file) return;
                 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -550,7 +590,6 @@
             });
 
             registrationForm.addEventListener("submit", async (e) => {
-                // ... (same as before, with auto-refresh logic)
                 e.preventDefault();
                 e.stopPropagation();
                 clearMessage();
@@ -605,7 +644,6 @@
             });
 
             findPassToggles.forEach(toggle => {
-                // ... (same as before)
                 toggle.addEventListener('change', (e) => {
                     if (e.target.value === 'phone') {
                         findPassInput.placeholder = "Enter your phone number";
@@ -622,7 +660,6 @@
             });
 
             findPassForm.addEventListener("submit", async (e) => {
-                // ... (same as before, with auto-refresh logic)
                 e.preventDefault();
                 e.stopPropagation();
                 clearMessage();
@@ -679,19 +716,15 @@
                 const regId = document.getElementById("epass-reg-id").textContent;
                 const filename = `E-PASS-${regId || 'event'}.png`;
 
-                // --- START OF CORRECTION ---
                 const targetWidth = 638;
-                // Calculate target height from the CSS aspect-ratio (638 / 1011)
                 const targetHeight = 1011;
-                const scale = 2; // Render at 2x resolution
+                const scale = 2;
                 const originalStyle = passElement.style.cssText;
 
-                // Set explicit width AND height to fix html2canvas flexbox bug
                 passElement.style.width = targetWidth + 'px';
                 passElement.style.maxWidth = targetWidth + 'px';
-                passElement.style.height = targetHeight + 'px'; // This forces the layout
-                passElement.style.margin = '0'; // Remove auto margins
-                // --- END OF CORRECTION ---
+                passElement.style.height = targetHeight + 'px';
+                passElement.style.margin = '0';
 
                 downloadButton.disabled = true;
                 downloadButton.textContent = "Downloading...";
@@ -713,9 +746,7 @@
                     console.error("E-Pass download failed:", err);
                     showMessage("Could not download E-Pass. Please try again.", "danger");
                 }).finally(() => {
-                    // ALWAYS restore original styles to keep the page responsive
                     passElement.style.cssText = originalStyle;
-
                     downloadButton.disabled = false;
                     downloadButton.textContent = "Download E-Pass";
                 });
@@ -733,6 +764,20 @@
             });
 
         });
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('ServiceWorker registration failed: ', error);
+                    });
+            });
+        }
     </script>
 </body>
 

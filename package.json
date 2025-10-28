@@ -1,6 +1,6 @@
 {
   "name": "event-app-backend",
-  "version": "1.4.0",
+  "version": "1.8.4",
   "description": "Backend functions for the event app",
   "main": "functions/register.js",
   "scripts": {

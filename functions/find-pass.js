@@ -7,6 +7,7 @@
 // 4. Search by EITHER email (case-insensitive) OR phone number.
 // 5. A robust "fire-and-forget" email is sent on success.
 // 6. Database statement_timeout (8s) to prevent hanging queries.
+// 7. Added 'Cache-Control: no-store' headers to all responses.
 // ---
 
 const postgres = require('postgres');
@@ -26,9 +27,9 @@ try {
         // Set an 8-second timeout for all DB queries
         set_local: { statement_timeout: '8s' }
     });
-    console.log("Database connection pool initialized successfully.");
+    console.log("Database connection pool initialized successfully (find-pass.js).");
 } catch (error) {
-    console.error("CRITICAL: Failed to initialize database connection:", error.message);
+    console.error("CRITICAL: Failed to initialize database connection (find-pass.js):", error.message);
     sql = null;
 }
 
@@ -83,7 +84,7 @@ function sendConfirmationEmail(attendee, formSubmitEmail) {
                 })
             });
 
-            if (response.ok || response.status === 302) {
+            if (response.ok || response.status === 302) { // FormSubmit often redirects on success
                 console.log('FormSubmit email initiated successfully for found pass.');
             } else {
                 const errorText = await response.text().catch(() => "Could not read response body");
@@ -99,22 +100,41 @@ function sendConfirmationEmail(attendee, formSubmitEmail) {
 // --- Netlify Function Handler ---
 
 exports.handler = async (event) => {
+    // --- Define Cache Header ---
+    const cacheHeaders = {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    };
+
     // 1. Check for critical DB configuration
     if (!sql) {
         console.error("Handler Error: Database connection is not available.");
-        return { statusCode: 500, body: JSON.stringify({ message: 'Database service unavailable.' }) };
+        return {
+            statusCode: 500,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Database service unavailable.' })
+        };
     }
 
     // 2. Check HTTP Method
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+        return {
+            statusCode: 405,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Method Not Allowed' })
+        };
     }
 
     // 3. Payload Size Check
     const contentLength = event.headers['content-length'];
     if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE_BYTES) {
         console.warn(`Handler Warn: Payload size (${contentLength} bytes) exceeds limit.`);
-        return { statusCode: 413, body: JSON.stringify({ message: 'Payload is too large.' }) };
+        return {
+            statusCode: 413,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Payload is too large.' })
+        };
     }
 
     // 4. Parse and Validate Body
@@ -129,16 +149,24 @@ exports.handler = async (event) => {
 
         if (!email && !phone) {
             console.warn("Handler Warn: Missing email or phone in request body.");
-            return { statusCode: 400, body: JSON.stringify({ message: 'Email or phone number is required.' }) };
+            return {
+                statusCode: 400,
+                headers: cacheHeaders,
+                body: JSON.stringify({ message: 'Email or phone number is required.' })
+            };
         }
 
         if (email) {
-            normalizedEmail = email.toLowerCase();
+            normalizedEmail = email.toLowerCase(); // Normalize email for case-insensitive search
         }
 
     } catch (error) {
         console.warn("Handler Warn: Could not parse request body.", error.message);
-        return { statusCode: 400, body: JSON.stringify({ message: 'Invalid request format.' }) };
+        return {
+            statusCode: 400,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Invalid request format.' })
+        };
     }
 
     // 5. Execute Database Query
@@ -148,22 +176,27 @@ exports.handler = async (event) => {
         if (email) {
             // Search by email (case-insensitive)
             console.log(`Searching for pass with email: ${normalizedEmail}`);
+            // Select only necessary fields
             [attendee] = await sql`
                 SELECT 
                     registration_id, full_name, phone_number, email, profile_pic_url 
                 FROM attendees 
                 WHERE email = ${normalizedEmail}
-                LIMIT 1
+                LIMIT 1 
             `;
         } else if (phone) {
-            // Search by phone number (which is unique)
+            // Search by phone number (assuming it's unique based on schema)
             console.log(`Searching for pass with phone: ${phone}`);
+            // Select only necessary fields
             [attendee] = await sql`
                 SELECT 
                     registration_id, full_name, phone_number, email, profile_pic_url 
                 FROM attendees 
                 WHERE phone_number = ${phone}
+                LIMIT 1 
             `;
+            // Note: If phone_number wasn't unique, you might get multiple results. 
+            // The LIMIT 1 above handles this, but ideally the DB enforces uniqueness.
         }
 
         // 6. Handle Results
@@ -172,20 +205,23 @@ exports.handler = async (event) => {
             console.log(`Attendee found: ${attendee.registration_id}`);
 
             // Send Confirmation Email (Fire-and-forget)
+            // Ensure FORMSUBMIT_EMAIL is set in your Netlify environment variables
             sendConfirmationEmail(attendee, process.env.FORMSUBMIT_EMAIL);
 
             return {
                 statusCode: 200,
+                headers: cacheHeaders,
                 body: JSON.stringify({
                     message: 'Attendee found.',
-                    data: attendee,
+                    data: attendee, // Send the found attendee data back to the frontend
                 }),
             };
         } else {
             // Did not find the attendee
             console.log(`No attendee found with details: ${email || phone}`);
             return {
-                statusCode: 404, // 404 Not Found
+                statusCode: 404, // 404 Not Found is more appropriate
+                headers: cacheHeaders,
                 body: JSON.stringify({ message: 'No registration found for these details.' }),
             };
         }
@@ -199,12 +235,15 @@ exports.handler = async (event) => {
             console.error('Database query timed out (8s).');
             return {
                 statusCode: 504, // Gateway Timeout
+                headers: cacheHeaders,
                 body: JSON.stringify({ message: 'The request timed out. Please try again.' }),
             };
         }
 
+        // Generic internal server error
         return {
             statusCode: 500,
+            headers: cacheHeaders,
             body: JSON.stringify({ message: 'An internal server error occurred.' }),
         };
     }

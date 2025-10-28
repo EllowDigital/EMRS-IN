@@ -6,6 +6,7 @@
 // 3. Simultaneously checks if a matching record exists in the 'check_ins' table.
 // 4. Returns the attendee's data AND their check-in status (isCheckedIn: true/false).
 // 5. Uses a single, efficient JOIN query.
+// 6. Adds 'Cache-Control: no-store' header to all responses.
 // ---
 
 const postgres = require('postgres');
@@ -32,22 +33,41 @@ try {
 // --- Netlify Function Handler ---
 
 exports.handler = async (event) => {
+    // --- Define Cache Header ---
+    const cacheHeaders = {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+    };
+
     // 1. Check for critical DB configuration
     if (!sql) {
         console.error("Handler Error: Database connection is not available.");
-        return { statusCode: 500, body: JSON.stringify({ message: 'Database service unavailable.' }) };
+        return {
+            statusCode: 500,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Database service unavailable.' })
+        };
     }
 
     // 2. Check HTTP Method
     if (event.httpMethod !== 'POST') {
-        return { statusCode: 405, body: JSON.stringify({ message: 'Method Not Allowed' }) };
+        return {
+            statusCode: 405,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Method Not Allowed' })
+        };
     }
 
     // 3. Payload Size Check
     const contentLength = event.headers['content-length'];
     if (contentLength && parseInt(contentLength, 10) > MAX_PAYLOAD_SIZE_BYTES) {
         console.warn(`Handler Warn: Payload size (${contentLength} bytes) exceeds limit.`);
-        return { statusCode: 413, body: JSON.stringify({ message: 'Payload is too large.' }) };
+        return {
+            statusCode: 413,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Payload is too large.' })
+        };
     }
 
     // 4. Parse and Validate Body
@@ -58,12 +78,20 @@ exports.handler = async (event) => {
 
         if (!registrationId) {
             console.warn("Handler Warn: Missing registrationId in request body.");
-            return { statusCode: 400, body: JSON.stringify({ message: 'Registration ID is required.' }) };
+            return {
+                statusCode: 400,
+                headers: cacheHeaders,
+                body: JSON.stringify({ message: 'Registration ID is required.' })
+            };
         }
 
     } catch (error) {
         console.warn("Handler Warn: Could not parse request body.", error.message);
-        return { statusCode: 400, body: JSON.stringify({ message: 'Invalid request format.' }) };
+        return {
+            statusCode: 400,
+            headers: cacheHeaders,
+            body: JSON.stringify({ message: 'Invalid request format.' })
+        };
     }
 
     // 5. Execute Database Query
@@ -100,6 +128,7 @@ exports.handler = async (event) => {
 
             return {
                 statusCode: 200,
+                headers: cacheHeaders,
                 body: JSON.stringify({
                     message: 'Attendee verified.',
                     data: {
@@ -112,7 +141,8 @@ exports.handler = async (event) => {
             // Did not find the attendee
             console.log(`No attendee found with Registration ID: ${registrationId}`);
             return {
-                statusCode: 404, // 404 Not Found
+                statusCode: 404,
+                headers: cacheHeaders,
                 body: JSON.stringify({ message: 'No registration found for this ID.' }),
             };
         }
@@ -120,16 +150,20 @@ exports.handler = async (event) => {
     } catch (error) {
         console.error('Database verification error:', error.message);
 
+        // Handle statement timeout error from database
         if (error.code === '57014') { // PostgreSQL query_canceled code
             console.error('Database query timed out (8s).');
             return {
                 statusCode: 504, // Gateway Timeout
+                headers: cacheHeaders,
                 body: JSON.stringify({ message: 'The request timed out. Please try again.' }),
             };
         }
 
+        // Generic internal server error
         return {
             statusCode: 500,
+            headers: cacheHeaders,
             body: JSON.stringify({ message: 'An internal server error occurred.' }),
         };
     }
