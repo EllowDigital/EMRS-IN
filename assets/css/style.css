@@ -338,3 +338,74 @@ body {
 .mh-success .mh-icon { background: linear-gradient(135deg,#16a34a,#059669);} 
 .mh-warning .mh-icon { background: linear-gradient(135deg,#f59e0b,#f97316);} 
 .mh-danger .mh-icon { background: linear-gradient(135deg,#ef4444,#dc2626);} 
+
+/* --- Status Hero (Maintenance / Registrations Closed) --- */
+.status-hero {
+    background: linear-gradient(180deg,#ffffff,#f7fbff);
+    border: none;
+    padding: 1.25rem;
+    box-shadow: 0 12px 40px rgba(15,23,42,0.08);
+}
+.status-hero .mh-icon-wrapper { flex: 0 0 72px; display:flex; align-items:center; justify-content:center; }
+.status-hero .status-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: white;
+    background: linear-gradient(135deg,#ff7a00,#ff4d4f);
+    box-shadow: 0 8px 24px rgba(255,77,79,0.12);
+}
+.status-hero h2 { font-size: 1.35rem; font-weight: 800; margin:0; }
+.status-hero p { margin:0; color: #566471; }
+
+/* Slightly larger button look */
+.status-hero .btn-lg { padding: .6rem 1.25rem; font-weight:600; }
+
+/* Make hero more compact on small screens */
+@media (max-width: 575px) {
+    .status-hero .mh-icon-wrapper { flex: 0 0 56px; }
+    .status-hero .status-icon { width:56px; height:56px; font-size:22px; }
+    .status-hero h2 { font-size:1.1rem; }
+}
+
+/* Hide secondary page chrome when the center status is active using a helper class on the body */
+body.status-active .container > .row .col-lg-8 > footer,
+body.status-active .container > .row .col-lg-8 #registration-section,
+body.status-active .container > .row .col-lg-8 #find-pass-section,
+body.status-active .container > .row .col-lg-8 #epass-section {
+    display: none !important;
+}
+
+/* Entrance animation for the status hero */
+.status-hero {
+    transform-origin: 50% 0%;
+    animation: status-enter 420ms cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes status-enter {
+    0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+    60% { opacity: 1; transform: translateY(-4px) scale(1.005); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Countdown badge */
+#status-countdown { min-width: 48px; display:inline-block; }
+
+/* Illustration area */
+.status-illustration { align-self:center; margin-left:12px; }
+.status-hero-inner { display:flex; align-items:center; }
+@media (max-width: 767px) {
+    .status-hero-inner { flex-direction:column; align-items:flex-start; }
+    .status-illustration { display:none !important; }
+}
+
+/* Modal tweaks for better focus visuals */
+.modal-content { border-radius: 12px; }
+.modal .form-control:focus { box-shadow: 0 0 0 0.15rem rgba(13,110,253,0.15); }
+
+/* Improve button sizing on small screens */
+.status-hero .btn { min-width: 120px; }
+@media (max-width: 420px) { .status-hero .btn { min-width: 100%; } }

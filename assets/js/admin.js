@@ -16,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const appState = {
         isLoggedIn: false,
-        // store staff password in-memory only so a hard refresh requires re-login
-        staffPassword: null,
+        // store short-lived staff token in-memory only so a hard refresh requires re-login
+        staffToken: null,
         systemStatus: {
             registration_enabled: false,
             maintenance_mode: false,
@@ -305,18 +305,20 @@ document.addEventListener('DOMContentLoaded', () => {
         setLoginLoadingState(true);
         ui.loginMessage.innerHTML = '';
         try {
+            // Exchange password for short-lived token
             const response = await fetchWithTimeout(config.api.staffLogin, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ password })
             });
             const result = await response.json();
-            if (!response.ok) throw new Error(result.message);
+            if (!response.ok) throw new Error(result.message || 'Login failed');
 
-            if (result.success) {
+            if (result && result.token) {
                 appState.isLoggedIn = true;
-                // Keep password only in-memory so a hard refresh forces re-login
-                appState.staffPassword = password;
+                // Keep token only in-memory; optionally persist to sessionStorage for seamless tabs
+                appState.staffToken = result.token;
+                try { sessionStorage.setItem('staff_token', result.token); } catch (e) { /* ignore */ }
                 setUIState('dashboard');
                 initializeAppDashboard();
             }
@@ -329,7 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchDashboardData() {
         try {
-            const authHeader = { 'Authorization': `Bearer ${appState.staffPassword || ''}` };
+            const authHeader = { 'Authorization': `Bearer ${appState.staffToken || ''}` };
             // Use retryFetch for transient DB/network issues
             const [statsRes, statusRes, healthRes] = await Promise.all([
                 retryFetch(config.api.getStats, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'stats', err: e }; }),
@@ -412,7 +414,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${appState.staffPassword || ''}`
+                    'Authorization': `Bearer ${appState.staffToken || ''}`
                 },
                 body: JSON.stringify({ key, value })
             });
@@ -450,7 +452,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const limit = appState.pageSize || 15;
             const response = await retryFetch(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}&page=${page}&limit=${limit}`, {
                 headers: {
-                    'Authorization': `Bearer ${appState.staffPassword || ''}`
+                    'Authorization': `Bearer ${appState.staffToken || ''}`
                 }
             }, 3, 300);
             if (!response.ok) {
@@ -531,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${appState.staffPassword || ''}`
+                        'Authorization': `Bearer ${appState.staffToken || ''}`
                     },
                     body: JSON.stringify(payload)
                 });
@@ -568,7 +570,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 showLoader();
                 const res = await fetch('/api/delete-attendee', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appState.staffPassword || ''}` },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${appState.staffToken || ''}` },
                     body: JSON.stringify({ registration_id: regId })
                 });
                 if (!res.ok) {
@@ -673,10 +675,10 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.adminLogoutBtn.addEventListener('click', (e) => {
             e.preventDefault();
             // Clear all in-memory credentials and redirect to public index
-            appState.staffPassword = null;
+            appState.staffToken = null;
             appState.isLoggedIn = false;
             // Try to clear any state and navigate away so session is clearly terminated
-            try { sessionStorage.clear(); localStorage.clear(); } catch (err) { /* ignore */ }
+            try { sessionStorage.removeItem('staff_token'); /* preserve other items */ } catch (err) { /* ignore */ }
             showToast('Logged out. Redirecting to home...');
             // Small delay to show toast, then redirect
             setTimeout(() => { window.location.href = '/index.html'; }, 600);

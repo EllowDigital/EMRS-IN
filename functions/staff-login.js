@@ -30,11 +30,37 @@ exports.handler = async (event) => {
 
         // Validate the submitted password
         if (password && password === staffPassword) {
-            // Passwords match
+            // Passwords match: issue a short-lived token (HMAC signed)
+            const crypto = require('crypto');
+            const secret = process.env.STAFF_TOKEN_SECRET;
+            if (!secret) {
+                console.error('CRITICAL: STAFF_TOKEN_SECRET environment variable is not set. Token issuance disabled.');
+                return {
+                    statusCode: 500,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'Server configuration error. Token service unavailable.' }),
+                };
+            }
+
+            const header = { alg: 'HS256', typ: 'JWT' };
+            const now = Math.floor(Date.now() / 1000);
+            const expiresIn = 15 * 60; // 15 minutes
+            const payload = { sub: 'staff', iat: now, exp: now + expiresIn };
+
+            function base64url(input) {
+                return Buffer.from(JSON.stringify(input)).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            }
+
+            const encodedHeader = base64url(header);
+            const encodedPayload = base64url(payload);
+            const signingInput = `${encodedHeader}.${encodedPayload}`;
+            const signature = crypto.createHmac('sha256', secret).update(signingInput).digest('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            const token = `${signingInput}.${signature}`;
+
             return {
                 statusCode: 200,
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ success: true, message: 'Login successful' }),
+                body: JSON.stringify({ success: true, token, expires_in: expiresIn }),
             };
         } else {
             // Passwords do not match

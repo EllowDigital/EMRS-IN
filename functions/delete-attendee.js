@@ -10,11 +10,31 @@ exports.handler = async (event) => {
         const { registration_id } = body;
         if (!registration_id) return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'registration_id required' }) };
 
-    // Require Authorization: Bearer <password> header only
+    // Require Authorization: Bearer <password> OR a short-lived token
     const authHeader = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
     const expected = process.env.STAFF_LOGIN_PASSWORD || '';
+    const tokenSecret = process.env.STAFF_TOKEN_SECRET || '';
+    function verifyToken(token) {
+        try {
+            if (!tokenSecret) return false;
+            const crypto = require('crypto');
+            const parts = token.split('.');
+            if (parts.length !== 3) return false;
+            const [h64, p64, sig] = parts;
+            const signingInput = `${h64}.${p64}`;
+            const expectedSig = crypto.createHmac('sha256', tokenSecret).update(signingInput).digest('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+            const a = Buffer.from(expectedSig);
+            const b = Buffer.from(sig);
+            if (a.length !== b.length) return false;
+            if (!crypto.timingSafeEqual(a, b)) return false;
+            const payload = JSON.parse(Buffer.from(p64, 'base64').toString('utf8'));
+            const now = Math.floor(Date.now() / 1000);
+            if (!payload.exp || payload.exp < now) return false;
+            return true;
+        } catch (e) { return false; }
+    }
     const bearer = authHeader.startsWith('Bearer ') ? authHeader.split(' ')[1] : null;
-    if (!bearer || bearer !== expected) return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
+    if (!bearer || (bearer !== expected && !verifyToken(bearer))) return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
 
     // Use default connect behavior for admin-initiated delete operations to avoid aggressive timeouts
     const sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });

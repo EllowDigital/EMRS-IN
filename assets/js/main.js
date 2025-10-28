@@ -7,6 +7,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusCenterTitle = document.getElementById('status-center-title');
     const statusCenterText = document.getElementById('status-center-text');
     const statusReloadBtn = document.getElementById('status-reload-btn');
+    const statusCountdownEl = document.getElementById('status-countdown');
+    const adminOpenBtn = document.getElementById('admin-open-btn');
+    const adminModalEl = document.getElementById('adminModal');
+    const adminLoginForm = document.getElementById('admin-login-form');
+    const adminPasswordInput = document.getElementById('admin-password');
+    const adminErrorEl = document.getElementById('admin-error');
+
+    // Auto-retry configuration
+    const AUTO_RETRY_SECONDS = 15; // seconds until auto-retry
+    let autoRetryTimer = null;
+    let autoRetryRemaining = 0;
 
     // --- DOM Element Selectors ---
     const registrationForm = document.getElementById("registration-form");
@@ -21,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     );
     const findPassSection = document.getElementById("find-pass-section");
     const epassSection = document.getElementById("epass-section");
+    const siteFooter = document.getElementById('site-footer');
     const backToHomeButton = document.getElementById("back-to-home-btn");
     const profilePicInput = document.getElementById("profile-pic");
     const avatarPreview = document.getElementById("avatar-preview");
@@ -70,11 +82,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 registrationSection.classList.add('d-none');
                 findPassSection.classList.add('d-none');
                 epassSection.classList.add('d-none');
+                if (siteFooter) siteFooter.classList.add('d-none');
+                // also add a body-level helper so CSS can hide extra chrome
+                document.body.classList.add('status-active');
 
                 if (statusCenter) {
                     statusCenterTitle.textContent = 'Maintenance Mode';
                     statusCenterText.textContent = 'The system is currently down for maintenance. Please check back later.';
                     statusCenter.classList.remove('d-none');
+                    // start auto retry countdown so the site attempts to come back automatically
+                    startAutoRetryCountdown();
                 } else {
                     statusMessage.textContent = 'The system is currently down for maintenance. Please check back later.';
                     statusBanner.classList.remove('d-none');
@@ -85,11 +102,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 registrationSection.classList.add('d-none');
                 findPassSection.classList.add('d-none');
                 epassSection.classList.add('d-none');
+                if (siteFooter) siteFooter.classList.add('d-none');
+                document.body.classList.add('status-active');
 
                 if (statusCenter) {
                     statusCenterTitle.textContent = 'Registrations Closed';
                     statusCenterText.textContent = 'New registrations are currently closed. Please check back later.';
                     statusCenter.classList.remove('d-none');
+                    // start auto retry countdown so the site attempts to come back automatically
+                    startAutoRetryCountdown();
                 } else {
                     statusMessage.textContent = 'New registrations are currently closed. Please check back later.';
                     statusBanner.classList.remove('d-none');
@@ -100,6 +121,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 statusBanner.classList.add('d-none');
                 registrationSection.classList.remove('d-none');
                 findPassSection.classList.remove('d-none');
+                if (siteFooter) siteFooter.classList.remove('d-none');
+                document.body.classList.remove('status-active');
+                // stop any auto-retry when system is healthy
+                stopAutoRetryCountdown();
             }
         } catch (error) {
             console.error('System Status Check Failed:', error);
@@ -125,6 +150,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Keep registration visible as a degraded fallback so users can still register.
             registrationForm.classList.remove('d-none');
+            if (siteFooter) siteFooter.classList.remove('d-none');
+            document.body.classList.remove('status-active');
+            stopAutoRetryCountdown();
         }
     }
 
@@ -132,6 +160,8 @@ document.addEventListener("DOMContentLoaded", () => {
     if (statusReloadBtn) {
         statusReloadBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            // If an auto-retry countdown is running, stop it because the user manually reloaded
+            stopAutoRetryCountdown();
             if (statusCenter) statusCenter.classList.add('d-none');
             if (statusBanner) statusBanner.classList.add('d-none');
             checkSystemStatus();
@@ -140,6 +170,114 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // --- Helper Functions ---
+    // Auto-retry helpers: show countdown and trigger a status re-check when elapsed
+    function startAutoRetryCountdown(seconds = AUTO_RETRY_SECONDS) {
+        stopAutoRetryCountdown();
+        if (!statusCountdownEl) return;
+        autoRetryRemaining = seconds;
+        statusCountdownEl.textContent = `Retry in ${autoRetryRemaining}s`;
+        statusCountdownEl.setAttribute('aria-hidden', 'false');
+        autoRetryTimer = setInterval(() => {
+            autoRetryRemaining -= 1;
+            if (autoRetryRemaining <= 0) {
+                stopAutoRetryCountdown();
+                statusCountdownEl.textContent = '';
+                checkSystemStatus();
+                return;
+            }
+            statusCountdownEl.textContent = `Retry in ${autoRetryRemaining}s`;
+        }, 1000);
+    }
+
+    function stopAutoRetryCountdown() {
+        if (autoRetryTimer) clearInterval(autoRetryTimer);
+        autoRetryTimer = null;
+        if (statusCountdownEl) {
+            statusCountdownEl.textContent = '';
+            statusCountdownEl.setAttribute('aria-hidden', 'true');
+        }
+    }
+
+    // --- Admin modal & login handling (stores staff password in sessionStorage for this session) ---
+    if (adminModalEl) {
+        // Focus the password input when modal shown
+        adminModalEl.addEventListener('shown.bs.modal', () => {
+            if (adminPasswordInput) {
+                adminPasswordInput.value = '';
+                adminPasswordInput.focus();
+            }
+            if (adminErrorEl) adminErrorEl.classList.add('d-none');
+        });
+
+        // Return focus to the opener when modal hidden
+        adminModalEl.addEventListener('hidden.bs.modal', () => {
+            if (adminOpenBtn) adminOpenBtn.focus();
+        });
+    }
+
+    if (adminLoginForm) {
+        adminLoginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const pwd = adminPasswordInput ? adminPasswordInput.value.trim() : '';
+            if (!pwd) {
+                if (adminErrorEl) {
+                    adminErrorEl.textContent = 'Please enter the staff password.';
+                    adminErrorEl.classList.remove('d-none');
+                }
+                if (adminPasswordInput) adminPasswordInput.focus();
+                return;
+            }
+            // Exchange password for a short-lived token from the server
+            (async () => {
+                try {
+                    adminErrorEl && adminErrorEl.classList.add('d-none');
+                    const resp = await fetchWithTimeout('/api/staff-login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: pwd })
+                    }, 10000);
+                    const data = await resp.json().catch(() => ({}));
+                    if (!resp.ok) {
+                        const msg = data && data.message ? data.message : 'Invalid password';
+                        if (adminErrorEl) {
+                            adminErrorEl.textContent = msg;
+                            adminErrorEl.classList.remove('d-none');
+                        }
+                        return;
+                    }
+                    if (data && data.token) {
+                        // store token (short-lived) in sessionStorage
+                        try { sessionStorage.setItem('staff_token', data.token); } catch (e) { /* ignore */ }
+                        window.__STAFF_TOKEN = data.token;
+                        // Close modal
+                        try { const bsModal = bootstrap.Modal.getInstance(adminModalEl) || bootstrap.Modal.getOrCreateInstance(adminModalEl); bsModal.hide(); } catch (e) { }
+                        showMessage('Admin unlocked for this session', 'success');
+                    } else {
+                        if (adminErrorEl) { adminErrorEl.textContent = (data && data.message) || 'Login failed'; adminErrorEl.classList.remove('d-none'); }
+                    }
+                } catch (err) {
+                    console.error('Admin login failed:', err);
+                    if (adminErrorEl) { adminErrorEl.textContent = 'Login failed. Please try again.'; adminErrorEl.classList.remove('d-none'); }
+                }
+            })();
+        });
+    }
+
+    // Open modal programmatically when admin button clicked (keeps anchor-free unobtrusive behavior)
+    if (adminOpenBtn && adminModalEl) {
+        adminOpenBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            try {
+                const bsModal = bootstrap.Modal.getOrCreateInstance(adminModalEl);
+                bsModal.show();
+            } catch (err) {
+                // fallback: navigate to verify page
+                window.location.href = '/verify.html';
+            }
+        });
+    }
+
     function showMessage(message, type = "info", autoHide = true, options = {}) {
         if (currentMessageTimeout) clearTimeout(currentMessageTimeout);
         // If message is an HTML string or an object with title/text
