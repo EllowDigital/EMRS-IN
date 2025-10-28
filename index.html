@@ -482,13 +482,13 @@
 
             const profilePicInput = document.getElementById("profile-pic");
             const avatarPreview = document.getElementById("avatar-preview");
-            const defaultAvatarSrc = "https://placehold.co/150x150/dee2e6/ffffff?text=Upload+Photo"; // Updated placeholder
+            const defaultAvatarSrc = "https://placehold.co/150x150/dee2e6/ffffff?text=Upload+Photo";
             const epassAvatar = document.getElementById("epass-avatar");
             const epassName = document.getElementById("epass-name");
             const epassRegId = document.getElementById("epass-reg-id");
             const epassPhone = document.getElementById("epass-phone");
             const epassEmail = document.getElementById("epass-email");
-            const qrCodeContainer = document.getElementById("qrcode-container"); // Single QR container
+            const qrCodeContainer = document.getElementById("qrcode-container");
             const downloadButton = document.getElementById("download-btn");
 
             const findPassForm = document.getElementById("find-pass-form");
@@ -540,11 +540,11 @@
 
                     if (imgElement && imgElement.tagName === 'IMG') {
                         imgElement.classList.add('img-fluid'); // Responsive
-                        imgElement.style.maxWidth = '120px'; // Size constraint for display/download
+                        imgElement.style.maxWidth = '120px'; // Size constraint
                         imgElement.style.height = 'auto';
 
-                        // --- THE FIX ---
-                        // Append the element itself, don't set innerHTML
+                        // Append the element itself, not the HTML string.
+                        // This is crucial for html2canvas to find the rendered image.
                         qrCodeContainer.appendChild(imgElement);
 
                     } else {
@@ -581,6 +581,39 @@
                 epassSection.classList.remove("d-none");
                 window.scrollTo(0, 0); // Scroll to top to see E-Pass
             }
+
+            /**
+             * --- NEW HELPER FUNCTION ---
+             * Waits for all images within a given element to load.
+             * This is used to ensure the QR code and Avatar are loaded before html2canvas runs.
+             * @param {HTMLElement} element - The parent element to search for images.
+             * @returns {Promise<void>} A promise that resolves when all images are loaded or have failed.
+             */
+            function imagesLoaded(element) {
+                // Find all images within the element
+                const images = Array.from(element.getElementsByTagName('img'));
+                if (images.length === 0) {
+                    return Promise.resolve(); // No images, resolve immediately
+                }
+
+                // Create a promise for each image
+                const promises = images.map(img => {
+                    return new Promise((resolve) => {
+                        if (img.complete) {
+                            // If already loaded (e.g., cached or data-uri)
+                            resolve();
+                        } else {
+                            // Wait for load or error events
+                            img.onload = resolve;
+                            img.onerror = resolve; // Resolve on error too, so we don't block forever
+                        }
+                    });
+                });
+
+                // Return a single promise that resolves when all individual promises are done
+                return Promise.all(promises);
+            }
+
 
             // --- Event Listeners ---
 
@@ -807,6 +840,7 @@
                 }
             });
 
+            // --- MODIFIED DOWNLOAD LISTENER ---
             // Handle "Download E-Pass"
             downloadButton.addEventListener("click", () => {
                 const passElement = document.getElementById("epass-card");
@@ -826,7 +860,13 @@
                 // Force repaint to ensure styles are applied before capture
                 void passElement.offsetWidth;
 
-                setTimeout(() => { // Delay to allow images (QR, Avatar) to render
+                // --- THIS IS THE FIX ---
+                // We wait for ALL images (QR code + Avatar) in the passElement
+                // to be fully loaded *before* we run html2canvas.
+                // This replaces the unreliable 300ms setTimeout.
+                imagesLoaded(passElement).then(() => {
+
+                    // Now that all images are loaded, we can capture.
                     html2canvas(passElement, {
                         useCORS: true,      // Essential for external images (Cloudinary)
                         scale: 2,           // Render at 2x resolution for better quality
@@ -857,7 +897,8 @@
                         downloadButton.disabled = false;
                         downloadButton.textContent = "Download E-Pass";
                     });
-                }, 300); // 300ms delay
+
+                }); // End of imagesLoaded.then()
 
             });
         });
