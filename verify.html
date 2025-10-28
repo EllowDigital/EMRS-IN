@@ -15,7 +15,7 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" type="text/javascript"></script>
-    
+
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0d6efd">
     <meta name="mobile-web-app-capable" content="yes">
@@ -119,6 +119,14 @@
             border: none;
         }
 
+        /* This forces the video feed to cover the container, preventing letterboxing */
+        #qr-reader video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+
         /* Active Scan Line Animation */
         #qr-reader-container::after {
             content: '';
@@ -150,8 +158,8 @@
                 transform: translateY(calc(100% - 3px));
             }
         }
-        
-        /* --- NEW: Zoom Controls --- */
+
+        /* --- Zoom Controls --- */
         #zoom-controls {
             transition: opacity 0.3s ease;
         }
@@ -255,7 +263,8 @@
                                     <label for="zoom-slider" class="form-label mb-1 small text-muted">Zoom</label>
                                     <div class="d-flex align-items-center">
                                         <i class="bi bi-zoom-out me-2"></i>
-                                        <input type="range" class="form-range" id="zoom-slider" min="1" max="5" step="0.1">
+                                        <input type="range" class="form-range" id="zoom-slider" min="1" max="5"
+                                            step="0.1">
                                         <i class="bi bi-zoom-in ms-2"></i>
                                     </div>
                                 </div>
@@ -356,7 +365,8 @@
                 currentAttendeeRegId: null,
                 scanner: null,
                 isScannerRunning: false,
-                messageTimeout: null
+                messageTimeout: null,
+                cameraTrack: null // <-- FIX: Store the camera track for zoom
             };
 
             // --- DOM Element Cache ---
@@ -369,8 +379,8 @@
                 startScanBtn: document.getElementById("start-scan-btn"),
                 startScanBtnText: document.getElementById("start-scan-btn-text"),
                 qrReader: document.getElementById("qr-reader"),
-                
-                // NEW: Zoom controls
+
+                // Zoom controls
                 zoomControls: document.getElementById("zoom-controls"),
                 zoomSlider: document.getElementById("zoom-slider"),
 
@@ -400,8 +410,6 @@
 
             /**
              * Sets the entire application UI state.
-             * This is the core function for controlling the UI.
-             * @param {'lookup' | 'scanning' | 'loading' | 'result'} state
              */
             function setUIState(state) {
                 ui.body.dataset.uiState = state;
@@ -413,7 +421,6 @@
                 }
 
                 if (state === 'lookup') {
-                    // Reset form fields and state
                     appState.currentAttendeeRegId = null;
                     ui.manualForm.reset();
                     ui.manualForm.classList.remove("was-validated");
@@ -425,27 +432,19 @@
              */
             function resetUI() {
                 clearMessage();
-
-                // Reset result fields
                 ui.resultAvatar.src = config.placeholders.avatar;
                 ui.resultName.textContent = "";
                 ui.resultRegId.textContent = "";
                 ui.resultPhone.textContent = "";
                 ui.resultEmail.textContent = "";
-
-                // Reset check-in button
                 ui.checkinBtn.disabled = false;
                 ui.checkinBtn.classList.replace('btn-secondary', 'btn-success');
                 ui.checkinBtnText.textContent = "Confirm Check-In";
-
-                // Set state back to lookup
                 setUIState('lookup');
             }
 
             /**
              * Shows an auto-hiding toast message.
-             * @param {string} message The message to display.
-             * @param {'info' | 'success' | 'warning' | 'danger'} type The alert type.
              */
             function showMessage(message, type = 'info') {
                 if (appState.messageTimeout) {
@@ -460,12 +459,10 @@
                     </div>
                 `;
 
-                // Clear previous messages and append new one
                 ui.messageBox.innerHTML = '';
                 ui.messageBox.append(wrapper);
-                window.scrollTo(0, 0); // Scroll up to see it
+                window.scrollTo(0, 0);
 
-                // Auto-hide after 5 seconds
                 appState.messageTimeout = setTimeout(() => {
                     const alert = wrapper.querySelector('.alert');
                     if (alert) {
@@ -485,10 +482,10 @@
             }
 
             /**
-             * Controls the loading spinner state for buttons.
-             * @param {boolean} isLoading True to show spinner, false to hide.
-             * @param {'lookup' | 'checkin'} type The button type.
-             */
+              * Controls the loading spinner state for buttons.
+              * @param {boolean} isLoading True to show spinner, false to hide.
+              * @param {'lookup' | 'checkin'} type The button type.
+              */
             function setLoadingState(isLoading, type) {
                 const isCheckin = type === 'checkin';
                 const spinner = isCheckin ? ui.checkinSpinner : ui.lookupSpinner;
@@ -507,26 +504,26 @@
                     spinner.classList.add("d-none");
                     button.disabled = false;
                     btnText.textContent = defaultText;
-                    if (type === 'lookup') setUIState('lookup'); // Revert state
+
+                    // --- THIS IS THE FIX ---
+                    // Only revert to 'lookup' if we are not already on the 'result' screen.
+                    if (type === 'lookup' && ui.body.dataset.uiState !== 'result') {
+                        setUIState('lookup'); // Revert state
+                    }
                 }
             }
-
             /**
              * Populates the results card with attendee data.
-             * @param {object} attendee The attendee data object.
-             * @param {boolean} isCheckedIn The check-in status.
              */
             function displayResults(attendee, isCheckedIn) {
                 appState.currentAttendeeRegId = attendee.registration_id;
 
-                // Populate data
                 ui.resultAvatar.src = attendee.profile_pic_url || config.placeholders.avatar;
                 ui.resultName.textContent = attendee.full_name;
                 ui.resultRegId.textContent = attendee.registration_id;
                 ui.resultPhone.textContent = attendee.phone_number || 'N/A';
                 ui.resultEmail.textContent = attendee.email || 'N/A';
 
-                // Update status badge and check-in button
                 if (isCheckedIn) {
                     ui.resultStatusBadge.className = 'bg-warning text-dark';
                     ui.resultStatusBadge.innerHTML = `<i class="bi bi-person-check-fill me-2"></i>ALREADY CHECKED IN`;
@@ -541,13 +538,11 @@
                     ui.checkinBtnText.textContent = "Confirm Check-In";
                 }
 
-                // Show the results
                 setUIState('result');
             }
 
             /**
              * Gets a user-friendly error message.
-             * @param {Error} error The error object.
              */
             function getFriendlyErrorMessage(error) {
                 if (error.name === 'AbortError') {
@@ -563,9 +558,6 @@
 
             /**
              * A fetch wrapper with a timeout and no-cache policy.
-             * @param {string} url The URL to fetch.
-             * @param {object} options The fetch options.
-             * @param {number} timeout The timeout in milliseconds.
              */
             async function fetchWithTimeout(url, options, timeout = config.api.timeout) {
                 const controller = new AbortController();
@@ -574,7 +566,7 @@
                 const response = await fetch(url, {
                     ...options,
                     signal: controller.signal,
-                    cache: 'no-store' // CRITICAL: Prevents caching
+                    cache: 'no-store'
                 });
 
                 clearTimeout(id);
@@ -583,7 +575,6 @@
 
             /**
              * Fetches attendee data from the API.
-             * @param {string} registrationId The ID to look up.
              */
             async function fetchAttendee(registrationId) {
                 if (!registrationId) {
@@ -645,7 +636,6 @@
 
                     showMessage("Check-In Successful!", "success");
 
-                    // Update UI to reflect successful check-in
                     ui.resultStatusBadge.className = 'bg-success text-white';
                     ui.resultStatusBadge.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i>CHECK-IN COMPLETE`;
                     ui.checkinBtn.disabled = true;
@@ -665,10 +655,8 @@
 
             function onScanSuccess(decodedText, decodedResult) {
                 console.log(`Scan result: ${decodedText}`);
-                // stopScanner() is implicitly called by setUIState('result') inside fetchAttendee
 
                 try {
-                    // Try to parse as JSON first (e.g., { "regId": "UP25-..." })
                     const data = JSON.parse(decodedText);
                     if (data && data.regId) {
                         fetchAttendee(data.regId);
@@ -676,7 +664,6 @@
                         throw new Error("Invalid QR code format (JSON).");
                     }
                 } catch (jsonError) {
-                    // If not JSON, assume it's a plain text ID
                     console.warn("QR code is not JSON, treating as plain text ID.");
                     if (decodedText && decodedText.trim().length > 0) {
                         fetchAttendee(decodedText);
@@ -689,18 +676,34 @@
 
             function onScanFailure(error) {
                 // This fires continuously. It's safe to ignore.
-                // console.warn(`Scan failure: ${error}`);
             }
 
             /**
-             * NEW: Initializes zoom controls if supported by the camera.
+             * CORRECTED: Initializes zoom controls using standard browser APIs.
              */
             function initializeZoomControls() {
                 try {
-                    const capabilities = appState.scanner.getRunningTrackCameraCapabilities();
-                    const settings = appState.scanner.getRunningTrackCameraSettings();
+                    // Find the video element created by the library
+                    const videoElement = ui.qrReader.querySelector('video');
+                    if (!videoElement || !videoElement.srcObject) {
+                        console.warn("Could not find video element to apply zoom.");
+                        ui.zoomControls.style.display = 'none';
+                        return;
+                    }
+
+                    const track = videoElement.srcObject.getVideoTracks()[0];
+                    if (!track) {
+                        console.warn("Could not find video track.");
+                        ui.zoomControls.style.display = 'none';
+                        return;
+                    }
+
+                    // Get capabilities from the track itself
+                    const capabilities = track.getCapabilities();
+                    const settings = track.getSettings();
 
                     if (capabilities && capabilities.zoom) {
+                        appState.cameraTrack = track; // Store the track
                         const { min, max, step } = capabilities.zoom;
                         ui.zoomSlider.min = min;
                         ui.zoomSlider.max = max;
@@ -722,44 +725,52 @@
                 if (appState.isScannerRunning) return;
 
                 if (!appState.scanner) {
-                    // Use the Html5Qrcode class from the script
                     appState.scanner = new Html5Qrcode("qr-reader");
                 }
 
-                const config = { fps: 10, qrbox: { width: 250, height: 250 }, rememberLastUsedCamera: true };
+                // UPDATED: Make qrbox responsive
+                const scannerConfig = {
+                    fps: 10,
+                    qrbox: (viewfinderWidth, viewfinderHeight) => {
+                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                        const size = Math.floor(minEdge * 0.75); // 75% of smallest dimension
+                        return { width: size, height: size };
+                    },
+                    rememberLastUsedCamera: true
+                };
 
-                appState.scanner.start({ facingMode: "environment" }, config, onScanSuccess, onScanFailure)
+                appState.scanner.start({ facingMode: "environment" }, scannerConfig, onScanSuccess, onScanFailure)
                     .then(() => {
                         console.log("Scanner started with back camera.");
                         appState.isScannerRunning = true;
                         ui.startScanBtnText.textContent = "Scanning... (Point at QR Code)";
                         ui.startScanBtn.disabled = true;
-                        setUIState('scanning'); // Ensure state is correct
-                        initializeZoomControls(); // NEW: Check for zoom
+                        setUIState('scanning');
+                        initializeZoomControls(); // Check for zoom
                     })
                     .catch((err) => {
                         console.warn("Back camera failed, trying any camera:", err);
-                        // Fallback to any camera
-                        appState.scanner.start({}, config, onScanSuccess, onScanFailure)
+                        appState.scanner.start({}, scannerConfig, onScanSuccess, onScanFailure)
                             .then(() => {
                                 console.log("Scanner started with default camera.");
                                 appState.isScannerRunning = true;
                                 ui.startScanBtnText.textContent = "Scanning... (Point at QR Code)";
                                 ui.startScanBtn.disabled = true;
-                                setUIState('scanning'); // Ensure state is correct
-                                initializeZoomControls(); // NEW: Check for zoom
+                                setUIState('scanning');
+                                initializeZoomControls(); // Check for zoom
                             })
                             .catch((err2) => {
                                 console.error("Failed to start any camera:", err2);
                                 showMessage("Could not start camera. Please grant permissions or use manual lookup.", "danger");
-                                setUIState('lookup'); // Go back to lookup state
+                                setUIState('lookup');
                             });
                     });
             }
 
             function stopScanner() {
-                ui.zoomControls.style.display = 'none'; // NEW: Always hide zoom controls when stopping
-                
+                ui.zoomControls.style.display = 'none'; // Always hide zoom
+                appState.cameraTrack = null; // CORRECTED: Clear the track reference
+
                 if (appState.scanner && appState.isScannerRunning) {
                     try {
                         appState.scanner.stop().then(() => {
@@ -774,6 +785,7 @@
                     } catch (err) {
                         console.warn("Scanner stop error:", err);
                         appState.isScannerRunning = false;
+                        appState.cameraTrack = null; // Ensure it's cleared
                         ui.startScanBtnText.textContent = "Start Camera Scan";
                         ui.startScanBtn.disabled = false;
                     }
@@ -786,13 +798,14 @@
                 setUIState('scanning');
             });
 
-            // NEW: Zoom Slider Listener
+            // CORRECTED: Zoom Slider Listener
             ui.zoomSlider.addEventListener('input', () => {
-                if (appState.scanner && appState.isScannerRunning) {
+                // Check for the stored track
+                if (appState.cameraTrack && appState.isScannerRunning) {
                     try {
                         const zoomValue = parseFloat(ui.zoomSlider.value);
-                        // Apply constraints to the running video track
-                        appState.scanner.applyVideoConstraints({
+                        // Apply constraints directly to the track
+                        appState.cameraTrack.applyConstraints({
                             advanced: [{ zoom: zoomValue }]
                         });
                     } catch (err) {
@@ -815,7 +828,6 @@
 
             ui.checkinBtn.addEventListener("click", performCheckIn);
 
-            // Both clear buttons do the same thing
             ui.clearBtnTop.addEventListener("click", resetUI);
             ui.clearBtnBottom.addEventListener("click", resetUI);
 
