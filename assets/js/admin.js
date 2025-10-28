@@ -64,6 +64,12 @@ document.addEventListener('DOMContentLoaded', () => {
         filterSelect: document.getElementById('filter-attendee-select'),
         attendeeTableBody: document.getElementById('attendee-table-body'),
         attendeeTablePlaceholder: document.getElementById('attendee-table-placeholder'),
+        adminLogoutBtn: document.getElementById('admin-logout-btn'),
+        adminStatusBanner: document.getElementById('admin-status-banner'),
+        adminStatusMessage: document.getElementById('admin-status-message'),
+        adminStatusSubtext: document.getElementById('admin-status-subtext'),
+        adminStatusRefresh: document.getElementById('admin-status-refresh'),
+        adminStatusDismiss: document.getElementById('admin-status-dismiss'),
     };
 
     // --- UI Helper Functions ---
@@ -217,19 +223,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchDashboardData() {
         try {
+            const authHeader = { 'Authorization': `Bearer ${appState.staffPassword || ''}` };
             const [statsRes, statusRes, healthRes] = await Promise.all([
-                fetchWithTimeout(config.api.getStats),
-                fetchWithTimeout(config.api.getSystemStatus),
-                fetchWithTimeout(config.api.getSystemStatus) // This can be a dedicated health check endpoint later
+                fetchWithTimeout(config.api.getStats, { headers: authHeader }),
+                fetchWithTimeout(config.api.getSystemStatus, { headers: authHeader }),
+                fetchWithTimeout(config.api.getSystemStatus, { headers: authHeader }) // This can be a dedicated health check endpoint later
             ]);
 
             if (statsRes.ok) {
                 const stats = await statsRes.json();
                 updateStats(stats);
+            } else {
+                const txt = await statsRes.text().catch(() => statsRes.status);
+                console.warn('Failed to load stats:', statsRes.status, txt);
+                showToast('Could not load stats: ' + (txt || statsRes.status), true);
+                // If server reported 503 (DB timeout/unreachable) show admin status and auto-refresh
+                if (statsRes.status === 503) {
+                    showAdminStatus(`Database unreachable. Retrying shortly...`);
+                }
             }
             if (statusRes.ok) {
                 appState.systemStatus = await statusRes.json();
                 updateSystemControlsUI();
+            } else {
+                const txt = await statusRes.text().catch(() => statusRes.status);
+                console.warn('Failed to load system status:', statusRes.status, txt);
+                showToast('Could not load system status: ' + (txt || statusRes.status), true);
+                if (statusRes.status === 503) {
+                    showAdminStatus(`System configuration unavailable. Retrying shortly...`);
+                }
             }
             if (healthRes.ok) {
                 const health = await healthRes.json(); // Mocking health from system status for now
@@ -238,6 +260,40 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Failed to fetch dashboard data:", error);
+            // Show status banner on network/timeout errors and attempt auto-retry
+            const msg = error && error.message ? error.message : 'Network or database error.';
+            showAdminStatus(`Connection error: ${msg}`);
+        }
+    }
+
+    // Show a prominent admin status banner with auto-refresh countdown
+    let adminStatusTimer = null;
+    function showAdminStatus(message, seconds = 10) {
+        if (!ui.adminStatusBanner) return;
+        ui.adminStatusMessage.textContent = message;
+        ui.adminStatusSubtext.textContent = `This page will retry in ${seconds} seconds.`;
+        ui.adminStatusBanner.classList.remove('d-none');
+        // Clear any existing timer
+        if (adminStatusTimer) clearInterval(adminStatusTimer);
+        let remaining = seconds;
+        adminStatusTimer = setInterval(() => {
+            remaining -= 1;
+            ui.adminStatusSubtext.textContent = `This page will retry in ${remaining} seconds.`;
+            if (remaining <= 0) {
+                clearInterval(adminStatusTimer);
+                adminStatusTimer = null;
+                // Attempt to re-fetch dashboard data
+                fetchDashboardData();
+            }
+        }, 1000);
+    }
+
+    function hideAdminStatus() {
+        if (!ui.adminStatusBanner) return;
+        ui.adminStatusBanner.classList.add('d-none');
+        if (adminStatusTimer) {
+            clearInterval(adminStatusTimer);
+            adminStatusTimer = null;
         }
     }
 
@@ -277,15 +333,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const response = await fetchWithTimeout(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}`);
-            if (!response.ok) throw new Error('Failed to fetch attendees.');
+            const response = await fetchWithTimeout(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}`, {
+                headers: {
+                    'Authorization': `Bearer ${appState.staffPassword || ''}`
+                }
+            });
+            if (!response.ok) {
+                const text = await response.text().catch(() => `HTTP ${response.status}`);
+                throw new Error(`Failed to fetch attendees: ${response.status} ${text}`);
+            }
             const payload = await response.json();
             // API returns an object { attendees, total, page, limit }
             appState.attendees = Array.isArray(payload.attendees) ? payload.attendees : (Array.isArray(payload) ? payload : []);
             renderAttendeeTable();
         } catch (error) {
             console.error("Failed to search attendees:", error);
-            ui.attendeeTablePlaceholder.innerHTML = '<p class="text-danger">Could not load attendee data.</p>';
+            const message = error.message || 'Could not load attendee data.';
+            ui.attendeeTablePlaceholder.innerHTML = `<p class="text-danger">${message}</p>`;
             ui.attendeeTablePlaceholder.style.display = 'block';
             ui.attendeeTableBody.innerHTML = '';
         }
@@ -313,6 +377,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     ui.filterSelect.addEventListener('change', searchAttendees);
+
+    // Logout handler: clear in-memory credentials and return to login
+    if (ui.adminLogoutBtn) {
+        ui.adminLogoutBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            appState.staffPassword = null;
+            appState.isLoggedIn = false;
+            setUIState('login');
+            showToast('Logged out. Please sign in again.');
+        });
+    }
+
+    if (ui.adminStatusRefresh) {
+        ui.adminStatusRefresh.addEventListener('click', (e) => {
+            e.preventDefault();
+            hideAdminStatus();
+            fetchDashboardData();
+        });
+    }
+    if (ui.adminStatusDismiss) {
+        ui.adminStatusDismiss.addEventListener('click', (e) => {
+            e.preventDefault();
+            hideAdminStatus();
+        });
+    }
 
     // --- Initializer ---
     function initializeAppDashboard() {

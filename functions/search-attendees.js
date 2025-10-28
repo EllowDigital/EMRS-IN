@@ -22,35 +22,42 @@ exports.handler = async (event, context) => {
             max: 2,
         });
 
-        /*
-         * Return fields shaped for the admin UI (aliases):
-         * - full_name (was name)
-         * - registration_id (was pass_id)
-         * - phone_number (was phone)
-         * - is_checked_in (was checked_in)
-         */
-        let query = sql`SELECT id,
-            name AS full_name,
-            pass_id AS registration_id,
-            phone AS phone_number,
-            email,
-            profile_pic_url,
-            to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at,
-            checked_in AS is_checked_in,
-            to_char(checked_in_at, 'YYYY-MM-DD HH24:MI:SS') as checked_in_at
-            FROM attendees`;
+        // Detect which columns exist so this function works across schema variants
+        const colRows = await sql`
+            SELECT column_name FROM information_schema.columns
+            WHERE table_name = 'attendees' AND column_name IN ('name','full_name','pass_id','registration_id','phone','phone_number','email','profile_pic_url','created_at','checked_in','checked_in_at')
+        `;
+        const cols = new Set(colRows.map(r => r.column_name));
+
+        const nameField = cols.has('full_name') ? sql`full_name AS full_name` : (cols.has('name') ? sql`name AS full_name` : sql`NULL::text AS full_name`);
+        const regIdField = cols.has('registration_id') ? sql`registration_id AS registration_id` : (cols.has('pass_id') ? sql`pass_id AS registration_id` : sql`NULL::text AS registration_id`);
+        const phoneField = cols.has('phone_number') ? sql`phone_number AS phone_number` : (cols.has('phone') ? sql`phone AS phone_number` : sql`NULL::text AS phone_number`);
+    const checkedInField = cols.has('checked_in') ? sql`checked_in AS is_checked_in` : sql`FALSE AS is_checked_in`;
+    const checkedInAtField = cols.has('checked_in_at') ? sql`to_char(checked_in_at, 'YYYY-MM-DD HH24:MI:SS') as checked_in_at` : sql`NULL::text as checked_in_at`;
+
+    let query = sql`SELECT id, ${nameField}, ${regIdField}, ${phoneField}, email, profile_pic_url, to_char(created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at, ${checkedInField}, ${checkedInAtField} FROM attendees`;
         let countQuery = sql`SELECT COUNT(*) FROM attendees`;
         
         const conditions = [];
         if (q && q.length > 0) {
             const searchTerm = `%${q}%`;
-            conditions.push(sql`(name ILIKE ${searchTerm} OR email ILIKE ${searchTerm} OR phone::text ILIKE ${searchTerm} OR pass_id ILIKE ${searchTerm})`);
+            const parts = [];
+            if (cols.has('full_name')) parts.push(sql`full_name ILIKE ${searchTerm}`);
+            if (cols.has('name')) parts.push(sql`name ILIKE ${searchTerm}`);
+            if (cols.has('email')) parts.push(sql`email ILIKE ${searchTerm}`);
+            if (cols.has('phone_number')) parts.push(sql`phone_number::text ILIKE ${searchTerm}`);
+            if (cols.has('phone')) parts.push(sql`phone::text ILIKE ${searchTerm}`);
+            if (cols.has('registration_id')) parts.push(sql`registration_id ILIKE ${searchTerm}`);
+            if (cols.has('pass_id')) parts.push(sql`pass_id ILIKE ${searchTerm}`);
+            if (parts.length > 0) {
+                conditions.push(sql`(${sql.join ? sql.join(parts, sql` OR `) : parts.reduce((a,b)=> sql`${a} OR ${b}`)})`);
+            }
         }
 
         if (filter === 'checked_in') {
-            conditions.push(sql`checked_in = true`);
+            if (cols.has('checked_in')) conditions.push(sql`checked_in = true`);
         } else if (filter === 'not_checked_in') {
-            conditions.push(sql`checked_in = false`);
+            if (cols.has('checked_in')) conditions.push(sql`checked_in = false`);
         }
 
         if (conditions.length > 0) {
