@@ -3,7 +3,8 @@ const postgres = require('postgres');
 exports.handler = async (event, context) => {
     let sql;
     try {
-    sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
+    // Use a short connect timeout so admin page doesn't hang when DB is unreachable
+    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', connect_timeout: 5, max: 2 });
 
         const configResult = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
         
@@ -19,6 +20,18 @@ exports.handler = async (event, context) => {
         };
     } catch (error) {
         console.error('Error getting system status:', error);
+        // If DB is unreachable, return a controlled fail-safe indicating maintenance_mode true
+        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH')) {
+            return {
+                statusCode: 503,
+                body: JSON.stringify({
+                    db_connected: false,
+                    registration_enabled: false,
+                    maintenance_mode: true,
+                    error: 'Database unreachable. Assuming maintenance mode.'
+                }),
+            };
+        }
         return {
             statusCode: 500,
             body: JSON.stringify({

@@ -165,6 +165,17 @@ exports.handler = async (event) => {
     }
 
     try {
+        // Server-side guard: check if registrations are enabled in system_config
+        try {
+            const cfg = await sql`SELECT value FROM system_config WHERE key = 'registration_enabled' LIMIT 1`;
+            if (cfg && cfg.length > 0 && cfg[0].value !== 'true') {
+                console.warn('Registration attempt blocked: registrations are disabled in system_config.');
+                return { statusCode: 403, headers, body: JSON.stringify({ message: 'Registrations are currently closed.' }) };
+            }
+        } catch (cfgErr) {
+            console.warn('Could not read system configuration; allowing registration as fallback.', cfgErr.message);
+        }
+
         console.log(`Checking for duplicate phone: ${phone}`);
         const existingPhone = await sql`
             SELECT registration_id FROM attendees WHERE phone_number = ${phone} LIMIT 1

@@ -56,27 +56,51 @@ document.addEventListener("DOMContentLoaded", () => {
             const status = await response.json();
 
             if (status.maintenance_mode) {
-                registrationFormContainer.innerHTML = ''; // Clear the form
+                // Strict maintenance mode: hide all user-facing interactions and show a clear maintenance banner
+                registrationSection.classList.add('d-none');
+                findPassSection.classList.add('d-none');
+                epassSection.classList.add('d-none');
                 statusMessage.textContent = 'The system is currently down for maintenance. Please check back later.';
                 statusBanner.classList.remove('d-none', 'alert-warning');
                 statusBanner.classList.add('alert-danger');
             } else if (!status.registration_enabled) {
-                registrationForm.classList.add('d-none');
+                // Registrations are closed: hide registration form but allow find-pass
+                registrationSection.classList.add('d-none');
                 findPassSection.classList.remove('d-none'); // Ensure find pass is visible
+                epassSection.classList.add('d-none');
                 statusMessage.textContent = 'New registrations are currently closed. You can still find your existing pass.';
                 statusBanner.classList.remove('d-none', 'alert-danger');
                 statusBanner.classList.add('alert-warning');
             } else {
+                // Normal operation
                 statusBanner.classList.add('d-none');
-                registrationForm.classList.remove('d-none');
+                registrationSection.classList.remove('d-none');
+                findPassSection.classList.remove('d-none');
             }
         } catch (error) {
             console.error('System Status Check Failed:', error);
-            // Fail-safe: Assume maintenance mode
-            registrationFormContainer.innerHTML = '';
-            statusMessage.textContent = 'Could not verify system status. Please try refreshing the page.';
-            statusBanner.classList.remove('d-none', 'alert-warning');
-            statusBanner.classList.add('alert-danger');
+            // Fail-safe: show a non-blocking banner and allow form as a fallback
+            statusMessage.textContent = 'Could not verify system status. Showing form as fallback — please retry.';
+            statusBanner.classList.remove('d-none');
+            statusBanner.classList.remove('alert-danger', 'alert-warning');
+            statusBanner.classList.add('alert-warning');
+
+            // Add a retry button if not present
+            if (!document.getElementById('status-retry-btn')) {
+                const retryBtn = document.createElement('button');
+                retryBtn.id = 'status-retry-btn';
+                retryBtn.type = 'button';
+                retryBtn.className = 'btn btn-sm btn-outline-light ms-2';
+                retryBtn.textContent = 'Retry';
+                retryBtn.addEventListener('click', () => {
+                    statusBanner.classList.add('d-none');
+                    checkSystemStatus();
+                });
+                statusBanner.appendChild(retryBtn);
+            }
+
+            // Keep registration visible as a degraded fallback so users can still register.
+            registrationForm.classList.remove('d-none');
         }
     }
 
