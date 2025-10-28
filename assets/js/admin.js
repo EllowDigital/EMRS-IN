@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Attendees
         searchInput: document.getElementById('search-attendee-input'),
     searchBtn: document.getElementById('search-attendee-btn'),
+        refreshStatsBtn: document.getElementById('refresh-stats-btn'),
         filterSelect: document.getElementById('filter-attendee-select'),
         attendeeTableBody: document.getElementById('attendee-table-body'),
         attendeeTablePlaceholder: document.getElementById('attendee-table-placeholder'),
@@ -464,6 +465,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (editModal) editModal.hide();
                 // refresh list (simple approach: re-run search)
                 searchAttendees();
+                // refresh stats to reflect any change
+                fetchDashboardData();
             } catch (err) {
                 console.error('Update attendee error', err);
                 showToast(err.message || 'Could not update attendee', true);
@@ -491,6 +494,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 showToast('Attendee deleted');
                 if (deleteModal) deleteModal.hide();
                 searchAttendees();
+                // refresh stats after deletion
+                fetchDashboardData();
             } catch (err) {
                 console.error('Delete error', err);
                 ui.deleteError.textContent = err.message || 'Could not delete attendee';
@@ -528,6 +533,15 @@ document.addEventListener('DOMContentLoaded', () => {
             // cancel any debounce and search immediately
             clearTimeout(appState.debounceTimer);
             searchAttendees();
+        });
+    }
+
+    // Refresh stats button (always visible) - fetch stats without full page reload
+    if (ui.refreshStatsBtn) {
+        ui.refreshStatsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            showToast('Refreshing stats...');
+            fetchDashboardData();
         });
     }
 

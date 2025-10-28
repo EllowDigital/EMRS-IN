@@ -5,21 +5,34 @@ exports.handler = async (event, context) => {
     try {
     // For admin stats prefer the default connection behavior (avoid overly aggressive timeouts while an admin session is active)
     sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
-        
-        // Run total first, then attempt checked-in count with a graceful fallback if the column is missing
-        const totalResult = await sql`SELECT COUNT(*) FROM attendees`;
-        let checkedInCount = 0;
-        try {
-            const checkedInResult = await sql`SELECT COUNT(*) FROM attendees WHERE checked_in = TRUE`;
-            checkedInCount = parseInt(checkedInResult[0].count, 10);
-        } catch (innerErr) {
-            // If column does not exist (e.g., different schema), log and fallback to 0
-            console.warn('Checked-in column missing or query failed; returning 0 for checked-in count.', innerErr.message || innerErr);
-            checkedInCount = 0;
-        }
 
+        // Run total first
+        const totalResult = await sql`SELECT COUNT(*) FROM attendees`;
         const total_attendees = parseInt(totalResult[0].count, 10);
-        const checked_in_count = checkedInCount;
+
+        // Determine checked-in count:
+        // Prefer counting distinct attendee_id from check_ins table if present.
+        let checked_in_count = 0;
+        try {
+            const checkInsTable = await sql`SELECT table_name FROM information_schema.tables WHERE table_name = 'check_ins' AND table_schema = 'public'`;
+            const hasCheckIns = Array.isArray(checkInsTable) && checkInsTable.length > 0;
+            if (hasCheckIns) {
+                const checkedRes = await sql`SELECT COUNT(DISTINCT attendee_id) FROM check_ins`;
+                checked_in_count = parseInt(checkedRes[0].count, 10);
+            } else {
+                // Fallback to attendees.checked_in column if available
+                try {
+                    const checkedRes = await sql`SELECT COUNT(*) FROM attendees WHERE checked_in = TRUE`;
+                    checked_in_count = parseInt(checkedRes[0].count, 10);
+                } catch (innerErr) {
+                    console.warn('Checked-in column missing; returning 0 for checked-in count.', innerErr && innerErr.message ? innerErr.message : innerErr);
+                    checked_in_count = 0;
+                }
+            }
+        } catch (err) {
+            console.warn('Failed to determine check-in counts, falling back to 0.', err && err.message ? err.message : err);
+            checked_in_count = 0;
+        }
         
         return {
             statusCode: 200,
