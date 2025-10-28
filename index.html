@@ -840,7 +840,9 @@
                 }
             });
 
-            // --- MODIFIED DOWNLOAD LISTENER ---
+
+            // --- *** COMPLETE RE-WRITTEN DOWNLOAD LOGIC *** ---
+
             // Handle "Download E-Pass"
             downloadButton.addEventListener("click", () => {
                 const passElement = document.getElementById("epass-card");
@@ -861,46 +863,62 @@
                 void passElement.offsetWidth;
 
                 // --- THIS IS THE FIX ---
-                // We wait for ALL images (QR code + Avatar) in the passElement
-                // to be fully loaded *before* we run html2canvas.
-                // This replaces the unreliable 300ms setTimeout.
+                // 1. Wait for ALL images (QR code + Avatar) in the passElement
+                //    to be fully loaded *before* we run html2canvas.
                 imagesLoaded(passElement).then(() => {
 
-                    // Now that all images are loaded, we can capture.
-                    html2canvas(passElement, {
-                        useCORS: true,      // Essential for external images (Cloudinary)
-                        scale: 2,           // Render at 2x resolution for better quality
-                        backgroundColor: "#ffffff", // Explicit white background
-                        logging: false,     // Disable console logging
-                        windowWidth: 375,   // Define canvas render width explicitly
-                        width: 375,         // Match the CSS width for the download class
-                        scrollX: 0,
-                        scrollY: 0,
-                    }).then(canvas => {
-                        // Create and click download link
-                        const link = document.createElement('a');
-                        link.href = canvas.toDataURL('image/png');
-                        link.download = filename;
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                        showMessage("E-Pass downloaded successfully!", "success");
-                    }).catch(err => {
-                        console.error("E-Pass download failed:", err);
-                        showMessage("Could not download E-Pass. Check console for details.", "danger");
-                    }).finally(() => {
-                        // --- Restore original state ---
-                        passElement.className = originalClasses;
-                        passElement.style.cssText = originalStyle;
+                    // 2. Add a very short delay (50ms) to allow the browser to 
+                    //    "paint" the loaded images before capture.
+                    setTimeout(() => {
 
-                        // Reset button
-                        downloadButton.disabled = false;
-                        downloadButton.textContent = "Download E-Pass";
-                    });
+                        // 3. Now that images are loaded AND painted, capture the canvas.
+                        html2canvas(passElement, {
+                            useCORS: true,      // Essential for external images (Cloudinary)
+                            scale: 2,           // Render at 2x resolution for better quality
+                            backgroundColor: "#ffffff", // Explicit white background
+                            logging: false,     // Disable console logging
+                            windowWidth: 375,   // Define canvas render width explicitly
+                            width: 375,         // Match the CSS width for the download class
+                            scrollX: 0,
+                            scrollY: 0,
+                        }).then(canvas => {
+                            // Create and click download link
+                            const link = document.createElement('a');
+                            link.href = canvas.toDataURL('image/png');
+                            link.download = filename;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            showMessage("E-Pass downloaded successfully!", "success");
+                        }).catch(err => {
+                            console.error("E-Pass download failed:", err);
+                            showMessage("Could not download E-Pass. Check console for details.", "danger");
+                        }).finally(() => {
+                            // --- Restore original state ---
+                            // This .finally() runs after html2canvas
+                            passElement.className = originalClasses;
+                            passElement.style.cssText = originalStyle;
 
-                }); // End of imagesLoaded.then()
+                            // Reset button
+                            downloadButton.disabled = false;
+                            downloadButton.textContent = "Download E-Pass";
+                        });
 
-            });
+                    }, 50); // 50ms "paint" delay
+
+                }).catch(err => {
+                    // This catches errors from imagesLoaded (highly unlikely)
+                    console.error("Image loading check failed:", err);
+                    // Restore UI even if image loading fails
+                    passElement.className = originalClasses;
+                    passElement.style.cssText = originalStyle;
+                    downloadButton.disabled = false;
+                    downloadButton.textContent = "Download E-Pass";
+                    showMessage("Could not prepare E-Pass for download.", "danger");
+                });
+
+            }); // --- END OF RE-WRITTEN DOWNLOAD LOGIC ---
+
         });
     </script>
 </body>
