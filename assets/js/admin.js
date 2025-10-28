@@ -158,35 +158,73 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.checkInPercentage.textContent = `${percentage}%`;
     }
 
-    // Restore staff token from sessionStorage if available and not expired
+    // Browser-friendly JWT parsing (base64url) for token payload
+    function parseJwtPayload(token) {
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return null;
+            const p64 = parts[1];
+            // base64url -> base64
+            const b64 = p64.replace(/-/g, '+').replace(/_/g, '/');
+            // pad
+            const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
+            const json = decodeURIComponent(Array.prototype.map.call(atob(b64 + pad), function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(json);
+        } catch (e) { return null; }
+    }
+
+    // Restore staff token from sessionStorage if available and not expired; schedule refresh
     function restoreTokenFromSession() {
         try {
             const token = sessionStorage.getItem('staff_token');
             if (!token) return false;
-            // Try to parse token payload (header.payload.sig)
-            const parts = token.split('.');
-            if (parts.length !== 3) {
-                appState.staffToken = token; // unknown format, accept it
-                window.__STAFF_TOKEN = token;
-                appState.isLoggedIn = true;
-                return true;
-            }
-            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+            const payload = parseJwtPayload(token);
             const now = Math.floor(Date.now() / 1000);
-            if (payload.exp && payload.exp < now) {
-                // expired
+            if (payload && payload.exp && payload.exp < now) {
                 sessionStorage.removeItem('staff_token');
                 return false;
             }
             appState.staffToken = token;
             window.__STAFF_TOKEN = token;
             appState.isLoggedIn = true;
+            // schedule refresh if token has expiry
+            if (payload && payload.exp) scheduleTokenRefresh(token, payload.exp);
             return true;
         } catch (e) {
-            // Could not parse token; clear to be safe
             try { sessionStorage.removeItem('staff_token'); } catch (_) {}
             return false;
         }
+    }
+
+    // Schedule a token refresh ahead of expiry (refresh 90s before exp)
+    let _tokenRefreshTimer = null;
+    function scheduleTokenRefresh(token, exp) {
+        try {
+            if (_tokenRefreshTimer) clearTimeout(_tokenRefreshTimer);
+            const now = Math.floor(Date.now() / 1000);
+            const refreshAt = Math.max(now + 5, exp - 90); // at least 5s in future, or 90s before exp
+            const ms = (refreshAt - now) * 1000;
+            _tokenRefreshTimer = setTimeout(async () => {
+                try {
+                    const res = await fetch('/.netlify/functions/staff-refresh', { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+                    if (res.ok) {
+                        const body = await res.json();
+                        if (body && body.token) {
+                            appState.staffToken = body.token;
+                            window.__STAFF_TOKEN = body.token;
+                            try { sessionStorage.setItem('staff_token', body.token); } catch (e) {}
+                            const p = parseJwtPayload(body.token);
+                            if (p && p.exp) scheduleTokenRefresh(body.token, p.exp);
+                            showToast('Session refreshed');
+                        }
+                    } else {
+                        console.warn('Token refresh failed:', res.status);
+                    }
+                } catch (e) { console.warn('Token refresh error', e); }
+            }, ms);
+        } catch (e) { /* ignore */ }
     }
 
     function updateSystemControlsUI() {
@@ -788,6 +826,18 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         window.addEventListener('offline', () => {
             showAdminStatus('You are offline. Some features are disabled.', 0);
+        });
+        // Keyboard shortcuts: / to focus search, r to refresh, l to logout (when not typing)
+        window.addEventListener('keydown', (e) => {
+            const tag = (document.activeElement && document.activeElement.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+            if (e.key === '/') {
+                e.preventDefault(); ui.searchInput.focus();
+            } else if (e.key.toLowerCase() === 'r') {
+                e.preventDefault(); if (ui.refreshStatsBtn) ui.refreshStatsBtn.click();
+            } else if (e.key.toLowerCase() === 'l') {
+                e.preventDefault(); if (ui.adminLogoutBtn) ui.adminLogoutBtn.click();
+            }
         });
     }
 

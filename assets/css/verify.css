@@ -20,6 +20,14 @@ body {
     border-bottom: 1px solid #e9ecef;
 }
 
+/* Header responsive tweaks for verify page */
+.app-header .btn { border-radius: 8px; }
+.app-header h1 { display: flex; align-items: center; gap: 0.5rem; }
+@media (max-width: 576px) {
+    .app-header .btn.btn-outline-primary { padding: 0.35rem 0.5rem; }
+    .app-header .btn.btn-outline-primary span { display: none; }
+}
+
 /* --- Card Container --- */
 .main-card {
     min-height: 75vh;

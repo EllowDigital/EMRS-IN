@@ -3,10 +3,10 @@
 
 :root {
     --bs-font-sans-serif: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --bs-primary: #0d6efd;
+    --bs-primary: #0066CC;
     --bs-primary-rgb: 13, 110, 253;
-    --bs-dark-blue: #0a2540;
-    --bs-light-gray: #f8f9fa;
+    --bs-dark-blue: #07203a;
+    --bs-light-gray: #f6f8fa;
     --bs-border-radius: 0.5rem;
     --bs-border-radius-lg: 0.75rem;
 }
@@ -163,3 +163,28 @@ button.btn { min-height: 40px; }
 
 /* Accessible toast notice */
 .toast-notice { padding: 0.75rem 1rem; border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,0.08); font-weight:600; }
+
+/* Brand polish */
+.app-header { background: linear-gradient(90deg, rgba(2,48,85,1) 0%, rgba(0,102,204,1) 100%); }
+.stat-card { background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%); }
+.card .card-header { background: transparent; border-bottom: none; }
+.btn-primary { background-color: var(--bs-primary); border-color: var(--bs-primary); }
+.btn-primary:hover { background-color: #005bb5; border-color:#005bb5; }
+
+/* Modal metadata styling */
+#edit-meta { color: #6c757d; margin-bottom: 0.5rem; }
+
+/* Slightly larger modal for edit on desktop */
+@media (min-width: 992px) {
+    .modal-dialog.modal-dialog-centered { max-width: 720px; }
+}
+
+/* Header controls: make button group compact and icon-friendly */
+.app-header .btn { border-radius: 8px; }
+.app-header .btn i { vertical-align: middle; }
+
+/* Collapse actions into icon-only on narrow screens */
+@media (max-width: 576px) {
+    .app-header .btn.btn-outline-light { padding: 0.45rem 0.5rem; }
+    .app-header .btn.btn-outline-light span { display: none; }
+}

@@ -271,17 +271,18 @@
                 <form id="edit-attendee-form">
                     <div class="modal-body">
                         <input type="hidden" id="edit-registration-id">
+                        <div class="mb-2 text-muted small" id="edit-meta">Registered: <span id="edit-created-at">—</span> • Status: <span id="edit-checked-in">—</span></div>
                         <div class="mb-3">
                             <label class="form-label">Full Name</label>
-                            <input id="edit-full-name" type="text" class="form-control" required>
+                            <input id="edit-full-name" type="text" class="form-control" required aria-label="Full name">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Email</label>
-                            <input id="edit-email" type="email" class="form-control">
+                            <input id="edit-email" type="email" class="form-control" aria-label="Email address">
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Phone</label>
-                            <input id="edit-phone" type="text" class="form-control">
+                            <input id="edit-phone" type="text" class="form-control" aria-label="Phone number">
                         </div>
                     </div>
                     <div class="modal-footer">
