@@ -357,7 +357,15 @@
         </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.5.2/qrcode.min.js"
+        integrity="sha512-c3HC2N32Up+KwxhFN2dZkoDWSdxWqwzDJCnroUffjS/HBQHf5Ou1uFpqIT0rOIJ5fW8TxHmUpCDndH2A6xNhpQ=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"
+        integrity="sha512-BNaRQnYJYiPSqHHDb58B0yaPfCu+Wgds8Gp/gU33kqBtgNS4tSPHuGibyoeqMV/TJlSKda6FXzoEyYGjTe+vXA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
+        integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
     <script>
         const avatarInput = document.getElementById('avatarInput');
         const avatarImage = document.getElementById('avatarImage');
@@ -365,7 +373,7 @@
         const avatarPreview = document.getElementById('avatarPreview');
 
         const registrationForm = document.getElementById('registrationForm');
-    const fullNameInput = document.getElementById('fullName');
+        const fullNameInput = document.getElementById('fullName');
         const registrationFeedback = document.getElementById('registrationFeedback');
         const stateSelect = document.getElementById('state');
         const submitButton = registrationForm.querySelector('button[type="submit"]');
@@ -382,8 +390,7 @@
 
         const searchForm = document.getElementById('searchForm');
         const searchFeedback = document.getElementById('searchFeedback');
-        const searchPhoneInput = document.getElementById('searchPhone');
-        const searchEmailInput = document.getElementById('searchEmail');
+    const searchPhoneInput = document.getElementById('searchPhone');
         const searchCard = document.getElementById('searchCard');
         const searchResultCard = document.getElementById('searchResultCard');
         const searchAgainBtn = document.getElementById('searchAgainBtn');
@@ -392,9 +399,11 @@
         const searchName = document.getElementById('searchName');
         const searchReg = document.getElementById('searchReg');
         const searchDownload = document.getElementById('searchDownload');
+        const epassPreviewCard = document.getElementById('epassPreviewCard');
+        const searchPreviewCard = document.getElementById('searchPreviewCard');
 
-    const registerColumn = document.getElementById('registerColumn');
-    const searchColumn = document.getElementById('searchColumn');
+        const registerColumn = document.getElementById('registerColumn');
+        const searchColumn = document.getElementById('searchColumn');
 
         const defaultBorderColor = 'rgba(59, 130, 246, 0.4)';
 
@@ -559,41 +568,54 @@
             return dataUrl;
         };
 
-        const convertSvgToPng = (svgDataUrl) => new Promise((resolve, reject) => {
-            const image = new Image();
-            image.crossOrigin = 'anonymous';
-            image.onload = () => {
-                const canvas = document.createElement('canvas');
-                const width = image.naturalWidth || 720;
-                const height = image.naturalHeight || 420;
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    reject(new Error('Canvas is not supported in this browser.'));
-                    return;
-                }
-                ctx.drawImage(image, 0, 0, width, height);
-                resolve(canvas.toDataURL('image/png'));
-            };
-            image.onerror = () => reject(new Error('Unable to convert pass to PNG.'));
-            image.src = svgDataUrl;
-        });
-
-        const prepareDownloadLink = async (anchor, svgDataUrl, filename) => {
-            if (!svgDataUrl) {
-                anchor.removeAttribute('href');
+        const ensurePassImageReady = (img) => new Promise((resolve, reject) => {
+            if (!img) {
+                resolve();
                 return;
             }
-            try {
-                const pngDataUrl = await convertSvgToPng(svgDataUrl);
-                anchor.href = pngDataUrl;
-                anchor.download = `${filename}.png`;
-            } catch (error) {
-                console.warn(error.message);
-                anchor.href = svgDataUrl;
-                anchor.download = `${filename}.svg`;
+            if (img.complete && img.naturalWidth > 0) {
+                resolve();
+                return;
             }
+            img.onload = () => resolve();
+            img.onerror = () => reject(new Error('Unable to load pass preview.'));
+        });
+
+        const capturePassAsPng = async (container) => {
+            await ensurePassImageReady(container.querySelector('img'));
+            const canvas = await html2canvas(container, {
+                backgroundColor: null,
+                scale: Math.min(3, window.devicePixelRatio || 1.5),
+                useCORS: true,
+            });
+            return canvas.toDataURL('image/png');
+        };
+
+        const bindDownloadButton = (button, container, filename, feedbackElement) => {
+            button.onclick = async () => {
+                button.disabled = true;
+                button.classList.add('disabled');
+                try {
+                    const pngDataUrl = await capturePassAsPng(container);
+                    const link = document.createElement('a');
+                    link.href = pngDataUrl;
+                    link.download = `${filename}.png`;
+                    link.rel = 'noopener';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } catch (error) {
+                    console.error(error);
+                    if (feedbackElement) {
+                        toggleAlert(feedbackElement, 'Could not prepare the PNG. Please try again.', 'error');
+                    } else {
+                        alert('Could not prepare the PNG. Please try again.');
+                    }
+                } finally {
+                    button.disabled = false;
+                    button.classList.remove('disabled');
+                }
+            };
         };
 
         registrationForm.addEventListener('submit', async (event) => {
@@ -648,8 +670,7 @@
                 epassReg.textContent = data.attendee?.registrationId ? `Registration ID: ${data.attendee.registrationId}` : '';
                 epassImage.src = passDataUrl || '';
 
-                toggleAlert(registrationFeedback, '🎉 Pass generated successfully! Preparing your download…', 'success');
-                await prepareDownloadLink(epassDownload, passDataUrl, 'emrs-epass');
+                toggleAlert(registrationFeedback, '🎉 Pass generated successfully! Tap download to save your pass.', 'success');
 
                 registerColumn.classList.remove('d-none');
                 searchColumn.classList.add('d-none');
@@ -684,18 +705,15 @@
             event.preventDefault();
 
             const phone = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
-            const email = searchEmailInput.value.trim();
 
-            if (!phone && !email) {
-                toggleAlert(searchFeedback, 'Enter your 10-digit phone number or email to continue.', 'error');
+            if (!phone) {
+                toggleAlert(searchFeedback, 'Enter your 10-digit phone number to continue.', 'error');
                 return;
             }
 
             toggleAlert(searchFeedback, 'Searching for your pass…', 'info');
 
-            const payload = {};
-            if (phone) payload.phone = phone;
-            if (email) payload.email = email;
+            const payload = { phone };
 
             try {
                 const response = await fetch('/.netlify/functions/find-pass', {
@@ -717,8 +735,7 @@
                     : '';
                 searchImage.src = passDataUrl || '';
 
-                toggleAlert(searchFeedback, 'Pass located! Preparing your PNG download…', 'success');
-                await prepareDownloadLink(searchDownload, passDataUrl, 'emrs-epass');
+                toggleAlert(searchFeedback, 'Pass located! Tap download to save your pass.', 'success');
 
                 hideLayer(searchCard);
                 showLayer(searchResultCard);
@@ -733,11 +750,13 @@
 
         searchAgainBtn.addEventListener('click', () => {
             toggleAlert(searchFeedback, '', '');
-            toggleAlert(registrationFeedback, '', '');
             searchForm.reset();
             restoreDefaultView();
             searchPhoneInput.focus();
         });
+
+        bindDownloadButton(epassDownload, epassPreviewCard, 'emrs-epass', registrationFeedback);
+        bindDownloadButton(searchDownload, searchPreviewCard, 'emrs-epass', searchFeedback);
     </script>
 </body>
 
