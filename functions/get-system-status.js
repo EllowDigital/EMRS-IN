@@ -1,5 +1,33 @@
 const postgres = require('postgres');
 
+let sqlClient = null;
+function getSqlClient() {
+    if (sqlClient) return sqlClient;
+    sqlClient = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
+    return sqlClient;
+}
+
+// Cache small system config for short TTL to avoid DB hits on frequent admin polling
+const configCache = { ts: 0, data: null, ttl: 10 * 1000 };
+
+async function withRetries(fn, attempts = 3, baseDelay = 120) {
+    let lastErr = null;
+    for (let i = 0; i < attempts; i++) {
+        try { return await fn(); } catch (err) {
+            lastErr = err;
+            const code = err && err.code ? err.code : null;
+            if (code === 'ETIMEDOUT' || code === 'EHOSTUNREACH' || code === 'ECONNRESET') {
+                const jitter = Math.floor(Math.random() * 100);
+                const delay = baseDelay * Math.pow(2, i) + jitter;
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastErr;
+}
+
 exports.handler = async (event, context) => {
     // Require admin Authorization header (accept raw password or token)
     const auth = (event.headers && (event.headers.authorization || event.headers.Authorization)) || '';
@@ -40,12 +68,16 @@ exports.handler = async (event, context) => {
         return { statusCode: 401, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'Unauthorized' }) };
     }
 
-    let sql;
     try {
-        // For admin UI, prefer default connect behavior to reduce unnecessary timeouts while admin is active
-        sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
+        // Serve from short cache when available
+        const now = Date.now();
+        if (configCache.data && (now - configCache.ts) < configCache.ttl) {
+            return { statusCode: 200, body: JSON.stringify(configCache.data) };
+        }
 
-        const configResult = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
+        const sql = getSqlClient();
+
+        const configResult = await withRetries(() => sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`);
 
         const systemStatus = {
             db_connected: true,
@@ -53,36 +85,18 @@ exports.handler = async (event, context) => {
             maintenance_mode: configResult.find(c => c.key === 'maintenance_mode')?.value === 'true',
         };
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify(systemStatus),
-        };
+        configCache.data = systemStatus;
+        configCache.ts = Date.now();
+
+        return { statusCode: 200, body: JSON.stringify(systemStatus) };
     } catch (error) {
-        console.error('Error getting system status:', error);
-        // If DB is unreachable, return a controlled fail-safe indicating maintenance_mode true
-        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH')) {
+        console.error('Error getting system status:', error && error.message ? error.message : error);
+        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
             return {
                 statusCode: 503,
-                body: JSON.stringify({
-                    db_connected: false,
-                    registration_enabled: false,
-                    maintenance_mode: true,
-                    error: 'Database unreachable. Assuming maintenance mode.'
-                }),
+                body: JSON.stringify({ db_connected: false, registration_enabled: false, maintenance_mode: true, error: 'Database unreachable. Assuming maintenance mode.' }),
             };
         }
-        return {
-            statusCode: 500,
-            body: JSON.stringify({
-                db_connected: false,
-                registration_enabled: false,
-                maintenance_mode: true, // Fail-safe
-                error: 'Could not connect to the database or read configuration.'
-            }),
-        };
-    } finally {
-        if (sql) {
-            await sql.end();
-        }
+        return { statusCode: 500, body: JSON.stringify({ db_connected: false, registration_enabled: false, maintenance_mode: true, error: 'Could not connect to the database or read configuration.' }) };
     }
 };

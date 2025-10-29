@@ -1,5 +1,41 @@
 const postgres = require("postgres");
 
+let sqlClient = null;
+function getSqlClient() {
+    if (sqlClient) return sqlClient;
+    sqlClient = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
+    return sqlClient;
+}
+
+const colsCache = { ts: 0, cols: null, ttl: 60 * 1000 };
+async function getAttendeeCols(sql) {
+    const now = Date.now();
+    if (colsCache.cols && (now - colsCache.ts) < colsCache.ttl) return colsCache.cols;
+    const colRows = await sql`SELECT column_name FROM information_schema.columns WHERE table_name = 'attendees'`;
+    const cols = new Set(colRows.map((r) => r.column_name));
+    colsCache.ts = Date.now();
+    colsCache.cols = cols;
+    return cols;
+}
+
+async function withRetries(fn, attempts = 3, baseDelay = 120) {
+    let lastErr = null;
+    for (let i = 0; i < attempts; i++) {
+        try { return await fn(); } catch (err) {
+            lastErr = err;
+            const code = err && err.code ? err.code : null;
+            if (code === 'ETIMEDOUT' || code === 'EHOSTUNREACH' || code === 'ECONNRESET') {
+                const jitter = Math.floor(Math.random() * 100);
+                const delay = baseDelay * Math.pow(2, i) + jitter;
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastErr;
+}
+
 exports.handler = async (event) => {
     if (event.httpMethod !== "POST") {
         return {
@@ -63,65 +99,28 @@ exports.handler = async (event) => {
                 body: JSON.stringify({ message: "Unauthorized" }),
             };
 
-        // Use default connect behavior for admin-initiated delete operations to avoid aggressive timeouts
-        const sql = postgres(process.env.DATABASE_URL, { ssl: "require", max: 2 });
-
-        // detect available registration id column
-        const colRows = await sql`
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name = 'attendees'
-        `;
-        const cols = new Set(colRows.map((r) => r.column_name));
+        const sql = getSqlClient();
+        const cols = await getAttendeeCols(sql);
 
         let regCol = null;
         if (cols.has("registration_id")) regCol = "registration_id";
         else if (cols.has("pass_id")) regCol = "pass_id";
         else {
-            for (const c of cols) {
-                const lc = c.toLowerCase();
-                if (lc.includes("pass") || lc.includes("reg")) {
-                    regCol = c;
-                    break;
-                }
-            }
+            for (const c of cols) { const lc = c.toLowerCase(); if (lc.includes("pass") || lc.includes("reg")) { regCol = c; break; } }
         }
-        if (!regCol)
-            return {
-                statusCode: 500,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "No registration id column found" }),
-            };
+        if (!regCol) return { statusCode: 500, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "No registration id column found" }) };
 
         let del;
         if (regCol === "registration_id") {
-            del =
-                await sql`DELETE FROM attendees WHERE registration_id = ${registration_id} RETURNING 1`;
+            del = await withRetries(() => sql`DELETE FROM attendees WHERE registration_id = ${registration_id} RETURNING 1`);
         } else if (regCol === "pass_id") {
-            del =
-                await sql`DELETE FROM attendees WHERE pass_id = ${registration_id} RETURNING 1`;
+            del = await withRetries(() => sql`DELETE FROM attendees WHERE pass_id = ${registration_id} RETURNING 1`);
         } else {
-            // Only support the common identifier columns for safety
-            return {
-                statusCode: 500,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: "Unsupported registration id column: " + regCol,
-                }),
-            };
+            return { statusCode: 500, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "Unsupported registration id column: " + regCol }) };
         }
-        if (!del || del.length === 0) {
-            return {
-                statusCode: 404,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: "Attendee not found" }),
-            };
-        }
+        if (!del || del.length === 0) return { statusCode: 404, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: "Attendee not found" }) };
 
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ success: true }),
-        };
+        return { statusCode: 200, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ success: true }) };
     } catch (error) {
         console.error("delete-attendee error:", error);
         if (

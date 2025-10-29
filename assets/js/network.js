@@ -39,12 +39,13 @@
     function jitter(ms) { return Math.floor(ms * (0.5 + Math.random() * 0.5)); }
 
     // Stale-while-revalidate: if GET and cached, return cache immediately then refresh in background
-    async function swrGet(url, cacheName = 'epass-swr-v1') {
+    // Accepts an optional `init` param so Authorization headers and other options are forwarded to the network fetch.
+    async function swrGet(url, init = {}, cacheName = 'epass-swr-v1') {
         try {
             const cache = await caches.open(cacheName);
             const cached = await cache.match(url);
-            // Start network fetch regardless to refresh cache
-            const networkPromise = fetch(url).then(async (res) => {
+            // Start network fetch regardless to refresh cache; forward init (headers etc.)
+            const networkPromise = fetch(url, init).then(async (res) => {
                 if (res && res.ok) {
                     try { await cache.put(url, res.clone()); } catch (e) { /* ignore */ }
                 }
@@ -62,7 +63,7 @@
             return new Response(null, { status: 503, statusText: 'Service Unavailable' });
         } catch (e) {
             console.warn('[network] swrGet error', e);
-            return fetch(url).catch(() => new Response(null, { status: 503 }));
+            return fetch(url, init).catch(() => new Response(null, { status: 503 }));
         }
     }
 
@@ -84,9 +85,9 @@
             return Promise.reject(new Error('CircuitOpen'));
         }
 
-        // If requested cache-first SWR
+        // If requested cache-first SWR: pass the options so swrGet can include headers (Authorization)
         if (method === 'GET' && cacheMode === 'swr') {
-            try { return await swrGet(url); } catch (e) { /* fallthrough to retry below */ }
+            try { return await swrGet(url, options); } catch (e) { /* fallthrough to retry below */ }
         }
 
         let attempt = 0;

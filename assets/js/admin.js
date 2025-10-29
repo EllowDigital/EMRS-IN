@@ -176,25 +176,36 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) { return null; }
     }
 
-    // Restore staff token from sessionStorage if available and not expired; schedule refresh
+    // Restore staff token from sessionStorage if available and not expired.
+    // NOTE: this does NOT mark the session as logged-in. Callers should validate the token with the server.
     function restoreTokenFromSession() {
         try {
             const token = sessionStorage.getItem('staff_token');
-            if (!token) return false;
+            if (!token) return null;
             const payload = parseJwtPayload(token);
             const now = Math.floor(Date.now() / 1000);
             if (payload && payload.exp && payload.exp < now) {
                 sessionStorage.removeItem('staff_token');
-                return false;
+                return null;
             }
             appState.staffToken = token;
             window.__STAFF_TOKEN = token;
-            appState.isLoggedIn = true;
-            // schedule refresh if token has expiry
-            if (payload && payload.exp) scheduleTokenRefresh(token, payload.exp);
-            return true;
+            // do not set isLoggedIn here; validate with server first
+            return payload || {};
         } catch (e) {
             try { sessionStorage.removeItem('staff_token'); } catch (_) { }
+            return null;
+        }
+    }
+
+    // Validate token by calling a lightweight endpoint (get-system-status). Returns true when server accepts the token.
+    async function validateTokenWithServer(token) {
+        try {
+            if (!token) return false;
+            // use the global fetchWithRetry shim when available
+            const res = await fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: { Authorization: `Bearer ${token}` }, retries: 1, timeout: 3000, backoff: 100, acceptCachedOnFail: false });
+            return res && res.ok;
+        } catch (e) {
             return false;
         }
     }
@@ -422,6 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function fetchDashboardData() {
+        // Do not attempt to fetch dashboard data when not logged in.
+        if (!appState.isLoggedIn) return;
         try {
             const authHeader = { 'Authorization': `Bearer ${appState.staffToken || ''}` };
             // Use fetchWithRetry (network.js) for transient DB/network issues. Use swr for stats to reduce DB pressure.
@@ -525,6 +538,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function searchAttendees() {
+        // Only allow searching after successful login
+        if (!appState.isLoggedIn) {
+            ui.attendeeTablePlaceholder.innerHTML = '<p>Please login to search and view attendees.</p>';
+            ui.attendeeTablePlaceholder.style.display = 'block';
+            ui.attendeeTableBody.innerHTML = '';
+            return;
+        }
         const query = ui.searchInput.value;
         const filter = ui.filterSelect.value;
 
@@ -971,12 +991,24 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(fetchDashboardData, 60000); // Refresh data every 60 seconds
     }
 
-    function init() {
+    async function init() {
         // Try to restore an existing token from sessionStorage so refreshes stay logged in
-        const restored = restoreTokenFromSession();
-        if (restored) {
-            setUIState('dashboard');
-            initializeAppDashboard();
+        const payload = restoreTokenFromSession();
+        if (payload) {
+            // Validate token with server before marking as logged in
+            const valid = await validateTokenWithServer(appState.staffToken);
+            if (valid) {
+                appState.isLoggedIn = true;
+                // schedule refresh if token has expiry
+                if (payload && payload.exp) scheduleTokenRefresh(appState.staffToken, payload.exp);
+                setUIState('dashboard');
+                initializeAppDashboard();
+            } else {
+                // Token invalid on server — clear and show login
+                try { sessionStorage.removeItem('staff_token'); } catch (e) { }
+                appState.staffToken = null;
+                setUIState('login');
+            }
         } else {
             setUIState('login');
         }

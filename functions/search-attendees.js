@@ -1,5 +1,45 @@
 const postgres = require('postgres');
 
+// Module-scoped client to reuse connections across warm invocations
+let sqlClient = null;
+function getSqlClient() {
+    if (sqlClient) return sqlClient;
+    sqlClient = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
+    return sqlClient;
+}
+
+// Cache discovered table columns for short TTL to avoid querying information_schema on every call
+const tableColsCache = { ts: 0, cols: null, ttl: 60 * 1000 };
+
+async function listAttendeeColumns(sql) {
+    const now = Date.now();
+    if (tableColsCache.cols && (now - tableColsCache.ts) < tableColsCache.ttl) return tableColsCache.cols;
+    const colRows = await sql`SELECT column_name FROM information_schema.columns WHERE table_name = 'attendees'`;
+    const cols = new Set(colRows.map(r => r.column_name));
+    tableColsCache.ts = Date.now();
+    tableColsCache.cols = cols;
+    return cols;
+}
+
+// Simple retry wrapper
+async function withRetries(fn, attempts = 3, baseDelay = 150) {
+    let lastErr = null;
+    for (let i = 0; i < attempts; i++) {
+        try { return await fn(); } catch (err) {
+            lastErr = err;
+            const code = err && err.code ? err.code : null;
+            if (code === 'ETIMEDOUT' || code === 'EHOSTUNREACH' || code === 'ECONNRESET') {
+                const jitter = Math.floor(Math.random() * 100);
+                const delay = baseDelay * Math.pow(2, i) + jitter;
+                await new Promise(r => setTimeout(r, delay));
+                continue;
+            }
+            throw err;
+        }
+    }
+    throw lastErr;
+}
+
 exports.handler = async (event, context) => {
     if (event.httpMethod !== 'GET') {
         return { statusCode: 405, body: 'Method Not Allowed' };
@@ -57,36 +97,26 @@ exports.handler = async (event, context) => {
     const limit = parseInt(params.limit, 10) || 15;
     const offset = (page - 1) * limit;
 
-    let sql;
     try {
-        // Use default connection behavior for admin search to avoid overly-aggressive timeouts while an admin session is active
-        sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
+        const sql = getSqlClient();
 
-        // Detect which columns exist so this function works across schema variants
-        const colRows = await sql`
-            SELECT column_name FROM information_schema.columns
-            WHERE table_name = 'attendees'
-        `;
-        const cols = new Set(colRows.map(r => r.column_name));
+        const cols = await listAttendeeColumns(sql);
 
         const nameField = cols.has('full_name') ? sql`a.full_name AS full_name` : (cols.has('name') ? sql`a.name AS full_name` : sql`NULL::text AS full_name`);
         const regIdField = cols.has('registration_id') ? sql`a.registration_id AS registration_id` : (cols.has('pass_id') ? sql`a.pass_id AS registration_id` : sql`NULL::text AS registration_id`);
         const phoneField = cols.has('phone_number') ? sql`a.phone_number AS phone_number` : (cols.has('phone') ? sql`a.phone AS phone_number` : sql`NULL::text AS phone_number`);
         const createdAtField = cols.has('created_at') ? sql`to_char(a.created_at, 'YYYY-MM-DD HH24:MI:SS') as created_at` : sql`NULL::text as created_at`;
 
-        // Detect if there is a separate check_ins table; if so prefer using it to determine check-in status
-        const checkInsTable = await sql`
-            SELECT table_name FROM information_schema.tables WHERE table_name = 'check_ins' AND table_schema = 'public'
-        `;
-        const hasCheckIns = Array.isArray(checkInsTable) && checkInsTable.length > 0;
+        // Detect if there is a separate check_ins table; cache the check as a quick query
+        const checkInsRows = await sql`SELECT table_name FROM information_schema.tables WHERE table_name = 'check_ins' AND table_schema = 'public'`;
+        const hasCheckIns = Array.isArray(checkInsRows) && checkInsRows.length > 0;
+        const checkedInField = hasCheckIns ? sql`(EXISTS (SELECT 1 FROM check_ins c WHERE c.attendee_id = a.id)) AS is_checked_in` : (cols.has('checked_in') ? sql`a.checked_in AS is_checked_in` : sql`FALSE AS is_checked_in`);
+        const checkedInAtField = cols.has('checked_in_at') ? sql`to_char(a.checked_in_at, 'YYYY-MM-DD HH24:MI:SS') as checked_in_at` : sql`NULL::text as checked_in_at`;
 
-    const checkedInField = hasCheckIns ? sql`(EXISTS (SELECT 1 FROM check_ins c WHERE c.attendee_id = a.id)) AS is_checked_in` : (cols.has('checked_in') ? sql`a.checked_in AS is_checked_in` : sql`FALSE AS is_checked_in`);
-    const checkedInAtField = cols.has('checked_in_at') ? sql`to_char(a.checked_in_at, 'YYYY-MM-DD HH24:MI:SS') as checked_in_at` : sql`NULL::text as checked_in_at`;
+        // Build base queries
+        let baseSelect = sql`SELECT a.id, ${nameField}, ${regIdField}, ${phoneField}, a.email, a.profile_pic_url, ${createdAtField}, ${checkedInField}, ${checkedInAtField} FROM attendees a`;
+        let baseCount = sql`SELECT COUNT(*) FROM attendees a`;
 
-    let query = sql`SELECT a.id, ${nameField}, ${regIdField}, ${phoneField}, a.email, a.profile_pic_url, ${createdAtField}, ${checkedInField}, ${checkedInAtField} FROM attendees a`;
-    // count query should use same alias so WHERE clauses referencing 'a' work
-    let countQuery = sql`SELECT COUNT(*) FROM attendees a`;
-        
         const conditions = [];
         if (q && q.length > 0) {
             const searchTerm = `%${q}%`;
@@ -99,7 +129,9 @@ exports.handler = async (event, context) => {
             if (cols.has('registration_id')) parts.push(sql`a.registration_id ILIKE ${searchTerm}`);
             if (cols.has('pass_id')) parts.push(sql`a.pass_id ILIKE ${searchTerm}`);
             if (parts.length > 0) {
-                conditions.push(sql`(${sql.join ? sql.join(parts, sql` OR `) : parts.reduce((a,b)=> sql`${a} OR ${b}`)})`);
+                // Join parts safely
+                const orClause = parts.reduce((a, b) => sql`${a} OR ${b}`);
+                conditions.push(sql`(${orClause})`);
             }
         }
 
@@ -112,48 +144,34 @@ exports.handler = async (event, context) => {
         }
 
         if (conditions.length > 0) {
-            // Build WHERE clause by reducing SQL fragments to avoid dependency on sql.join
             let whereClause = conditions[0];
-            for (let i = 1; i < conditions.length; i++) {
-                whereClause = sql`${whereClause} AND ${conditions[i]}`;
-            }
-            query = sql`${query} WHERE ${whereClause}`;
-            countQuery = sql`${countQuery} WHERE ${whereClause}`;
+            for (let i = 1; i < conditions.length; i++) whereClause = sql`${whereClause} AND ${conditions[i]}`;
+            baseSelect = sql`${baseSelect} WHERE ${whereClause}`;
+            baseCount = sql`${baseCount} WHERE ${whereClause}`;
         }
 
-    // Order by created_at if available, otherwise fall back to id
-    if (cols.has('created_at')) {
-        query = sql`${query} ORDER BY a.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-    } else {
-        query = sql`${query} ORDER BY a.id DESC LIMIT ${limit} OFFSET ${offset}`;
-    }
+        // Order and pagination
+        if (cols.has('created_at')) baseSelect = sql`${baseSelect} ORDER BY a.created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+        else baseSelect = sql`${baseSelect} ORDER BY a.id DESC LIMIT ${limit} OFFSET ${offset}`;
 
+        // Execute both with retries in parallel. `baseSelect` and `baseCount` are already
+        // prepared query fragments (tagged templates); awaiting them executes the query.
         const [attendees, totalResult] = await Promise.all([
-            query,
-            countQuery,
+            withRetries(() => baseSelect),
+            withRetries(() => baseCount),
         ]);
-        
-    const total = parseInt(totalResult[0].count, 10) || 0;
+
+        const total = parseInt(totalResult[0].count, 10) || 0;
 
         return {
             statusCode: 200,
-            body: JSON.stringify({
-                attendees,
-                total,
-                page: parseInt(page, 10),
-                limit: parseInt(limit, 10),
-                totalPages: Math.ceil(total / limit),
-            }),
+            body: JSON.stringify({ attendees, total, page: parseInt(page, 10), limit: parseInt(limit, 10), totalPages: Math.ceil(total / limit) }),
         };
     } catch (error) {
-        console.error('Error searching attendees:', error);
-        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH')) {
+        console.error('Error searching attendees:', error && error.message ? error.message : error);
+        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
             return { statusCode: 503, body: JSON.stringify({ message: 'Database unreachable' }) };
         }
         return { statusCode: 500, body: JSON.stringify({ message: 'Internal Server Error' }) };
-    } finally {
-        if (sql) {
-            await sql.end();
-        }
     }
 };
