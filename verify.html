@@ -6,119 +6,44 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>E-Pass Verify — Kiosk</title>
     <meta name="description" content="E-Pass Verification Kiosk" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
         integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
         crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        html,
-        body {
-            height: 100%
-        }
-
-        body {
-            background: #f8fafc
-        }
-
-        .video-placeholder {
-            background: linear-gradient(180deg, #000, #0b1220);
-            min-height: 240px;
-            position: relative
-        }
-
-        /* Scanner overlay visuals */
-        .scanner-overlay {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center
-        }
-
-        .scanner-grid {
-            position: absolute;
-            inset: 0;
-            opacity: .12;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 28px 28px
-        }
-
-        .scanner-box {
-            width: 60%;
-            max-width: 520px;
-            aspect-ratio: 1;
-            background: transparent;
-            border: 2px solid rgba(255, 255, 255, 0.18);
-            box-shadow: 0 6px 20px rgba(2, 6, 23, 0.6);
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden
-        }
-
-        .scanner-box::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 8px;
-            box-shadow: 0 0 40px rgba(0, 135, 255, 0.06) inset
-        }
-
-        .scan-line {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, rgba(0, 200, 255, 0), rgba(0, 200, 255, 0.9), rgba(0, 200, 255, 0));
-            top: 0;
-            animation: scanMove 2s linear infinite
-        }
-
-        @keyframes scanMove {
-            0% {
-                transform: translateY(-2%)
-            }
-
-            50% {
-                transform: translateY(100%)
-            }
-
-            100% {
-                transform: translateY(200%)
-            }
-        }
-
-        .scan-success {
-            animation: flash 500ms ease-in-out
-        }
-
-        @keyframes flash {
-            0% {
-                box-shadow: 0 0 0 rgba(0, 255, 150, 0)
-            }
-
-            50% {
-                box-shadow: 0 0 20px rgba(0, 255, 150, 0.6)
-            }
-
-            100% {
-                box-shadow: 0 0 0 rgba(0, 255, 150, 0)
-            }
-        }
+        :root { --brand: #0d6efd; }
+        html, body { height: 100%; }
+        body { background: linear-gradient(180deg,#f8fafc,#f1f5f9); font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+        .top-nav { backdrop-filter: blur(6px); background: rgba(255,255,255,0.6); box-shadow: 0 6px 18px rgba(2,6,23,0.06); border-radius: .5rem; }
+        .video-placeholder { background: linear-gradient(180deg,#030614,#071026); min-height: 320px; position: relative; border-radius: .5rem; }
+        .scanner-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
+        .scanner-grid { position: absolute; inset: 0; opacity: .10; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; }
+        .scanner-box { width: 60%; max-width: 560px; aspect-ratio: 1; background: transparent; border: 2px dashed rgba(255,255,255,0.12); box-shadow: 0 12px 40px rgba(2,6,23,0.45); border-radius: 12px; position: relative; overflow: hidden; }
+        .scanner-box::after { content: ''; position: absolute; inset: 0; border-radius: 12px; box-shadow: 0 0 60px rgba(0,135,255,0.06) inset; }
+        .scan-line { position: absolute; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, rgba(0,200,255,0), rgba(0,200,255,0.95), rgba(0,200,255,0)); top: 0; animation: scanMove 1800ms linear infinite; }
+        @keyframes scanMove { 0% { transform: translateY(-5%); } 50% { transform: translateY(100%); } 100% { transform: translateY(205%); } }
+        .scan-success { animation: flash 520ms ease-in-out; }
+        @keyframes flash { 0% { box-shadow: 0 0 0 rgba(0,255,150,0); } 50% { box-shadow: 0 0 24px rgba(0,255,150,0.6); } 100% { box-shadow: 0 0 0 rgba(0,255,150,0); } }
+        .card-modern { border-radius: 12px; border: 0; box-shadow: 0 8px 30px rgba(2,6,23,0.06); }
+        .camera-status { min-width: 140px; text-align: center; }
     </style>
 </head>
 
 <body class="d-flex flex-column h-100">
     <header class="bg-white border-bottom">
-        <div class="container py-3 d-flex align-items-center justify-content-between">
+        <div class="container py-3 d-flex align-items-center justify-content-between top-nav">
             <div class="d-flex align-items-center gap-3">
                 <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
-                    style="width:44px;height:44px;font-weight:700">E</div>
+                    style="width:48px;height:48px;font-weight:700;font-size:18px">E</div>
                 <div>
                     <h1 class="h5 mb-0">E-Pass Verification</h1>
                     <div class="small text-muted">Check-in kiosk — scan or enter Registration ID</div>
                 </div>
             </div>
-                
+            <div class="d-flex align-items-center gap-3">
+                <div id="cameraStatus" class="badge bg-secondary camera-status">Camera: Off</div>
+                <div class="small text-muted">Verification</div>
+            </div>
         </div>
     </header>
 
@@ -128,7 +53,7 @@
 
                 <!-- Scanner / Manual entry (cards) -->
                 <div id="leftColumn" class="col-12 col-lg-8">
-                    <div class="card shadow-sm">
+                    <div class="card card-modern">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h2 class="h5 mb-0">Live Scanner</h2>
@@ -181,7 +106,7 @@
 
                 <!-- User info / actions column -->
                 <div id="rightColumn" class="col-12 col-lg-4 d-none">
-                    <div class="card shadow-sm h-100">
+                    <div class="card card-modern h-100">
                         <div class="card-body d-flex flex-column">
                             <h3 class="h6">Verified Attendee</h3>
                             <p class="small text-muted">Profile information appears here after successful lookup.</p>
@@ -336,12 +261,14 @@
                 openCameraBtn.textContent = 'Close Camera';
                 openCameraBtn.classList.remove('btn-outline-primary');
                 openCameraBtn.classList.add('btn-outline-danger');
+                const camStatus = document.getElementById('cameraStatus'); if (camStatus) { camStatus.textContent = 'Camera: On'; camStatus.classList.remove('bg-secondary','bg-danger'); camStatus.classList.add('bg-success'); }
                 scanning = true;
                 requestAnimationFrame(scanFrame);
                 feedback.textContent = 'Camera started';
             } catch (err) {
                 console.error('startCamera error', err);
                 feedback.textContent = 'Unable to access camera: ' + (err.message || err.name);
+                const camStatus = document.getElementById('cameraStatus'); if (camStatus) { camStatus.textContent = 'Camera: Error'; camStatus.classList.remove('bg-success','bg-secondary'); camStatus.classList.add('bg-danger'); }
             }
         }
 
@@ -359,6 +286,7 @@
             openCameraBtn.textContent = 'Open Camera';
             openCameraBtn.classList.remove('btn-outline-danger');
             openCameraBtn.classList.add('btn-outline-primary');
+            const camStatus = document.getElementById('cameraStatus'); if (camStatus) { camStatus.textContent = 'Camera: Off'; camStatus.classList.remove('bg-success','bg-danger'); camStatus.classList.add('bg-secondary'); }
             feedback.textContent = 'Camera stopped';
         }
 
@@ -518,6 +446,19 @@
         // initialize
         showUser(null);
         feedback.textContent = 'Ready';
+
+        // Attempt to auto-start camera on load (graceful if permissions denied)
+        window.addEventListener('load', () => {
+            // small delay so UI paints before permission prompt
+            setTimeout(async () => {
+                try {
+                    await startCamera();
+                } catch (e) {
+                    // startCamera handles feedback; ignore here
+                    console.warn('Auto-start camera failed', e);
+                }
+            }, 300);
+        });
     </script>
 </body>
 
