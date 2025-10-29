@@ -1,4 +1,5 @@
-import { getSqlClient, ensureSchemaReady } from './_shared/database.js';
+import { ensureSchemaReady } from './_shared/database.js';
+import { fetchAttendeeByRegistration, recordCheckin, updateAttendeeStatus, validateRegistrationId } from './_shared/attendees.js';
 
 export const handler = async (event) => {
     const headers = {
@@ -21,85 +22,47 @@ export const handler = async (event) => {
         }
 
         const payload = JSON.parse(event.body || '{}');
-        const { registrationId } = payload || {};
-        if (!registrationId) {
-            return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'registrationId required' }) };
+        const { registrationId, location, method, notes, deviceInfo } = payload || {};
+
+        const validation = validateRegistrationId(registrationId);
+        if (!validation.ok) {
+            return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: validation.message }) };
         }
 
         await ensureSchemaReady();
-        const sql = getSqlClient();
-        const normalizedId = String(registrationId).trim();
-
-        const rows = await sql`
-            select id, registration_id, full_name, phone, email, profile_url, status
-            from attendees
-            where registration_id = ${normalizedId}
-            limit 1
-        `;
-        if (!rows || rows.length === 0) {
+        const attendee = await fetchAttendeeByRegistration(validation.value);
+        if (!attendee) {
             return { statusCode: 404, headers, body: JSON.stringify({ success: false, message: 'E-pass not found for provided Registration ID' }) };
         }
-        const existing = rows[0];
-        if ((existing.status || '').toLowerCase().includes('checked')) {
-            const attendee = {
-                registrationId: existing.registration_id,
-                fullName: existing.full_name,
-                phone: existing.phone,
-                email: existing.email,
-                profileUrl: existing.profile_url,
-                status: existing.status,
-            };
+
+        if (attendee.isCheckedIn) {
             return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Attendee already checked in', attendee }) };
         }
 
-        // Use the database enum value 'checked_in' (matches schema)
-        await sql`
-            update attendees
-            set status = 'checked_in', updated_at = now()
-            where id = ${existing.id}
-        `;
+        const normalizedNotes = notes
+            ? (typeof notes === 'string' ? notes : JSON.stringify(notes))
+            : (deviceInfo
+                ? (typeof deviceInfo === 'string' ? deviceInfo : JSON.stringify(deviceInfo))
+                : null);
 
-        // Record the check-in in the checkins table. Accept optional location, method and device notes from the client.
-        const { location, method, notes, deviceInfo } = payload || {};
-        // Normalize notes: prefer explicit notes, then deviceInfo (stringify if object)
-        let notesVal = null;
-        if (notes) {
-            notesVal = typeof notes === 'string' ? notes : JSON.stringify(notes);
-        } else if (deviceInfo) {
-            notesVal = typeof deviceInfo === 'string' ? deviceInfo : JSON.stringify(deviceInfo);
-        }
-        // Normalize method to allowed enum values: 'qr_scan' or 'manual_lookup'
-        const methodVal = (method === 'manual_lookup' || method === 'manual') ? 'manual_lookup' : 'qr_scan';
-        try {
-            // Insert only if a conflicting checkin of the same method doesn't already exist. Use WHERE NOT EXISTS to respect the partial unique index.
-            await sql`
-                insert into checkins (attendee_id, method, location, notes)
-                select ${existing.id}, ${methodVal}, ${location || null}, ${notesVal || null}
-                where not exists (
-                    select 1 from checkins c where c.attendee_id = ${existing.id} and c.method = ${methodVal}
-                )
-            `;
-        } catch (e) {
-            // ignore insert errors (e.g., race/unique violations)
-            console.warn('checkins insert warning', e?.message || e);
-        }
+        await updateAttendeeStatus(attendee.id, 'checked_in');
+        await recordCheckin(attendee.id, {
+            method,
+            location,
+            notes: normalizedNotes,
+        });
 
-        const updated = await sql`
-            select registration_id, full_name, phone, email, profile_url, status
-            from attendees
-            where id = ${existing.id}
-            limit 1
-        `;
-        const r = updated[0];
-        const attendee = {
-            registrationId: r.registration_id,
-            fullName: r.full_name,
-            phone: r.phone,
-            email: r.email,
-            profileUrl: r.profile_url,
-            status: r.status,
+        const refreshed = await fetchAttendeeByRegistration(validation.value);
+
+        return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+                success: true,
+                message: 'Checked in',
+                attendee: refreshed,
+            }),
         };
-        return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Checked in', attendee }) };
 
     } catch (err) {
         console.error('checkin function error', err);
