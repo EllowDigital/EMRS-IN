@@ -127,6 +127,14 @@ exports.handler = async (event, context) => {
     } catch (error) {
         console.error('Error fetching stats:', error && error.message ? error.message : error);
         // Distinguish timeout/connection errors so frontend/admin can show helpful messages
+        // If we have a recently cached value, prefer returning it to avoid showing 503 to admins
+        if (statsCache.data) {
+            console.warn('Returning stale cached stats due to DB error.');
+            // mark as stale so clients can choose how to present it
+            const stale = Object.assign({}, statsCache.data, { stale: true, note: 'stale_cached_value' });
+            return { statusCode: 200, body: JSON.stringify(stale) };
+        }
+
         if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
             return { statusCode: 503, body: JSON.stringify({ message: 'Database unreachable (timeout). Please try again later.' }) };
         }

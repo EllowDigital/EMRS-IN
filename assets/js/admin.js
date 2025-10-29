@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalResults: 0,
         isLoadingAttendees: false,
         prevAttendeesJson: '',
+        lastStats: null,
     };
 
     // --- DOM Element Cache ---
@@ -150,6 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function updateStats(stats) {
         const { total_attendees = 0, checked_in_count = 0 } = stats;
+        // keep last known stats so UI can continue to show them if backend is briefly unreachable
+        appState.lastStats = stats;
         const pending = total_attendees - checked_in_count;
         const percentage = total_attendees > 0 ? ((checked_in_count / total_attendees) * 100).toFixed(1) : 0;
 
@@ -425,28 +428,43 @@ document.addEventListener('DOMContentLoaded', () => {
                 const payload = parseJwtPayload(result.token) || {};
                 if (payload && payload.exp) scheduleTokenRefresh(result.token, payload.exp);
 
-                // Tentatively set logged-in so fetchDashboardData will include Authorization header
+                // First, validate token with a lightweight check so we fail fast on bad credentials
+                const tokenValid = await validateTokenWithServer(result.token);
+                if (!tokenValid) {
+                    // Server rejected token — clear it and show error
+                    try { sessionStorage.removeItem('staff_token'); } catch (e) { }
+                    appState.staffToken = null;
+                    appState.isLoggedIn = false;
+                    showLoginMessage('Login succeeded locally but server rejected token. Please check server config.');
+                    setUIState('login');
+                    return;
+                }
+
+                // Token accepted — mark logged in and try to fetch dashboard data, but be tolerant
                 appState.isLoggedIn = true;
                 hideAdminStatus();
                 showLoader();
-                // Validate server accepts token and fetch initial data
+
                 const dashResult = await fetchDashboardData();
                 if (dashResult && dashResult.ok) {
                     setUIState('dashboard');
                     // Load attendee list after successful dashboard load
                     await searchAttendees();
                     initializeAppDashboard();
-                } else {
-                    // If unauthorized or other failure, clear token and show error
+                } else if (dashResult && dashResult.reason === 'unauthorized') {
+                    // Token suddenly rejected — clear and show login
                     try { sessionStorage.removeItem('staff_token'); } catch (e) { }
                     appState.staffToken = null;
                     appState.isLoggedIn = false;
-                    if (dashResult && dashResult.reason === 'unauthorized') {
-                        showLoginMessage('Login succeeded locally but server rejected token. Please check server config.');
-                    } else {
-                        showLoginMessage('Login succeeded but initial data failed to load. ' + (dashResult && dashResult.text ? dashResult.text : '')); 
-                    }
+                    showLoginMessage('Login accepted but server rejected the token during validation.');
                     setUIState('login');
+                } else {
+                    // Non-authentication failure (likely DB/transient). Allow the admin into the dashboard
+                    // but show a banner and avoid heavy initial loads that may exacerbate DB pressure.
+                    setUIState('dashboard');
+                    showAdminStatus('Logged in but some backend data is currently unavailable. Showing cached/partial data where possible.', 20);
+                    // Initialize dashboard but skip the initial full attendee search to avoid extra DB pressure.
+                    initializeAppDashboard();
                 }
                 hideLoader();
             }
@@ -465,8 +483,10 @@ document.addEventListener('DOMContentLoaded', () => {
             // Use fetchWithRetry (network.js) for transient DB/network issues. Use swr for stats to reduce DB pressure.
             const [statsRes, statusRes, healthRes] = await Promise.all([
                 fetchWithRetry(config.api.getStats, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, cache: 'swr', acceptCachedOnFail: true }).catch(e => { throw { stage: 'stats', err: e }; }),
-                fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, acceptCachedOnFail: true }).catch(e => { throw { stage: 'status', err: e }; }),
-                fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, acceptCachedOnFail: true }).catch(e => { throw { stage: 'health', err: e }; }) // reuse system-status as health for now
+                // Request system-status with SWR so cached config is returned when available
+                fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, cache: 'swr', acceptCachedOnFail: true }).catch(e => { throw { stage: 'status', err: e }; }),
+                // Reuse system-status as health for now; also use swr cache
+                fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, cache: 'swr', acceptCachedOnFail: true }).catch(e => { throw { stage: 'health', err: e }; }) // reuse system-status as health for now
             ]);
 
             if (statsRes.ok) {
@@ -475,27 +495,49 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const txt = await statsRes.text().catch(() => statsRes.status);
                 console.warn('Failed to load stats:', statsRes.status, txt);
-                // Return failure so caller can react (e.g. logout or retry)
+                // If unauthorized, bubble up so caller can handle logout
                 if (statsRes.status === 401) return { ok: false, reason: 'unauthorized' };
+                // If DB unreachable but we have a cached lastStats, continue using it silently
+                if (statsRes.status === 503 && appState.lastStats) {
+                    console.warn('Using last known stats due to 503 from server.');
+                    // keep UI as-is, do not show retry banner to avoid noisy UX
+                    return { ok: true };
+                }
+                // Otherwise show admin banner to indicate transient problem and allow retry
                 if (statsRes.status === 503) {
                     showAdminStatus(`Database unreachable. Retrying shortly...`);
                 }
                 return { ok: false, reason: 'stats_failed', status: statsRes.status, text: txt };
             }
             if (statusRes.ok) {
-                appState.systemStatus = await statusRes.json();
+                const statusJson = await statusRes.json();
+                appState.systemStatus = statusJson;
                 updateSystemControlsUI();
             } else {
                 const txt = await statusRes.text().catch(() => statusRes.status);
                 console.warn('Failed to load system status:', statusRes.status, txt);
+                // If unauthorized, bubble up so caller can handle logout
                 if (statusRes.status === 401) return { ok: false, reason: 'unauthorized' };
-                if (statusRes.status === 503) showAdminStatus(`System configuration unavailable. Retrying shortly...`);
-                return { ok: false, reason: 'status_failed', status: statusRes.status, text: txt };
+                // If DB unreachable but we already have a cached systemStatus, continue silently using it
+                if (statusRes.status === 503 && appState.systemStatus) {
+                    console.warn('Using last known system status due to 503 from server.');
+                    // keep UI as-is; don't show retry banner at login
+                } else {
+                    // Otherwise show admin banner so admin is aware
+                    if (statusRes.status === 503) showAdminStatus(`System configuration unavailable. Retrying shortly...`);
+                    return { ok: false, reason: 'status_failed', status: statusRes.status, text: txt };
+                }
             }
             if (healthRes.ok) {
                 const health = await healthRes.json(); // Mocking health from system status for now
                 appState.healthStatus = { api: 'ok', db: health.db_connected ? 'ok' : 'error', cloudinary: 'ok' };
                 updateHealthStatusUI();
+            } else {
+                // If health request failed but we have systemStatus/data, make a best-effort health UI update
+                if (appState.systemStatus) {
+                    appState.healthStatus = { api: 'ok', db: appState.systemStatus.db_connected ? 'ok' : 'error', cloudinary: 'ok' };
+                    updateHealthStatusUI();
+                }
             }
             return { ok: true };
         } catch (error) {
@@ -525,8 +567,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (remaining <= 0) {
                 clearInterval(adminStatusTimer);
                 adminStatusTimer = null;
-                // Attempt to re-fetch dashboard data
-                fetchDashboardData();
+                // Attempt to re-fetch dashboard data only if still logged-in
+                if (appState.isLoggedIn) fetchDashboardData();
             }
         }, 1000);
     }

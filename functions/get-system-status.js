@@ -91,6 +91,13 @@ exports.handler = async (event, context) => {
         return { statusCode: 200, body: JSON.stringify(systemStatus) };
     } catch (error) {
         console.error('Error getting system status:', error && error.message ? error.message : error);
+        // If we have a cached config, return it to avoid failing admin login during short DB outages
+        if (configCache.data) {
+            console.warn('Returning stale cached system status due to DB error.');
+            const stale = Object.assign({}, configCache.data, { stale: true, note: 'stale_cached_value' });
+            return { statusCode: 200, body: JSON.stringify(stale) };
+        }
+
         if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
             return {
                 statusCode: 503,
