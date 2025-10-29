@@ -24,13 +24,14 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.5);
+  /* stronger backdrop to clearly hide background content */
+  background-color: rgba(0, 0, 0, 0.78);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 2000;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.22s ease;
   pointer-events: none;
 }
 
@@ -55,6 +56,21 @@ body[data-ui-state="login"] .login-card {
 }
 
 body[data-ui-state="dashboard"] #staff-login-modal {
+  display: none;
+}
+
+/* When login modal is visible, visually de-emphasize and make background inert */
+body[data-ui-state="login"] .content-wrapper,
+body[data-ui-state="login"] .app-header,
+body[data-ui-state="login"] .mobile-nav {
+  filter: blur(3px) brightness(0.6);
+  pointer-events: none;
+  user-select: none;
+  touch-action: none;
+}
+
+/* Ensure the mobile nav backdrop does not sit above the login modal */
+body[data-ui-state="login"] .mobile-nav-backdrop {
   display: none;
 }
 

@@ -134,9 +134,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function setUIState(state) {
         if (!appState.isLoggedIn && state !== 'login') {
             ui.body.dataset.uiState = 'login';
+            // ensure login mode side-effects are applied
+            enableLoginMode();
             return;
         }
         ui.body.dataset.uiState = state;
+        // disable login-specific side-effects when leaving login
+        if (state !== 'login') disableLoginMode();
     }
 
     function setLoginLoadingState(isLoading) {
@@ -1066,6 +1070,58 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initializer ---
+    // Login focus trap handler (set when login UI is active)
+    let _loginFocusHandler = null;
+    function enableLoginMode() {
+        try {
+            // prevent body scroll while login modal is open
+            document.body.style.overflow = 'hidden';
+            // mark main areas as aria-hidden for screen readers
+            const main = document.querySelector('.content-wrapper');
+            const header = document.querySelector('.app-header');
+            if (main) main.setAttribute('aria-hidden', 'true');
+            if (header) header.setAttribute('aria-hidden', 'true');
+            const mobile = document.getElementById('mobile-nav');
+            if (mobile) mobile.setAttribute('aria-hidden', 'true');
+            // focus password input
+            setTimeout(() => { ui.passwordInput?.focus(); }, 50);
+            // trap focus between password input and login button
+            _loginFocusHandler = function (e) {
+                if (e.key !== 'Tab') return;
+                const focusable = [ui.passwordInput, ui.loginBtn].filter(Boolean);
+                if (focusable.length === 0) return;
+                const idx = focusable.indexOf(document.activeElement);
+                if (e.shiftKey) {
+                    if (document.activeElement === focusable[0]) {
+                        e.preventDefault();
+                        focusable[focusable.length - 1].focus();
+                    }
+                } else {
+                    if (document.activeElement === focusable[focusable.length - 1]) {
+                        e.preventDefault();
+                        focusable[0].focus();
+                    }
+                }
+            };
+            document.addEventListener('keydown', _loginFocusHandler);
+        } catch (e) { /* ignore */ }
+    }
+
+    function disableLoginMode() {
+        try {
+            document.body.style.overflow = '';
+            const main = document.querySelector('.content-wrapper');
+            const header = document.querySelector('.app-header');
+            if (main) main.removeAttribute('aria-hidden');
+            if (header) header.removeAttribute('aria-hidden');
+            const mobile = document.getElementById('mobile-nav');
+            if (mobile) mobile.removeAttribute('aria-hidden');
+            if (_loginFocusHandler) {
+                document.removeEventListener('keydown', _loginFocusHandler);
+                _loginFocusHandler = null;
+            }
+        } catch (e) { /* ignore */ }
+    }
     function initializeAppDashboard(skipInitialSearch = false) {
         // Fetch dashboard data and optionally run initial attendee search.
         fetchDashboardData();
