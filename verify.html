@@ -131,6 +131,22 @@
 
         <div id="confetti-root" aria-hidden="true"></div>
 
+        <!-- Manual prompt modal (shown when auto-scan doesn't find a QR) -->
+        <div class="modal fade" id="manualPromptModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-sm modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-body text-center">
+                        <h6 class="mb-2">No QR detected</h6>
+                        <p class="small text-muted">We couldn't find a QR automatically. Would you like to try manual lookup?</p>
+                        <div class="d-flex gap-2 justify-content-center mt-3">
+                            <button id="openManualBtn" type="button" class="btn btn-primary btn-sm">Open manual lookup</button>
+                            <button id="continueScanBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Continue scanning</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
         <script>
             // UI enhancements: scan beam animation & confetti
@@ -270,13 +286,15 @@
                     cameraStatus.classList.add('bg-success');
                     scanning = true;
                     requestAnimationFrame(scanFrame);
+                    scheduleScanFallback();
                 } catch (err) {
                     console.warn('camera start failed', err);
                     feedback.textContent = 'Camera denied or not available';
-                    manualForm.classList.remove('d-none');
                     cameraStatus.textContent = 'Camera: Error';
                     cameraStatus.classList.remove('bg-success');
                     cameraStatus.classList.add('bg-danger');
+                    // if camera couldn't start, show manual prompt shortly
+                    setTimeout(() => showManualPrompt(), 400);
                 }
             }
 
@@ -336,6 +354,7 @@
                 lastLookupMethod = 'qr_scan';
                 stopCamera();
                 if (scannerBoxEl) { scannerBoxEl.classList.add('scan-success'); setTimeout(()=>scannerBoxEl.classList.remove('scan-success'),700); }
+                clearScanFallback && clearScanFallback();
                 setTimeout(() => doLookup(id, lastLookupMethod), 150);
             }
 
@@ -362,6 +381,47 @@
                     lookupSpinner && (lookupSpinner.classList.add('d-none'));
                 }
             }
+
+            // Auto-scan fallback: if no QR found within timeout, prompt manual lookup
+            let scanFallbackTimer = null;
+            function scheduleScanFallback(ms = 8000) {
+                try { clearScanFallback(); } catch(e){}
+                scanFallbackTimer = setTimeout(() => { showManualPrompt(); }, ms);
+            }
+            function clearScanFallback() { if (scanFallbackTimer) { clearTimeout(scanFallbackTimer); scanFallbackTimer = null; } }
+
+            // show manual prompt modal (creates modal instance when needed)
+            let _manualModalInstance = null;
+            function showManualPrompt() {
+                try {
+                    const modalEl = document.getElementById('manualPromptModal');
+                    if (!modalEl) return;
+                    // only show if still scanning and no result displayed
+                    if (!scanning || (current && current.registrationId)) return;
+                    _manualModalInstance = new bootstrap.Modal(modalEl, { backdrop: true });
+                    _manualModalInstance.show();
+                } catch (e) { console.warn('manual prompt failed', e); }
+            }
+
+            // wire modal buttons when DOM is available
+            (function wireManualModalButtons(){
+                document.addEventListener('click', (ev) => {
+                    const t = ev.target;
+                    if (!t) return;
+                    if (t.id === 'openManualBtn') {
+                        try { _manualModalInstance && _manualModalInstance.hide(); } catch(e){}
+                        stopCamera();
+                        manualForm.classList.remove('d-none');
+                        scannerSection && scannerSection.classList.add('d-none');
+                        setTimeout(()=> regIdInput && regIdInput.focus(), 120);
+                        clearScanFallback();
+                    }
+                    if (t.id === 'continueScanBtn') {
+                        clearScanFallback();
+                        scheduleScanFallback(4000);
+                    }
+                });
+            })();
 
             // manual form
             if (switchToManualBtn) switchToManualBtn.addEventListener('click', () => {
