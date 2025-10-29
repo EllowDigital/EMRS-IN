@@ -1283,10 +1283,10 @@
                                 <span class="pass-card__info-value name">${(fullName || '').toUpperCase()}</span>
                             </div>
                         </div>
-                        <div class="pass-card__meta-note">PRESENT WITH A VALID PHOTO ID · SCAN QR AT ENTRY</div>
+                        <div class="pass-card__meta-note">SCAN QR AT ENTRY</div>
                     </div>
                     <footer class="pass-card__footer">
-                        <div class="pass-card__footer-quote">ACCESS OPENS 09:00-18:00 · ARRIVE INSPIRED</div>
+                        <div class="pass-card__footer-quote">ACCESS OPENS 09:00-18:00</div>
                     </footer>
                 `;
                 return card;
@@ -1347,9 +1347,13 @@
                 await waitForImages(clone);
                 const canvas = await html2canvas(clone, {
                     backgroundColor: null,
-                    scale: Math.min(3, window.devicePixelRatio || 2),
+                    scale: 2,
+                    width: clone.offsetWidth,
+                    height: clone.offsetHeight,
                     useCORS: true,
                     logging: false,
+                    scrollX: 0,
+                    scrollY: 0,
                 });
                 passTemplateHost.innerHTML = '';
                 return canvas.toDataURL('image/png');
