@@ -59,15 +59,22 @@ export const handler = async (event) => {
             where id = ${existing.id}
         `;
 
-        // Record the check-in in the checkins table. Accept optional location and method from the client.
-        const { location, method } = payload || {};
+        // Record the check-in in the checkins table. Accept optional location, method and device notes from the client.
+        const { location, method, notes, deviceInfo } = payload || {};
+        // Normalize notes: prefer explicit notes, then deviceInfo (stringify if object)
+        let notesVal = null;
+        if (notes) {
+            notesVal = typeof notes === 'string' ? notes : JSON.stringify(notes);
+        } else if (deviceInfo) {
+            notesVal = typeof deviceInfo === 'string' ? deviceInfo : JSON.stringify(deviceInfo);
+        }
         // Normalize method to allowed enum values: 'qr_scan' or 'manual_lookup'
         const methodVal = (method === 'manual_lookup' || method === 'manual') ? 'manual_lookup' : 'qr_scan';
         try {
             // Insert only if a conflicting checkin of the same method doesn't already exist. Use WHERE NOT EXISTS to respect the partial unique index.
             await sql`
-                insert into checkins (attendee_id, method, location)
-                select ${existing.id}, ${methodVal}, ${location || null}
+                insert into checkins (attendee_id, method, location, notes)
+                select ${existing.id}, ${methodVal}, ${location || null}, ${notesVal || null}
                 where not exists (
                     select 1 from checkins c where c.attendee_id = ${existing.id} and c.method = ${methodVal}
                 )

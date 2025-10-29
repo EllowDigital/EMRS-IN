@@ -101,6 +101,7 @@
                                     <div id="result-email" class="text-muted small">Email</div>
                                     <div id="result-method" class="text-muted small mt-1">Method: <span class="fw-medium">qr_scan</span></div>
                                     <div id="result-location" class="text-muted small mt-1">Location: <span class="fw-medium">—</span></div>
+                                    <div id="result-notes" class="text-muted small mt-1">Device: <span class="fw-medium">—</span></div>
 
                                     <div class="mt-3">
                                         <button id="checkin-btn" class="btn btn-success btn-lg w-100">Confirm Check-In <span id="checkin-spinner" class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"></span></button>
@@ -416,7 +417,29 @@
                 try {
                     const location = await getLocation(3500);
                     if (location) locDisplay.textContent = `Location: ${location}`;
-                    const payload = { registrationId: current.registrationId, method: lastLookupMethod, location };
+                    // Detect device info (userAgent/platform and camera info when available)
+                    async function detectDeviceInfo() {
+                        const info = {
+                            userAgent: navigator.userAgent || null,
+                            platform: navigator.platform || null,
+                            vendor: navigator.vendor || null,
+                            cores: navigator.hardwareConcurrency || null,
+                            cameraLabel: null
+                        };
+                        try {
+                            if (cameraStream && cameraStream.getVideoTracks && cameraStream.getVideoTracks().length) {
+                                const t = cameraStream.getVideoTracks()[0];
+                                info.cameraLabel = t.label || (t.getSettings && t.getSettings().deviceId) || null;
+                            } else if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+                                const devs = await navigator.mediaDevices.enumerateDevices();
+                                const v = devs.find(d => d.kind === 'videoinput');
+                                if (v) info.cameraLabel = v.label || v.deviceId || null;
+                            }
+                        } catch (e) { /* ignore */ }
+                        return info;
+                    }
+                    const deviceInfo = await detectDeviceInfo();
+                    const payload = { registrationId: current.registrationId, method: lastLookupMethod, location, deviceInfo };
                     const res = await fetch('/.netlify/functions/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data?.message || 'Check-in failed');
@@ -424,6 +447,14 @@
                     // update method & location display with values returned
                     resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = payload.method || 'qr_scan');
                     resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = payload.location || '—');
+                    // show detected device info in results (concise)
+                    try {
+                        const notesEl = document.querySelector('#result-notes span');
+                        if (notesEl) {
+                            const label = deviceInfo && (deviceInfo.cameraLabel || deviceInfo.platform || deviceInfo.userAgent) || '—';
+                            notesEl.textContent = (typeof label === 'string' && label.length > 80) ? (label.slice(0,77) + '…') : label;
+                        }
+                    } catch (e) { }
                     feedback.textContent = 'Checked in successfully';
                     toast('Checked in successfully');
                     smallConfetti();
