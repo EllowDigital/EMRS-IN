@@ -1,0 +1,645 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMRS – Register for Your E-Pass</title>
+    <meta name="description" content="Register for your EMRS event e-pass and retrieve it using phone or email.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f5f6fb;
+            --card: #ffffff;
+            --accent: #2563eb;
+            --accent-dark: #1d4ed8;
+            --text: #0f172a;
+            --muted: #4b5563;
+            --border: #dbe3f5;
+            --radius: 18px;
+            --shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Inter", sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 48px 16px;
+        }
+
+        main {
+            width: min(980px, 100%);
+            background: var(--card);
+            border-radius: calc(var(--radius) + 6px);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(15, 23, 42, 0.05);
+            padding: clamp(32px, 4vw, 48px);
+            display: grid;
+            gap: clamp(32px, 4vw, 52px);
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            text-align: center;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: clamp(2rem, 3.5vw, 2.6rem);
+            letter-spacing: -0.01em;
+        }
+
+        header p {
+            margin: 0;
+            color: var(--muted);
+            font-size: clamp(1rem, 2vw, 1.1rem);
+        }
+
+        .content {
+            display: grid;
+            gap: clamp(28px, 4vw, 42px);
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .card {
+            background: #ffffff;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: clamp(24px, 3vw, 32px);
+            display: grid;
+            gap: 24px;
+        }
+
+        .avatar-upload {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .avatar-preview {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            border: 2px solid rgba(37, 99, 235, 0.45);
+            background: rgba(37, 99, 235, 0.08);
+            display: grid;
+            place-items: center;
+            overflow: hidden;
+            position: relative;
+            transition: border-color 0.2s ease, background 0.2s ease;
+        }
+
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-action {
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 0.92rem;
+        }
+
+        .avatar-action label {
+            width: fit-content;
+            background: rgba(37, 99, 235, 0.12);
+            color: var(--accent-dark);
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1px solid rgba(37, 99, 235, 0.18);
+            transition: background 0.2s ease, transform 0.15s ease;
+        }
+
+        .avatar-action label:hover {
+            background: rgba(37, 99, 235, 0.24);
+            transform: translateY(-1px);
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        form {
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-row {
+            display: grid;
+            gap: 18px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 14px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            background: #f8fafc;
+            color: var(--text);
+            font: inherit;
+            transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        input::placeholder {
+            color: rgba(100, 116, 139, 0.6);
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: rgba(37, 99, 235, 0.6);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+            background: #fff;
+        }
+
+        .phone-group {
+            display: flex;
+            align-items: stretch;
+            background: #f8fafc;
+            border-radius: 14px;
+            border: 1px solid rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+        }
+
+        .phone-prefix {
+            padding: 0 16px;
+            background: rgba(37, 99, 235, 0.12);
+            display: grid;
+            place-items: center;
+            font-weight: 600;
+            color: var(--accent-dark);
+            border-right: 1px solid rgba(15, 23, 42, 0.06);
+        }
+
+        .phone-group input {
+            border: 0;
+            background: transparent;
+            padding-left: 16px;
+        }
+
+        button {
+            background: var(--accent);
+            color: #fff;
+            border: none;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
+            box-shadow: 0 15px 30px rgba(37, 99, 235, 0.25);
+        }
+
+        button:hover {
+            background: var(--accent-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 20px 40px rgba(37, 99, 235, 0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .search-card {
+            background: #f8fbff;
+            border: 1px dashed rgba(37, 99, 235, 0.25);
+            border-radius: var(--radius);
+            padding: clamp(24px, 3vw, 30px);
+            display: grid;
+            gap: 18px;
+        }
+
+        .form-feedback {
+            font-size: 0.95rem;
+            color: var(--muted);
+            min-height: 1.2em;
+        }
+
+        .form-feedback.success {
+            color: #16a34a;
+        }
+
+        .form-feedback.error {
+            color: #dc2626;
+        }
+
+        .epass-preview {
+            margin-top: 18px;
+            display: grid;
+            gap: 16px;
+            place-items: center;
+            text-align: center;
+            background: #f8fbff;
+            padding: 24px;
+            border-radius: var(--radius);
+            border: 1px solid rgba(37, 99, 235, 0.18);
+        }
+
+        .epass-preview img {
+            width: 100%;
+            max-width: 380px;
+            border-radius: 22px;
+            box-shadow: 0 20px 45px rgba(15, 23, 42, 0.18);
+        }
+
+        .epass-meta {
+            display: grid;
+            gap: 4px;
+            color: var(--muted);
+        }
+
+        .epass-download {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 20px;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease, transform 0.15s ease;
+            border: none;
+            box-shadow: 0 15px 30px rgba(37, 99, 235, 0.22);
+        }
+
+        .epass-download:hover {
+            background: var(--accent-dark);
+            transform: translateY(-1px);
+        }
+
+        .search-card h2 {
+            margin: 0;
+            font-size: 1.3rem;
+        }
+
+        .search-card p {
+            margin: 0;
+            color: var(--muted);
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .search-inputs {
+            display: grid;
+            gap: 16px;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        }
+
+        .success-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--accent-dark);
+        }
+
+        footer {
+            text-align: center;
+            color: rgba(75, 85, 99, 0.7);
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <header>
+            <h1>Register to receive your EMRS digital e-pass</h1>
+            <p>Upload your profile photo, share basic contact details, and get a QR-secured pass in your inbox.</p>
+        </header>
+
+        <div class="content">
+            <section class="card" aria-labelledby="register-title">
+                <div class="avatar-upload">
+                    <div class="avatar-preview" id="avatarPreview">
+                        <img id="avatarImage" alt="Profile preview" hidden>
+                        <span id="avatarPlaceholder">Upload</span>
+                    </div>
+                    <div class="avatar-action">
+                        <label for="avatarInput">Upload profile image</label>
+                        <span>JPEG or PNG, max 5 MB.</span>
+                    </div>
+                    <input id="avatarInput" type="file" accept="image/*">
+                </div>
+
+                <form id="registrationForm">
+                    <div>
+                        <label for="fullName">Full Name</label>
+                        <input id="fullName" name="fullName" type="text" placeholder="Jane Doe" required
+                            autocomplete="name">
+                    </div>
+
+                    <div>
+                        <label for="phone">Phone Number</label>
+                        <div class="phone-group">
+                            <span class="phone-prefix">+91</span>
+                            <input id="phone" name="phone" type="tel" placeholder="9876543210" required pattern="\d{10}"
+                                inputmode="numeric" maxlength="10" autocomplete="tel-national">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="email">Email</label>
+                        <input id="email" name="email" type="email" placeholder="jane@email.com" required
+                            autocomplete="email">
+                    </div>
+
+                    <div class="form-row">
+                        <div>
+                            <label for="city">City</label>
+                            <input id="city" name="city" type="text" placeholder="Lucknow" required
+                                autocomplete="address-level2">
+                        </div>
+                        <div>
+                            <label for="state">State</label>
+                            <select id="state" name="state" required autocomplete="address-level1">
+                                <option value="" disabled selected>Select State</option>
+                                <option value="UP">Uttar Pradesh</option>
+                                <option value="DL">Delhi</option>
+                                <option value="MH">Maharashtra</option>
+                                <option value="RJ">Rajasthan</option>
+                                <option value="KA">Karnataka</option>
+                                <option value="TN">Tamil Nadu</option>
+                                <option value="WB">West Bengal</option>
+                                <option value="KL">Kerala</option>
+                                <option value="GJ">Gujarat</option>
+                                <option value="PB">Punjab</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit">Submit Registration</button>
+                    <div id="registrationFeedback" class="form-feedback" role="status" aria-live="polite"></div>
+                    <div id="epassPreview" class="epass-preview" hidden>
+                        <div class="success-title" id="epassMessage"></div>
+                        <img id="epassImage" alt="Generated EMRS e-pass">
+                        <div class="epass-meta">
+                            <strong id="epassName"></strong>
+                            <span id="epassReg"></span>
+                        </div>
+                        <a id="epassDownload" class="epass-download" download="emrs-epass.svg">Download E-Pass</a>
+                    </div>
+                </form>
+            </section>
+
+            <section class="search-card">
+                <h2>Find your e-pass</h2>
+                <p>Enter the phone number used during registration (10 digits) or your email address.</p>
+                <form class="search-form" id="searchForm">
+                    <div class="search-inputs">
+                        <input id="searchPhone" name="searchPhone" type="tel" placeholder="Phone number"
+                            pattern="\d{10}" maxlength="10" inputmode="numeric">
+                        <input id="searchEmail" name="searchEmail" type="email" placeholder="Email address">
+                    </div>
+                    <button type="submit">Search E-Pass</button>
+                    <div id="searchFeedback" class="form-feedback" role="status" aria-live="polite"></div>
+                    <div id="searchPreview" class="epass-preview" hidden>
+                        <div class="success-title" id="searchMessage"></div>
+                        <img id="searchImage" alt="Retrieved EMRS e-pass">
+                        <div class="epass-meta">
+                            <strong id="searchName"></strong>
+                            <span id="searchReg"></span>
+                        </div>
+                        <a id="searchDownload" class="epass-download" download="emrs-epass.svg">Download E-Pass</a>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        <footer>EMRS (Event Management & Registration System) by EllowDigital</footer>
+    </main>
+
+    <script>
+        const avatarInput = document.getElementById('avatarInput');
+        const avatarImage = document.getElementById('avatarImage');
+        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+        const avatarPreview = document.getElementById('avatarPreview');
+        const registrationForm = document.getElementById('registrationForm');
+        const registrationFeedback = document.getElementById('registrationFeedback');
+        const epassPreview = document.getElementById('epassPreview');
+        const epassImage = document.getElementById('epassImage');
+        const epassName = document.getElementById('epassName');
+        const epassReg = document.getElementById('epassReg');
+        const epassDownload = document.getElementById('epassDownload');
+        const stateSelect = document.getElementById('state');
+    const epassMessage = document.getElementById('epassMessage');
+    const searchForm = document.getElementById('searchForm');
+    const searchPhoneInput = document.getElementById('searchPhone');
+    const searchEmailInput = document.getElementById('searchEmail');
+    const searchFeedback = document.getElementById('searchFeedback');
+    const searchPreview = document.getElementById('searchPreview');
+    const searchMessage = document.getElementById('searchMessage');
+    const searchImage = document.getElementById('searchImage');
+    const searchName = document.getElementById('searchName');
+    const searchReg = document.getElementById('searchReg');
+    const searchDownload = document.getElementById('searchDownload');
+
+    const defaultBorderColor = 'rgba(37, 99, 235, 0.45)';
+
+        const resetAvatar = () => {
+            avatarImage.src = '';
+            avatarImage.hidden = true;
+            avatarPlaceholder.hidden = false;
+            avatarPreview.style.borderColor = defaultBorderColor;
+            avatarInput.value = '';
+        };
+
+        avatarInput.addEventListener('change', (event) => {
+            const file = event.target.files?.[0];
+            if (!file) {
+                resetAvatar();
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                alert('Please choose a valid image file.');
+                avatarInput.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (loadEvent) => {
+                avatarImage.src = loadEvent.target?.result;
+                avatarImage.hidden = false;
+                avatarPlaceholder.hidden = true;
+                avatarPreview.style.borderColor = 'rgba(37, 99, 235, 0.7)';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', () => {
+            phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+        });
+
+        searchPhoneInput.addEventListener('input', () => {
+            searchPhoneInput.value = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
+        });
+
+        const setFeedback = (message, state) => {
+            registrationFeedback.textContent = message;
+            registrationFeedback.classList.remove('success', 'error');
+            if (state) {
+                registrationFeedback.classList.add(state);
+            }
+        };
+
+        const setSearchFeedback = (message, state) => {
+            searchFeedback.textContent = message;
+            searchFeedback.classList.remove('success', 'error');
+            if (state) {
+                searchFeedback.classList.add(state);
+            }
+        };
+
+        const fileToDataUrl = (file) => {
+            if (!file) return Promise.resolve(null);
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Could not read the selected file.'));
+                reader.readAsDataURL(file);
+            });
+        };
+
+        registrationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            setFeedback('Submitting registration…', undefined);
+            epassPreview.hidden = true;
+            epassMessage.textContent = '';
+
+            const formData = new FormData(registrationForm);
+            const payload = {
+                fullName: formData.get('fullName'),
+                phone: formData.get('phone'),
+                email: formData.get('email'),
+                city: formData.get('city'),
+                state: formData.get('state'),
+            };
+
+            try {
+                const imageData = await fileToDataUrl(avatarInput.files?.[0]);
+                if (imageData) {
+                    payload.profileImage = imageData;
+                }
+
+                const response = await fetch('/.netlify/functions/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Registration failed.');
+                }
+
+                setFeedback('🎉 Congrats! You are registered successfully. Download your e-pass below.', 'success');
+                epassName.textContent = data.attendee?.fullName || '';
+                epassReg.textContent = data.attendee?.registrationId
+                    ? `Registration ID: ${data.attendee.registrationId}`
+                    : '';
+
+                const passDataUrl = data.epass?.dataUrl;
+                if (passDataUrl) {
+                    epassImage.src = passDataUrl;
+                    epassDownload.href = passDataUrl;
+                    epassMessage.textContent = 'Your digital e-pass is ready. Present this QR at entry.';
+                    epassPreview.hidden = false;
+                } else {
+                    epassPreview.hidden = true;
+                }
+
+                registrationForm.reset();
+                stateSelect.selectedIndex = 0;
+                resetAvatar();
+            } catch (error) {
+                console.error(error);
+                setFeedback(error.message, 'error');
+                epassPreview.hidden = true;
+            }
+        });
+
+        searchForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            searchPreview.hidden = true;
+            setSearchFeedback('Searching for your pass…', undefined);
+
+            const phone = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
+            const email = searchEmailInput.value.trim();
+
+            if (!phone && !email) {
+                setSearchFeedback('Enter your 10-digit phone number or email to continue.', 'error');
+                return;
+            }
+
+            const payload = {};
+            if (phone) payload.phone = phone;
+            if (email) payload.email = email;
+
+            try {
+                const response = await fetch('/.netlify/functions/find-pass', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Unable to locate your e-pass.');
+                }
+
+                setSearchFeedback('Pass found! Download it below.', 'success');
+                searchName.textContent = data.attendee?.fullName || '';
+                searchReg.textContent = data.attendee?.registrationId
+                    ? `Registration ID: ${data.attendee.registrationId}`
+                    : '';
+
+                const passDataUrl = data.epass?.dataUrl;
+                if (passDataUrl) {
+                    searchImage.src = passDataUrl;
+                    searchDownload.href = passDataUrl;
+                    searchMessage.textContent = 'Show this pass at the entry gate for verification.';
+                    searchPreview.hidden = false;
+                } else {
+                    searchPreview.hidden = true;
+                }
+            } catch (error) {
+                console.error(error);
+                setSearchFeedback(error.message, 'error');
+                searchPreview.hidden = true;
+            }
+        });
+    </script>
+</body>
+
+</html>
