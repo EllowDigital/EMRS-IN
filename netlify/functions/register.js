@@ -102,26 +102,30 @@ export const handler = async (event) => {
         await ensureSchemaReady();
 
         const existing = await sqlClient`
-                        select registration_id from attendees
+                        select id, registration_id, profile_public_id from attendees
                         where phone = ${phoneDigits}
                         limit 1
                 `;
 
-        if (existing.length) {
-            return errorResponse(409, 'An attendee with this phone number already exists.');
-        }
-
-        const registrationId = generateRegistrationId();
+        let registrationId = existing.length ? existing[0].registration_id : generateRegistrationId();
 
         let profileUrl = null;
-        let profilePublicId = null;
+        let profilePublicId = existing.length ? existing[0].profile_public_id : null;
+
+        const uploadOptions = {
+            overwrite: true,
+            transformation: [{ width: 600, height: 600, crop: 'fill', gravity: 'face' }],
+        };
+
+        if (profilePublicId && profilePublicId.trim().length > 0) {
+            uploadOptions.public_id = profilePublicId;
+        } else {
+            uploadOptions.folder = 'digital-pass/profiles';
+            uploadOptions.public_id = `user-${registrationId}`;
+        }
+
         try {
-            const uploadResult = await cloudinary.uploader.upload(profileImage, {
-                folder: 'emrs/profiles',
-                public_id: `user-${registrationId}`,
-                overwrite: true,
-                transformation: [{ width: 600, height: 600, crop: 'fill', gravity: 'face' }],
-            });
+            const uploadResult = await cloudinary.uploader.upload(profileImage, uploadOptions);
             profileUrl = uploadResult.secure_url;
             profilePublicId = uploadResult.public_id;
         } catch (uploadError) {
@@ -131,12 +135,29 @@ export const handler = async (event) => {
 
         const epass = await buildPassData({ name: fullName, registrationId, profileUrl });
 
-        await sqlClient`
-                        insert into attendees
-                                (registration_id, full_name, phone, email, city, state, profile_public_id, profile_url, status, last_qr_requested_at)
-                        values
-                                (${registrationId}, ${fullName}, ${phoneDigits}, ${email}, ${city}, ${state}, ${profilePublicId}, ${profileUrl}, 'epass_issued', now())
-                `;
+        if (existing.length) {
+            await sqlClient`
+                update attendees
+                set
+                    full_name = ${fullName},
+                    email = ${email},
+                    city = ${city},
+                    state = ${state},
+                    profile_public_id = ${profilePublicId},
+                    profile_url = ${profileUrl},
+                    status = 'epass_issued',
+                    updated_at = now(),
+                    last_qr_requested_at = now()
+                where id = ${existing[0].id}
+            `;
+        } else {
+            await sqlClient`
+                insert into attendees
+                        (registration_id, full_name, phone, email, city, state, profile_public_id, profile_url, status, last_qr_requested_at)
+                values
+                        (${registrationId}, ${fullName}, ${phoneDigits}, ${email}, ${city}, ${state}, ${profilePublicId}, ${profileUrl}, 'epass_issued', now())
+            `;
+        }
 
         return {
             statusCode: 200,
@@ -154,6 +175,7 @@ export const handler = async (event) => {
                     profilePublicId,
                 },
                 epass,
+                mode: existing.length ? 'updated' : 'created',
             }),
         };
     } catch (error) {
