@@ -1,0 +1,5 @@
+# Ensure consistent LF line endings
+* text=auto eol=lf
+
+# Mark the Netlify build artifacts as binary if any
+netlify/functions/** -text

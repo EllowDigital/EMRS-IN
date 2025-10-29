@@ -86,6 +86,49 @@ By merging simplicity with security, EMRS eliminates paper-based processes and d
 
 ---
 
+## ⚙️ Quick local setup
+
+Follow these steps to run the project locally for development and testing.
+
+1. Install dependencies
+
+```powershell
+npm install
+```
+
+2. Create a `.env` from the example and set your Neon/Postgres connection string
+
+```powershell
+copy .env.example .env
+# Edit `.env` and set DATABASE_URL to your Neon/Postgres connection string
+```
+
+3. Optional: provision schema and seed test data (requires `psql`)
+
+```powershell
+# Run schema first (creates tables and types)
+psql "$env:DATABASE_URL" -f db/schema.sql
+
+# Add a couple of test attendees so you can test verify/check-in flows
+psql "$env:DATABASE_URL" -f db/seed.sql
+```
+
+4. Start local dev server (Netlify Dev)
+
+```powershell
+npm run dev
+```
+
+Open these URLs in your browser:
+
+- http://localhost:8888/index.html — registration & e-pass generation
+- http://localhost:8888/verify.html — verification kiosk (camera + scan)
+
+Notes:
+- The functions are under `netlify/functions`. The project is configured to also expose them at `/api/*` via `netlify.toml`.
+- Use `npm run build:functions` to bundle Netlify Functions with `esbuild` if you need prebundled artifacts for CI.
+
+
 ## 🧑‍💻 Author
 
 **Sarwan Yadav (Devsarwan)**  
