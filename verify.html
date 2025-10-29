@@ -14,8 +14,10 @@
         :root { --brand: #0d6efd; }
         html, body { height: 100%; }
         body { background: linear-gradient(180deg,#f8fafc,#f1f5f9); font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
+        .navbar { background: transparent; }
+        .app-card { border: 1px solid rgba(148, 163, 184, 0.12); border-radius: 18px; box-shadow: 0 18px 46px rgba(2,6,23,0.06); background: rgba(255,255,255,0.96); }
         .top-nav { backdrop-filter: blur(6px); background: rgba(255,255,255,0.6); box-shadow: 0 6px 18px rgba(2,6,23,0.06); border-radius: .5rem; }
-        .video-placeholder { background: linear-gradient(180deg,#030614,#071026); min-height: 320px; position: relative; border-radius: .5rem; }
+        .video-placeholder { background: linear-gradient(180deg,#030614,#071026); min-height: 360px; position: relative; border-radius: .5rem; }
         .scanner-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
         .scanner-grid { position: absolute; inset: 0; opacity: .10; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; }
         .scanner-box { width: 60%; max-width: 560px; aspect-ratio: 1; background: transparent; border: 2px dashed rgba(255,255,255,0.12); box-shadow: 0 12px 40px rgba(2,6,23,0.45); border-radius: 12px; position: relative; overflow: hidden; }
@@ -30,21 +32,12 @@
 </head>
 
 <body class="d-flex flex-column h-100">
-    <header class="bg-white border-bottom">
-        <div class="container py-3 d-flex align-items-center justify-content-between top-nav">
-            <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
-                    style="width:48px;height:48px;font-weight:700;font-size:18px">E</div>
-                <div>
-                    <h1 class="h5 mb-0">E-Pass Verification</h1>
-                    <div class="small text-muted">Check-in kiosk — scan or enter Registration ID</div>
-                </div>
+    <header>
+        <nav class="navbar py-3">
+            <div class="container text-center">
+                <div class="navbar-brand mx-auto fw-bold fs-5">Verification Kiosk</div>
             </div>
-            <div class="d-flex align-items-center gap-3">
-                <div id="cameraStatus" class="badge bg-secondary camera-status">Camera: Off</div>
-                <div class="small text-muted">Verification</div>
-            </div>
-        </div>
+        </nav>
     </header>
 
     <main class="flex-fill">
@@ -53,7 +46,7 @@
 
                 <!-- Scanner / Manual entry (cards) -->
                 <div id="leftColumn" class="col-12 col-lg-8">
-                    <div class="card card-modern">
+                    <div class="card card-modern app-card">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
                                 <h2 class="h5 mb-0">Live Scanner</h2>
@@ -61,16 +54,19 @@
                             </div>
 
                             <div
-                                class="video-placeholder rounded mb-3 position-relative overflow-hidden d-flex align-items-center justify-content-center text-white">
+                                class="video-placeholder rounded mb-3 position-relative overflow-hidden d-flex align-items-center justify-content-center text-white"
+                                style="background: linear-gradient(180deg,#07145d 0%, #020b3a 100%); box-shadow: 0 18px 46px rgba(2,6,23,0.08);">
                                 <video id="video" class="w-100 h-100 d-none" autoplay playsinline></video>
-                                <div id="videoPlaceholder" class="text-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="none"
-                                        viewBox="0 0 24 24" stroke="currentColor" class="mb-2 text-white-50">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                            d="M3 7v10a2 2 0 002 2h3l2 2h4l2-2h3a2 2 0 002-2V7" />
-                                    </svg>
-                                    <div class="small opacity-75">Point your camera at a QR code to scan. Allow camera
-                                        permissions when prompted.</div>
+                                <div id="videoPlaceholder" class="text-center text-white">
+                                    <div style="width:86px;height:86px;border-radius:999px;background:rgba(255,255,255,0.06);display:inline-grid;place-items:center;margin-bottom:10px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor" class="text-white-50">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                                d="M3 7v10a2 2 0 002 2h3l2 2h4l2-2h3a2 2 0 002-2V7" />
+                                        </svg>
+                                    </div>
+                                    <div class="fw-semibold">Ready to scan</div>
+                                    <div class="small opacity-75">Point your camera at a QR code. Allow camera access when prompted.</div>
                                 </div>
                                 <div class="position-absolute bottom-0 start-0 p-3 d-flex">
                                     <button id="openCameraBtn" class="btn btn-outline-primary btn-sm me-2">Open

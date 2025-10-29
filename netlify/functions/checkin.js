@@ -52,9 +52,10 @@ export const handler = async (event) => {
             return { statusCode: 200, headers, body: JSON.stringify({ success: true, message: 'Attendee already checked in', attendee }) };
         }
 
+        // Use the database enum value 'checked_in' (matches schema)
         await sql`
             update attendees
-            set status = 'Checked-In', updated_at = now()
+            set status = 'checked_in', updated_at = now()
             where id = ${existing.id}
         `;
 
