@@ -19,18 +19,16 @@
         </style>
     </head>
     <body>
-        <header style="background: linear-gradient(135deg,#0ea5a4 0%, #3b82f6 100%); padding:28px 0; color:#fff;">
-            <div class="container d-flex align-items-center justify-content-between">
+        <header style="background: linear-gradient(135deg,#0ea5a4 0%, #3b82f6 100%); padding:18px 0; color:#fff;">
+            <div class="container d-flex align-items-center">
                 <div class="d-flex align-items-center gap-3">
-                    <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
-                        <i class="bi bi-award-fill" style="font-size:20px;color:#fff"></i>
+                    <div style="width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
+                        <i class="bi bi-award-fill" style="font-size:18px;color:#fff"></i>
                     </div>
                     <div>
-                        <h4 class="mb-0">E-Pass Check-In</h4>
-                        <div class="small opacity-75">Fast scanner • QR & Manual • Geolocation</div>
+                        <h5 class="mb-0">E-Pass Verify</h5>
                     </div>
                 </div>
-                <div class="text-end small opacity-75">Event: <strong>UP25 Conference</strong></div>
             </div>
         </header>
 
@@ -38,17 +36,23 @@
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <div class="card shadow-lg overflow-hidden" style="border-radius:14px;">
-                        <div class="row g-0">
-                            <div class="col-md-6" style="background: linear-gradient(180deg, rgba(59,130,246,0.06), transparent);">
-                                <div class="p-4 d-flex flex-column" style="min-height:360px; align-items:stretch; justify-content:space-between;">
-                                    <div>
-                                        <h5 class="mb-1">Scanner</h5>
-                                        <p class="small text-muted mb-3">Camera will attempt to auto-start. Use manual lookup if camera isn't available.</p>
+                        <div class="card-body p-0">
+                            <!-- Three full-width views: scanner, manual lookup, results -->
+                            <div id="view-scanner" class="view active" style="padding:20px; background: linear-gradient(180deg, rgba(59,130,246,0.03), transparent);">
+                                <div class="container">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-0">Scanner</h6>
+                                            <div class="small text-muted">Camera will attempt to auto-start.</div>
+                                        </div>
+                                        <div class="d-flex gap-2 align-items-center">
+                                            <span id="cameraStatus" class="badge bg-secondary">Camera: Off</span>
+                                        </div>
                                     </div>
 
                                     <div style="position:relative;">
                                         <video id="video" class="d-none" playsinline muted></video>
-                                        <div id="videoPlaceholder" style="height:220px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;">
+                                        <div id="videoPlaceholder" class="placeholder-box" style="height:320px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;">
                                             <div class="text-center text-primary">
                                                 <i class="bi bi-camera-reels" style="font-size:40px"></i>
                                                 <div class="small mt-2">Camera preview</div>
@@ -69,28 +73,34 @@
                                             <div id="loc-display" class="small text-muted mt-1" aria-live="polite"></div>
                                         </div>
                                         <div>
-                                            <span id="cameraStatus" class="badge bg-secondary">Camera: Off</span>
+                                            <button id="switch-to-manual" class="btn btn-outline-primary btn-sm">Manual lookup</button>
+                                            <button id="toggle-camera" class="btn btn-light btn-sm ms-2">Toggle</button>
                                         </div>
-                                    </div>
-
-                                    <div class="mt-3 d-flex gap-2">
-                                        <button id="switch-to-manual" class="btn btn-outline-light btn-sm flex-grow-1">Manual lookup</button>
-                                        <button id="toggle-camera" class="btn btn-light btn-sm">Toggle</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-6 bg-white p-4">
-                                <div id="manual-lookup-form" class="mb-3 d-none">
-                                    <label for="reg-id-input" class="form-label small">Registration ID</label>
-                                    <div class="input-group mb-2">
-                                        <input id="reg-id-input" class="form-control" placeholder="UP25-..." aria-label="Registration ID" />
-                                        <button id="lookup-btn" class="btn btn-primary">Lookup</button>
+                            <div id="view-manual" class="view d-none" style="padding:20px;">
+                                <div class="container">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <h6 class="mb-0">Manual Lookup</h6>
                                     </div>
-                                    <div id="lookup-spinner" class="spinner-border spinner-border-sm text-primary d-none" role="status"><span class="visually-hidden">Loading</span></div>
+                                    <div class="mb-3">
+                                        <label for="reg-id-input" class="form-label small">Registration ID</label>
+                                        <div class="input-group">
+                                            <input id="reg-id-input" name="regId" class="form-control" placeholder="UP25-..." aria-label="Registration ID" />
+                                            <button id="lookup-btn" class="btn btn-primary" type="button">Lookup</button>
+                                        </div>
+                                        <div id="lookup-spinner" class="spinner-border spinner-border-sm text-primary d-none mt-2" role="status"><span class="visually-hidden">Loading</span></div>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button id="back-to-scanner" class="btn btn-outline-secondary btn-sm">Back to Scanner</button>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div id="results-section" class="text-center d-none">
+                            <div id="view-results" class="view d-none" style="padding:20px;">
+                                <div class="container text-center">
                                     <div id="result-status-badge" class="mb-2">
                                         <span id="result-status-badge-text" class="badge bg-success">VERIFIED</span>
                                     </div>
@@ -107,10 +117,6 @@
                                         <button id="checkin-btn" class="btn btn-success btn-lg w-100">Confirm Check-In <span id="checkin-spinner" class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"></span></button>
                                         <button id="clear-btn-bottom" class="btn btn-outline-secondary btn-sm mt-2 w-100">Clear / Next</button>
                                     </div>
-                                </div>
-
-                                <div id="empty-state" class="text-center text-muted small">
-                                    Scan a QR or use manual lookup to find an attendee.
                                 </div>
                             </div>
                         </div>
@@ -148,7 +154,17 @@
         </div>
 
         <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-        <script>
+    <script>
+            // UI enhancements: scan beam animation & confetti
+            const scannerBoxEl = document.getElementById('scannerBox');
+            if (scannerBoxEl) {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .scan-beam { position:absolute; left:-40%; top:0; width:40%; height:100%; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%); transform:skewX(-12deg); animation: beam 2.2s linear infinite; }
+                    @keyframes beam { 0%{ left:-40% } 50%{ left:60% } 100%{ left:-40% } }
+                `;
+                document.head.appendChild(style);
+            }
             // UI enhancements: scan beam animation & confetti
             const scannerBoxEl = document.getElementById('scannerBox');
             if (scannerBoxEl) {
@@ -190,20 +206,23 @@
                 }
             }
 
-            // retain core scanning + checkin logic but improve UX and add keyboard shortcuts
+            // DOM refs for the 3 views
+            const viewScanner = document.getElementById('view-scanner');
+            const viewManual = document.getElementById('view-manual');
+            const viewResults = document.getElementById('view-results');
+
+            // elements
             const video = document.getElementById('video');
             const videoPlaceholder = document.getElementById('videoPlaceholder');
             const scannerOverlay = document.getElementById('scannerOverlay');
             const scanCanvas = document.createElement('canvas');
             const scanCtx = scanCanvas.getContext && scanCanvas.getContext('2d');
 
-            const scannerSection = document.getElementById('scanner-section');
-            const resultsSection = document.getElementById('results-section');
             const switchToManualBtn = document.getElementById('switch-to-manual');
-            const manualForm = document.getElementById('manual-lookup-form');
-            const regIdInput = document.getElementById('reg-id-input');
-            const lookupBtnManual = document.getElementById('lookup-btn');
+            const lookupBtn = document.getElementById('lookup-btn');
+            const backToScannerBtn = document.getElementById('back-to-scanner');
             const lookupSpinner = document.getElementById('lookup-spinner');
+            const regIdInput = document.getElementById('reg-id-input');
 
             const feedback = document.getElementById('feedback');
             const cameraStatus = document.getElementById('cameraStatus');
@@ -217,17 +236,24 @@
             const resultEmail = document.getElementById('result-email');
             const resultMethod = document.getElementById('result-method');
             const resultLocation = document.getElementById('result-location');
+            const resultNotes = document.querySelector('#result-notes span');
+
             const checkinBtn = document.getElementById('checkin-btn');
             const checkinSpinner = document.getElementById('checkin-spinner');
             const clearBtnBottom = document.getElementById('clear-btn-bottom');
             const toggleCameraBtn = document.getElementById('toggle-camera');
 
-            const emptyState = document.getElementById('empty-state');
-
             let cameraStream = null;
             let scanning = false;
             let current = null;
-            let lastLookupMethod = 'qr_scan'; // 'qr_scan' or 'manual_lookup'
+            let lastLookupMethod = 'qr_scan';
+
+            function showView(name) {
+                viewScanner.classList.add('d-none'); viewManual.classList.add('d-none'); viewResults.classList.add('d-none');
+                if (name === 'scanner') { viewScanner.classList.remove('d-none'); }
+                if (name === 'manual') { viewManual.classList.remove('d-none'); }
+                if (name === 'results') { viewResults.classList.remove('d-none'); }
+            }
 
             function normalizeStatus(raw) {
                 if (!raw) return 'Pending';
@@ -240,13 +266,10 @@
             function showUser(user) {
                 current = user;
                 if (!user) {
-                    resultsSection.classList.add('d-none');
-                    emptyState.classList.remove('d-none');
-                    manualForm.classList.add('d-none');
                     feedback.textContent = 'Ready';
+                    showView('scanner');
                     return;
                 }
-                emptyState.classList.add('d-none');
                 // populate result UI
                 resultAvatar.src = user.profileUrl || 'https://placehold.co/150x150/6c757d/white?text=No+Photo';
                 resultName.textContent = user.fullName || 'Unknown';
@@ -263,12 +286,12 @@
                     checkinBtn.disabled = false;
                 }
 
-                // display method & location placeholder (filled by checkin response)
                 resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = lastLookupMethod);
                 resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = '—');
+                if (resultNotes) resultNotes.textContent = '—';
 
-                // reveal results
-                resultsSection.classList.remove('d-none');
+                // show results view only
+                showView('results');
             }
 
             // camera control
@@ -293,7 +316,6 @@
                     cameraStatus.textContent = 'Camera: Error';
                     cameraStatus.classList.remove('bg-success');
                     cameraStatus.classList.add('bg-danger');
-                    // if camera couldn't start, show manual prompt shortly
                     setTimeout(() => showManualPrompt(), 400);
                 }
             }
@@ -350,7 +372,13 @@
             function handleScanned(payload) {
                 try { playBeep(); if (navigator.vibrate) navigator.vibrate(200); } catch (e) { }
                 const id = parseRegistrationFromPayload(payload);
-                if (!id) { manualForm.classList.remove('d-none'); feedback.textContent = 'QR scanned but registration ID not found'; return; }
+                if (!id) {
+                    // switch to manual lookup view so user can enter ID
+                    showView('manual');
+                    regIdInput && regIdInput.focus();
+                    feedback.textContent = 'QR scanned but registration ID not found';
+                    return;
+                }
                 lastLookupMethod = 'qr_scan';
                 stopCamera();
                 if (scannerBoxEl) { scannerBoxEl.classList.add('scan-success'); setTimeout(()=>scannerBoxEl.classList.remove('scan-success'),700); }
@@ -369,12 +397,15 @@
                     lookupSpinner && (lookupSpinner.classList.remove('d-none'));
                     const data = await apiLookup(id);
                     lastLookupMethod = (method === 'qr_scan') ? 'qr_scan' : 'manual_lookup';
+                    // ensure camera is stopped and show results
+                    try { stopCamera(); } catch(e){}
                     showUser(data.attendee);
                     feedback.textContent = 'Attendee found';
                     toast('Attendee found');
                 } catch (err) {
                     console.error(err);
-                    manualForm.classList.remove('d-none');
+                    showView('manual');
+                    regIdInput && regIdInput.classList.add('is-invalid');
                     feedback.textContent = err.message || 'Attendee not found';
                     toast(err.message || 'Attendee not found');
                 } finally {
@@ -396,14 +427,13 @@
                 try {
                     const modalEl = document.getElementById('manualPromptModal');
                     if (!modalEl) return;
-                    // only show if still scanning and no result displayed
                     if (!scanning || (current && current.registrationId)) return;
                     _manualModalInstance = new bootstrap.Modal(modalEl, { backdrop: true });
                     _manualModalInstance.show();
                 } catch (e) { console.warn('manual prompt failed', e); }
             }
 
-            // wire modal buttons when DOM is available
+            // wire modal buttons
             (function wireManualModalButtons(){
                 document.addEventListener('click', (ev) => {
                     const t = ev.target;
@@ -411,8 +441,7 @@
                     if (t.id === 'openManualBtn') {
                         try { _manualModalInstance && _manualModalInstance.hide(); } catch(e){}
                         stopCamera();
-                        manualForm.classList.remove('d-none');
-                        scannerSection && scannerSection.classList.add('d-none');
+                        showView('manual');
                         setTimeout(()=> regIdInput && regIdInput.focus(), 120);
                         clearScanFallback();
                     }
@@ -423,26 +452,36 @@
                 });
             })();
 
-            // manual form
+            // wire view controls
             if (switchToManualBtn) switchToManualBtn.addEventListener('click', () => {
-                stopCamera(); manualForm.classList.remove('d-none');
-                scannerSection && scannerSection.classList.add('d-none');
-                regIdInput.focus();
+                stopCamera();
+                showView('manual');
+                setTimeout(()=> regIdInput && regIdInput.focus(), 120);
+                clearScanFallback();
             });
 
-            if (manualForm) manualForm.addEventListener('submit', async (e) => {
-                e.preventDefault(); const id = (regIdInput.value || '').trim(); if (!id) { regIdInput.classList.add('is-invalid'); return; }
-                regIdInput.classList.remove('is-invalid'); lastLookupMethod = 'manual_lookup'; await doLookup(id, 'manual_lookup');
+            if (backToScannerBtn) backToScannerBtn.addEventListener('click', () => {
+                showView('scanner');
+                // restart camera when returning
+                startCamera().catch(()=>{});
+            });
+
+            // FIX: manual lookup uses click on lookup button (not form submit on a div)
+            if (lookupBtn) lookupBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const id = (regIdInput.value || '').trim();
+                if (!id) { regIdInput.classList.add('is-invalid'); regIdInput.focus(); return; }
+                regIdInput.classList.remove('is-invalid');
+                lastLookupMethod = 'manual_lookup';
+                await doLookup(id, 'manual_lookup');
             });
 
             // toggle camera button
             if (toggleCameraBtn) toggleCameraBtn.addEventListener('click', () => { if (scanning) stopCamera(); else startCamera(); });
 
-            // clear / next handlers
+            // clear / next handlers: hide results and show scanner again
             function resetToScanner() {
-                resultsSection.classList.add('d-none');
-                manualForm.classList.add('d-none');
-                scannerSection && scannerSection.classList.remove('d-none');
+                current = null;
                 // clear result fields
                 resultAvatar.src = 'https://placehold.co/150x150/6c757d/white?text=No+Photo';
                 resultName.textContent = '';
@@ -451,8 +490,9 @@
                 resultEmail.textContent = '';
                 resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = '—');
                 resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = '—');
-                // restart camera
-                startCamera();
+                if (resultNotes) resultNotes.textContent = '—';
+                showView('scanner');
+                startCamera().catch(()=>{});
             }
 
             if (clearBtnBottom) clearBtnBottom.addEventListener('click', resetToScanner);
@@ -477,7 +517,6 @@
                 try {
                     const location = await getLocation(3500);
                     if (location) locDisplay.textContent = `Location: ${location}`;
-                    // Detect device info (userAgent/platform and camera info when available)
                     async function detectDeviceInfo() {
                         const info = {
                             userAgent: navigator.userAgent || null,
@@ -495,7 +534,7 @@
                                 const v = devs.find(d => d.kind === 'videoinput');
                                 if (v) info.cameraLabel = v.label || v.deviceId || null;
                             }
-                        } catch (e) { /* ignore */ }
+                        } catch (e) { }
                         return info;
                     }
                     const deviceInfo = await detectDeviceInfo();
@@ -503,16 +542,15 @@
                     const res = await fetch('/.netlify/functions/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data?.message || 'Check-in failed');
-                    showUser(data.attendee);
-                    // update method & location display with values returned
+                    // update UI from returned attendee
+                    current = data.attendee;
+                    showUser(current);
                     resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = payload.method || 'qr_scan');
                     resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = payload.location || '—');
-                    // show detected device info in results (concise)
                     try {
-                        const notesEl = document.querySelector('#result-notes span');
-                        if (notesEl) {
+                        if (resultNotes) {
                             const label = deviceInfo && (deviceInfo.cameraLabel || deviceInfo.platform || deviceInfo.userAgent) || '—';
-                            notesEl.textContent = (typeof label === 'string' && label.length > 80) ? (label.slice(0,77) + '…') : label;
+                            resultNotes.textContent = (typeof label === 'string' && label.length > 80) ? (label.slice(0,77) + '…') : label;
                         }
                     } catch (e) { }
                     feedback.textContent = 'Checked in successfully';
@@ -536,10 +574,5 @@
                 if (e.key === 'Escape') { resetToScanner(); }
             });
 
-            // auto-start camera on load
-            window.addEventListener('load', () => { setTimeout(() => { startCamera().catch(()=>{}); }, 250); });
-        </script>
-
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    </body>
-</html>
+            // auto-start camera on load and show scanner view
+            window.addEventListener('load', () => { showView('scanner'); setTimeout(() => { startCamera().catch(()=>{}); }, 250); });
