@@ -1153,8 +1153,22 @@ document.addEventListener('DOMContentLoaded', () => {
         // Fetch dashboard data and optionally run initial attendee search.
         fetchDashboardData();
         if (!skipInitialSearch) searchAttendees(); // Initial load (unless caller requests skip)
-        // Reduce polling frequency to 60s to lower backend pressure and avoid timeouts
-        setInterval(fetchDashboardData, 60000); // Refresh data every 60 seconds
+
+        // Set up an activity-based poller instead of a fixed interval to reduce background noise.
+        // It will refresh data every 60s, but only if the user has been active.
+        let activityPollTimeout;
+        const activityEvents = ['mousemove', 'keydown', 'scroll', 'click'];
+        const scheduleActivityPoll = () => {
+            clearTimeout(activityPollTimeout);
+            activityPollTimeout = setTimeout(() => {
+                if (appState.isLoggedIn) {
+                    console.log('User activity detected, refreshing dashboard data...');
+                    fetchDashboardData();
+                }
+            }, 60000); // 60 seconds
+        };
+        activityEvents.forEach(event => document.addEventListener(event, scheduleActivityPoll, { passive: true }));
+        scheduleActivityPoll(); // Initial schedule
     }
 
     async function init() {
