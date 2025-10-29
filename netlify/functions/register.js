@@ -94,10 +94,14 @@ export const handler = async (event) => {
             return errorResponse(400, 'Email address is invalid.');
         }
 
+        if (!profileImage) {
+            return errorResponse(400, 'Please upload an image.');
+        }
+
         const sqlClient = getSqlClient();
         await ensureSchemaReady();
 
-                const existing = await sqlClient`
+        const existing = await sqlClient`
                         select registration_id from attendees
                         where phone = ${phoneDigits}
                         limit 1
@@ -111,25 +115,23 @@ export const handler = async (event) => {
 
         let profileUrl = null;
         let profilePublicId = null;
-        if (profileImage) {
-            try {
-                const uploadResult = await cloudinary.uploader.upload(profileImage, {
-                    folder: 'emrs/profiles',
-                    public_id: `user-${registrationId}`,
-                    overwrite: true,
-                    transformation: [{ width: 600, height: 600, crop: 'fill', gravity: 'face' }],
-                });
-                profileUrl = uploadResult.secure_url;
-                profilePublicId = uploadResult.public_id;
-            } catch (uploadError) {
-                console.error('Cloudinary upload failed', uploadError);
-                return errorResponse(502, 'Unable to process profile image.');
-            }
+        try {
+            const uploadResult = await cloudinary.uploader.upload(profileImage, {
+                folder: 'emrs/profiles',
+                public_id: `user-${registrationId}`,
+                overwrite: true,
+                transformation: [{ width: 600, height: 600, crop: 'fill', gravity: 'face' }],
+            });
+            profileUrl = uploadResult.secure_url;
+            profilePublicId = uploadResult.public_id;
+        } catch (uploadError) {
+            console.error('Cloudinary upload failed', uploadError);
+            return errorResponse(502, 'Unable to process profile image.');
         }
 
-        const epass = buildPassData({ name: fullName, registrationId, profileUrl });
+        const epass = await buildPassData({ name: fullName, registrationId, profileUrl });
 
-                await sqlClient`
+        await sqlClient`
                         insert into attendees
                                 (registration_id, full_name, phone, email, city, state, profile_public_id, profile_url, status, last_qr_requested_at)
                         values

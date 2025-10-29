@@ -1,13 +1,14 @@
 {
-  "name": "emrs-in",
-  "version": "1.0.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "netlify dev"
-  },
-  "dependencies": {
-    "cloudinary": "^1.41.3",
-    "postgres": "^3.4.3"
-  }
+    "name": "emrs-in",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "netlify dev"
+    },
+    "dependencies": {
+        "cloudinary": "^1.41.3",
+        "postgres": "^3.4.3",
+        "qrcode": "^1.5.3"
+    }
 }

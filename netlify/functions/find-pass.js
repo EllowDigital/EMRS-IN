@@ -112,7 +112,7 @@ export const handler = async (event) => {
       where id = ${attendee.id}
     `;
 
-        const epass = buildPassData({
+        const epass = await buildPassData({
             name: attendee.full_name,
             registrationId: attendee.registration_id,
             profileUrl: attendee.profile_url,
