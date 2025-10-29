@@ -23,66 +23,61 @@ export function buildEpassSvg({ name, registrationId, profileUrl, qrDataUrl }) {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="720" height="1120" viewBox="0 0 720 1120" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="headerGradient" x1="0" y1="0" x2="720" y2="320" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#081cce" />
-      <stop offset="1" stop-color="#012087" />
+    <linearGradient id="headerGradient" x1="0" y1="0" x2="720" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a24d9" />
+      <stop offset="1" stop-color="#05208d" />
     </linearGradient>
-    <linearGradient id="bodyGradient" x1="0" y1="320" x2="0" y2="1120" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bodyGradient" x1="0" y1="360" x2="0" y2="1120" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#ffffff" />
-      <stop offset="1" stop-color="#f3f6fb" />
+      <stop offset="1" stop-color="#f2f6ff" />
     </linearGradient>
-    <linearGradient id="photoFallback" x1="0" y1="0" x2="180" y2="180" gradientUnits="userSpaceOnUse">
+    <linearGradient id="photoFallback" x1="0" y1="0" x2="220" y2="220" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#7aa6ff" />
-      <stop offset="1" stop-color="#1c4ed8" />
+      <stop offset="1" stop-color="#1b48d2" />
     </linearGradient>
-    <filter id="cardShadow" x="-6%" y="-4%" width="112%" height="112%" color-interpolation-filters="sRGB">
-      <feDropShadow dx="0" dy="18" stdDeviation="32" flood-color="#0f172a" flood-opacity="0.18" />
+    <filter id="cardShadow" x="-8%" y="-6%" width="120%" height="120%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="28" flood-color="#0f172a" flood-opacity="0.18" />
     </filter>
-    <pattern id="dotPattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="scale(1,1)">
-      <circle cx="4" cy="4" r="1" fill="#cbd5f5" />
-    </pattern>
     <clipPath id="photoMask">
-      <circle cx="190" cy="590" r="150" />
+      <circle cx="210" cy="560" r="140" />
     </clipPath>
   </defs>
 
-  <rect width="720" height="1120" rx="44" fill="#e5ebf7" />
-  <rect x="20" y="20" width="680" height="1080" rx="40" fill="#ffffff" />
-  <rect x="20" y="20" width="680" height="360" rx="40" fill="url(#headerGradient)" />
-  <rect x="60" y="66" width="600" height="24" rx="12" fill="#0f1f62" opacity="0.55" />
-  <rect x="176" y="36" width="368" height="36" rx="18" fill="#101d60" opacity="0.55" />
+  <rect width="720" height="1120" rx="44" fill="#e9efff" />
+  <rect x="24" y="24" width="672" height="1072" rx="38" fill="#ffffff" />
+  <rect x="24" y="24" width="672" height="360" rx="38" fill="url(#headerGradient)" />
+  <rect x="180" y="64" width="360" height="32" rx="16" fill="#0b1d74" opacity="0.55" />
+  <rect x="120" y="96" width="480" height="20" rx="10" fill="#0b1d74" opacity="0.35" />
 
-  <text x="360" y="190" text-anchor="middle" fill="#ffffff" font-size="96" font-family="'Roboto', sans-serif" font-weight="900" letter-spacing="0.12em">E-PASS</text>
-  <rect x="20" y="360" width="680" height="740" rx="40" fill="url(#bodyGradient)" />
+  <text x="360" y="198" text-anchor="middle" fill="#ffffff" font-size="96" font-family="'Roboto', sans-serif" font-weight="900" letter-spacing="0.14em">E-PASS</text>
+  <rect x="24" y="360" width="672" height="736" rx="38" fill="url(#bodyGradient)" />
 
   <g filter="url(#cardShadow)">
-    <rect x="70" y="420" width="580" height="600" rx="36" fill="#ffffff" />
+    <rect x="64" y="400" width="592" height="616" rx="34" fill="#ffffff" />
   </g>
-
-  <line x1="360" y1="470" x2="360" y2="970" stroke="#d0d8ee" stroke-width="2" stroke-dasharray="10 12" />
+  <line x1="360" y1="440" x2="360" y2="936" stroke="#d5dcf0" stroke-width="2" stroke-dasharray="10 12" />
 
   <g clip-path="url(#photoMask)">
-    <rect x="40" y="440" width="300" height="300" fill="url(#photoFallback)" />
-    ${safeProfile ? `<image href="${safeProfile}" x="40" y="440" width="300" height="300" preserveAspectRatio="xMidYMid slice" />` : `<text x="190" y="620" fill="#ffffff" font-size="128" font-family="'Inter', sans-serif" font-weight="700" text-anchor="middle">${safeInitial}</text>`}
+    <rect x="70" y="420" width="280" height="280" fill="url(#photoFallback)" />
+    ${safeProfile ? `<image href="${safeProfile}" x="70" y="420" width="280" height="280" preserveAspectRatio="xMidYMid slice" />` : `<text x="210" y="600" fill="#ffffff" font-size="116" font-family="'Inter', sans-serif" font-weight="700" text-anchor="middle">${safeInitial}</text>`}
   </g>
-  <circle cx="190" cy="590" r="158" stroke="#0b1f82" stroke-width="6" fill="transparent" />
+  <circle cx="210" cy="560" r="148" stroke="#0b2790" stroke-width="6" fill="transparent" />
 
-  <text x="60" y="760" fill="#1f2937" font-size="28" font-family="'Inter', sans-serif" font-weight="700">Reg. ID:</text>
-  <text x="200" y="760" fill="#e11d48" font-size="30" font-family="'Inter', sans-serif" font-weight="800">${safeReg}</text>
-  <text x="60" y="810" fill="#1f2937" font-size="26" font-family="'Inter', sans-serif" font-weight="700">Name:</text>
-  <text x="160" y="810" fill="#0f172a" font-size="28" font-family="'Inter', sans-serif" font-weight="800">${safeName.toUpperCase()}</text>
+  <text x="92" y="748" fill="#1f2937" font-size="30" font-family="'Inter', sans-serif" font-weight="700">Reg. ID:</text>
+  <text x="220" y="748" fill="#e3263f" font-size="32" font-family="'Inter', sans-serif" font-weight="800">${safeReg}</text>
+  <text x="92" y="804" fill="#1f2937" font-size="28" font-family="'Inter', sans-serif" font-weight="700">Name:</text>
+  <text x="188" y="804" fill="#0f172a" font-size="30" font-family="'Inter', sans-serif" font-weight="800">${safeName.toUpperCase()}</text>
 
-  <rect x="400" y="510" width="240" height="240" rx="28" fill="#f8fafc" stroke="#d4dcf4" stroke-width="4" />
-  ${safeQr ? `<image href="${safeQr}" x="412" y="522" width="216" height="216" preserveAspectRatio="xMidYMid meet" />` : ''}
-  <text x="520" y="770" text-anchor="middle" fill="#0f172a" font-size="20" font-family="'Inter', sans-serif" font-weight="600">Scan at venue</text>
+  <rect x="408" y="456" width="232" height="232" rx="26" fill="#f8fbff" stroke="#d4dcf4" stroke-width="4" />
+  ${safeQr ? `<image href="${safeQr}" x="420" y="468" width="208" height="208" preserveAspectRatio="xMidYMid meet" />` : ''}
+  <text x="524" y="720" text-anchor="middle" fill="#0f172a" font-size="20" font-family="'Inter', sans-serif" font-weight="600">Scan at venue</text>
 
-  <rect x="70" y="880" width="580" height="120" rx="24" fill="#edf2fb" />
-  <text x="100" y="940" fill="#1f2937" font-size="22" font-family="'Inter', sans-serif" font-weight="600">Instructions</text>
-  <text x="100" y="980" fill="#4b5563" font-size="18" font-family="'Inter', sans-serif">• Carry a government-issued ID matching this pass.</text>
-  <text x="100" y="1010" fill="#4b5563" font-size="18" font-family="'Inter', sans-serif">• Arrive 15 minutes early for verification.</text>
+  <text x="92" y="864" fill="#4b5563" font-size="20" font-family="'Inter', sans-serif">Show this pass with a valid photo ID at the gate.</text>
+  <text x="92" y="902" fill="#4b5563" font-size="20" font-family="'Inter', sans-serif">QR verification is required for entry and re-entry.</text>
 
-  <rect x="20" y="1020" width="680" height="80" rx="32" fill="#041579" />
-  <text x="360" y="1074" text-anchor="middle" fill="#ffffff" font-size="28" font-family="'Inter', sans-serif" font-weight="700">VENUE DETAILS</text>
+  <rect x="64" y="952" width="592" height="116" rx="28" fill="#041b7b" />
+  <text x="360" y="1010" text-anchor="middle" fill="#ffffff" font-size="26" font-family="'Inter', sans-serif" font-weight="700">VENUE DETAILS</text>
+  <text x="360" y="1046" text-anchor="middle" fill="#dbe4ff" font-size="20" font-family="'Inter', sans-serif" font-weight="500">'Access opens between 09:00 and 18:00. Arrive inspired.'</text>
 </svg>`;
 }
 

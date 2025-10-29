@@ -218,6 +218,79 @@
             box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
         }
 
+        .btn-primary {
+            background: linear-gradient(135deg, #0f1f78, #061262);
+            border: none;
+            border-radius: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 18px 36px rgba(6, 18, 98, 0.26);
+        }
+
+        .btn-primary:hover,
+        .btn-primary:focus {
+            background: linear-gradient(135deg, #132288, #071771);
+            box-shadow: 0 22px 40px rgba(6, 18, 98, 0.32);
+        }
+
+        .btn-outline-primary {
+            border-radius: 18px;
+            border: 2px solid #0f1f78;
+            color: #0f1f78;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: rgba(15, 31, 120, 0.04);
+        }
+
+        .btn-outline-primary:hover,
+        .btn-outline-primary:focus {
+            background: rgba(15, 31, 120, 0.12);
+            color: #0f1f78;
+        }
+
+        .btn-link.nav-btn,
+        .alternate-action {
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .btn.is-loading {
+            position: relative;
+            pointer-events: none;
+            color: transparent !important;
+        }
+
+        .btn.is-loading::after {
+            content: '';
+            position: absolute;
+            inset: 50% auto auto 50%;
+            width: 1.4rem;
+            height: 1.4rem;
+            margin: -0.7rem 0 0 -0.7rem;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-top-color: #ffffff;
+            animation: button-spin 0.8s linear infinite;
+        }
+
+        .btn.is-loading.btn-outline-primary::after {
+            border-color: rgba(15, 31, 120, 0.3);
+            border-top-color: #0f1f78;
+        }
+
+        @keyframes button-spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
         .fade-layer.fade {
             transition: opacity 0.25s ease, transform 0.25s ease;
         }
@@ -329,6 +402,10 @@
                 width: 140px;
                 height: 140px;
             }
+
+            .pass-preview img {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -343,7 +420,7 @@
 
         <main class="app-main">
             <div class="row g-4 align-items-start justify-content-center">
-                <div id="registerColumn" class="col-lg-7">
+                <div id="registerColumn" class="col-12 col-lg-7 col-xl-6">
                     <div id="registerCard" class="card app-card fade-layer fade show"
                         aria-labelledby="register-heading">
                         <div class="card-body">
@@ -469,7 +546,7 @@
                     </div>
                 </div>
 
-                <div id="searchColumn" class="col-lg-6 col-xl-5 d-none">
+                <div id="searchColumn" class="col-12 col-lg-6 col-xl-5 d-none">
                     <div id="searchCard" class="card app-card search-layer fade-layer fade d-none"
                         aria-labelledby="find-title">
                         <div class="card-body">
@@ -538,6 +615,34 @@
                 </div>
         </main>
 
+        <div class="modal fade" id="alreadyRegisteredModal" tabindex="-1" aria-labelledby="alreadyRegisteredModalLabel"
+            aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content rounded-4 border-0 shadow-lg">
+                    <div class="modal-header border-0 pb-0">
+                        <h5 class="modal-title fw-bold" id="alreadyRegisteredModalLabel">You already have a pass</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body pt-2">
+                        <p id="alreadyRegisteredMessage" class="text-secondary mb-4">We refreshed your existing pass.
+                            Download the latest copy below.</p>
+                        <div class="pass-preview mx-auto mb-4" id="existingPassPreview">
+                            <img id="existingPassImage" class="img-fluid" alt="Existing digital pass">
+                        </div>
+                        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+                            <button type="button" id="existingDownloadBtn"
+                                class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2">
+                                <i class="fa-solid fa-download"></i>
+                                <span>Download Pass</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-lg px-4"
+                                data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <footer class="text-center mt-5 pt-lg-3 small">© 2025 EllowDigital · Digital Pass Desk
         </footer>
     </div>
@@ -552,498 +657,591 @@
         integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
         crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
     <script>
-        const avatarInput = document.getElementById('avatarInput');
-        const avatarImage = document.getElementById('avatarImage');
-        const avatarPlaceholder = document.getElementById('avatarPlaceholder');
-        const avatarPreview = document.getElementById('avatarPreview');
+        window.addEventListener('DOMContentLoaded', () => {
+            const avatarInput = document.getElementById('avatarInput');
+            const avatarImage = document.getElementById('avatarImage');
+            const avatarPlaceholder = document.getElementById('avatarPlaceholder');
+            const avatarPreview = document.getElementById('avatarPreview');
 
-        const registrationForm = document.getElementById('registrationForm');
-        const fullNameInput = document.getElementById('fullName');
-        const registrationFeedback = document.getElementById('registrationFeedback');
-        const stateSelect = document.getElementById('state');
-        const submitButton = registrationForm.querySelector('button[type="submit"]');
+            const registrationForm = document.getElementById('registrationForm');
+            const fullNameInput = document.getElementById('fullName');
+            const registrationFeedback = document.getElementById('registrationFeedback');
+            const stateSelect = document.getElementById('state');
+            const submitButton = registrationForm.querySelector('button[type="submit"]');
 
-        const registerCard = document.getElementById('registerCard');
-        const registerSuccess = document.getElementById('registerSuccess');
-        const registerAgainBtn = document.getElementById('registerAgainBtn');
-        const registerSuccessMessage = document.getElementById('registerSuccessMessage');
+            const registerCard = document.getElementById('registerCard');
+            const registerSuccess = document.getElementById('registerSuccess');
+            const registerAgainBtn = document.getElementById('registerAgainBtn');
+            const registerSuccessMessage = document.getElementById('registerSuccessMessage');
 
-        const epassImage = document.getElementById('epassImage');
-        const epassName = document.getElementById('epassName');
-        const epassReg = document.getElementById('epassReg');
-        const epassDownload = document.getElementById('epassDownload');
+            const epassImage = document.getElementById('epassImage');
+            const epassName = document.getElementById('epassName');
+            const epassReg = document.getElementById('epassReg');
+            const epassDownload = document.getElementById('epassDownload');
 
-        const searchForm = document.getElementById('searchForm');
-        const searchFeedback = document.getElementById('searchFeedback');
-        const searchPhoneInput = document.getElementById('searchPhone');
-        const searchCard = document.getElementById('searchCard');
-        const searchResultCard = document.getElementById('searchResultCard');
-        const searchAgainBtn = document.getElementById('searchAgainBtn');
-        const searchMessage = document.getElementById('searchMessage');
-        const searchImage = document.getElementById('searchImage');
-        const searchName = document.getElementById('searchName');
-        const searchReg = document.getElementById('searchReg');
-        const searchDownload = document.getElementById('searchDownload');
-        const epassPreviewCard = document.getElementById('epassPreviewCard');
-        const searchPreviewCard = document.getElementById('searchPreviewCard');
+            const searchForm = document.getElementById('searchForm');
+            const searchFeedback = document.getElementById('searchFeedback');
+            const searchPhoneInput = document.getElementById('searchPhone');
+            const searchCard = document.getElementById('searchCard');
+            const searchResultCard = document.getElementById('searchResultCard');
+            const searchAgainBtn = document.getElementById('searchAgainBtn');
+            const searchImage = document.getElementById('searchImage');
+            const searchName = document.getElementById('searchName');
+            const searchReg = document.getElementById('searchReg');
+            const searchDownload = document.getElementById('searchDownload');
+            const searchPreviewCard = document.getElementById('searchPreviewCard');
+            const searchSubmitButton = searchForm.querySelector('button[type="submit"]');
 
-        const registerColumn = document.getElementById('registerColumn');
-        const searchColumn = document.getElementById('searchColumn');
+            const epassPreviewCard = document.getElementById('epassPreviewCard');
+            const registerColumn = document.getElementById('registerColumn');
+            const searchColumn = document.getElementById('searchColumn');
 
-        const defaultBorderColor = '#d4dae6';
-        const passImageUrlCache = new WeakMap();
+            const existingModalElement = document.getElementById('alreadyRegisteredModal');
+            const existingPassImage = document.getElementById('existingPassImage');
+            const existingPassPreview = document.getElementById('existingPassPreview');
+            const existingDownloadBtn = document.getElementById('existingDownloadBtn');
+            const existingModalMessage = document.getElementById('alreadyRegisteredMessage');
+            const bootstrapModal = window.bootstrap?.Modal;
+            const existingModal = bootstrapModal && existingModalElement
+                ? new bootstrapModal(existingModalElement, { backdrop: 'static' })
+                : null;
 
-        const setPassImageSource = (imgElement, passPayload) => {
-            if (!imgElement) {
-                return false;
-            }
+            const defaultBorderColor = '#d4dae6';
+            const passImageUrlCache = new WeakMap();
 
-            const previousUrl = passImageUrlCache.get(imgElement);
-            if (previousUrl) {
-                URL.revokeObjectURL(previousUrl);
-                passImageUrlCache.delete(imgElement);
-            }
+            let searchAbortController = null;
+            let searchDebounceId = null;
 
-            imgElement.onload = null;
-            imgElement.onerror = null;
-
-            const dataUrl = passPayload?.dataUrl;
-            if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
-                imgElement.src = dataUrl;
-                return true;
-            }
-
-            const svgMarkup = passPayload?.svg;
-            if (typeof svgMarkup === 'string' && svgMarkup.includes('<svg')) {
-                const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
-                const blobUrl = URL.createObjectURL(blob);
-                passImageUrlCache.set(imgElement, blobUrl);
-
-                imgElement.onload = () => {
-                    URL.revokeObjectURL(blobUrl);
-                    passImageUrlCache.delete(imgElement);
-                };
-
-                imgElement.onerror = () => {
-                    URL.revokeObjectURL(blobUrl);
-                    passImageUrlCache.delete(imgElement);
-                    imgElement.removeAttribute('src');
-                };
-
-                imgElement.src = blobUrl;
-                return true;
-            }
-
-            imgElement.removeAttribute('src');
-            return false;
-        };
-
-        const showLayer = (element) => {
-            element.classList.remove('d-none');
-            requestAnimationFrame(() => {
-                element.classList.add('show');
-            });
-        };
-
-        const hideLayer = (element) => {
-            if (!element) return;
-            const handleTransitionEnd = (event) => {
-                if (event.target !== element) return;
-                element.removeEventListener('transitionend', handleTransitionEnd);
-                if (element.classList.contains('show')) {
-                    return;
-                }
-                element.classList.add('d-none');
+            const setButtonLoading = (button, isLoading) => {
+                if (!button) return;
+                button.disabled = isLoading;
+                button.classList.toggle('is-loading', isLoading);
+                button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
             };
-            element.classList.remove('show');
-            element.addEventListener('transitionend', handleTransitionEnd);
-            setTimeout(() => {
-                element.removeEventListener('transitionend', handleTransitionEnd);
-                if (!element.classList.contains('show')) {
+
+            const setPassImageSource = (imgElement, passPayload) => {
+                if (!imgElement) {
+                    return false;
+                }
+
+                const previousUrl = passImageUrlCache.get(imgElement);
+                if (previousUrl) {
+                    URL.revokeObjectURL(previousUrl);
+                    passImageUrlCache.delete(imgElement);
+                }
+
+                imgElement.onload = null;
+                imgElement.onerror = null;
+
+                const dataUrl = passPayload?.dataUrl;
+                if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+                    imgElement.src = dataUrl;
+                    return true;
+                }
+
+                const svgMarkup = passPayload?.svg;
+                if (typeof svgMarkup === 'string' && svgMarkup.includes('<svg')) {
+                    const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
+                    const blobUrl = URL.createObjectURL(blob);
+                    passImageUrlCache.set(imgElement, blobUrl);
+
+                    imgElement.onload = () => {
+                        URL.revokeObjectURL(blobUrl);
+                        passImageUrlCache.delete(imgElement);
+                    };
+
+                    imgElement.onerror = () => {
+                        URL.revokeObjectURL(blobUrl);
+                        passImageUrlCache.delete(imgElement);
+                        imgElement.removeAttribute('src');
+                    };
+
+                    imgElement.src = blobUrl;
+                    return true;
+                }
+
+                imgElement.removeAttribute('src');
+                return false;
+            };
+
+            const showLayer = (element) => {
+                element.classList.remove('d-none');
+                requestAnimationFrame(() => {
+                    element.classList.add('show');
+                });
+            };
+
+            const hideLayer = (element) => {
+                if (!element) return;
+                const handleTransitionEnd = (event) => {
+                    if (event.target !== element) return;
+                    element.removeEventListener('transitionend', handleTransitionEnd);
+                    if (element.classList.contains('show')) {
+                        return;
+                    }
+                    element.classList.add('d-none');
+                };
+                element.classList.remove('show');
+                element.addEventListener('transitionend', handleTransitionEnd);
+                setTimeout(() => {
+                    element.removeEventListener('transitionend', handleTransitionEnd);
+                    if (!element.classList.contains('show')) {
+                        element.classList.add('d-none');
+                    }
+                }, 260);
+            };
+
+            const hideLayerIfVisible = (element) => {
+                if (!element) return;
+                if (element.classList.contains('show') && !element.classList.contains('d-none')) {
+                    hideLayer(element);
+                } else {
                     element.classList.add('d-none');
                 }
-            }, 260);
-        };
-
-        const hideLayerIfVisible = (element) => {
-            if (!element) return;
-            if (element.classList.contains('show') && !element.classList.contains('d-none')) {
-                hideLayer(element);
-            } else {
-                element.classList.add('d-none');
-            }
-        };
-
-        const showRegisterForm = () => {
-            registerColumn.classList.remove('d-none');
-            searchColumn.classList.add('d-none');
-            hideLayerIfVisible(searchCard);
-            hideLayerIfVisible(searchResultCard);
-            hideLayerIfVisible(registerSuccess);
-            showLayer(registerCard);
-        };
-
-        const showSearchForm = () => {
-            registerColumn.classList.add('d-none');
-            searchColumn.classList.remove('d-none');
-            hideLayerIfVisible(registerSuccess);
-            hideLayerIfVisible(registerCard);
-            hideLayerIfVisible(searchResultCard);
-            showLayer(searchCard);
-            setTimeout(() => searchPhoneInput.focus(), 220);
-        };
-
-        const resetAvatar = () => {
-            avatarImage.src = '';
-            avatarImage.hidden = true;
-            avatarPlaceholder.hidden = false;
-            avatarPreview.style.borderColor = defaultBorderColor;
-            avatarPreview.classList.remove('has-image');
-            avatarInput.value = '';
-        };
-
-        avatarPreview.addEventListener('click', () => {
-            avatarInput.click();
-        });
-
-        avatarPreview.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
-                event.preventDefault();
-                avatarInput.click();
-            }
-        });
-
-        avatarInput.addEventListener('change', (event) => {
-            const file = event.target.files?.[0];
-            if (!file) {
-                resetAvatar();
-                return;
-            }
-
-            if (!file.type.startsWith('image/')) {
-                alert('Please choose a valid image file.');
-                avatarInput.value = '';
-                return;
-            }
-
-            const reader = new FileReader();
-            reader.onload = (loadEvent) => {
-                avatarImage.src = loadEvent.target?.result || '';
-                avatarImage.hidden = false;
-                avatarPlaceholder.hidden = true;
-                avatarPreview.style.borderColor = '#1d4ed8';
-                avatarPreview.classList.add('has-image');
-            };
-            reader.readAsDataURL(file);
-        });
-
-        const phoneInput = document.getElementById('phone');
-        phoneInput.addEventListener('input', () => {
-            phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
-        });
-
-        searchPhoneInput.addEventListener('input', () => {
-            searchPhoneInput.value = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
-        });
-
-        const toggleAlert = (element, message, state) => {
-            element.textContent = message || '';
-            element.classList.add('alert');
-            element.classList.remove('alert-success', 'alert-danger', 'alert-info', 'show');
-
-            if (!message) {
-                element.classList.add('d-none');
-                return;
-            }
-
-            const variant = state === 'success' ? 'alert-success' : state === 'error' ? 'alert-danger' : 'alert-info';
-            element.classList.add(variant);
-            element.classList.remove('d-none');
-            requestAnimationFrame(() => element.classList.add('show'));
-        };
-
-        const calculateDataUrlBytes = (dataUrl) => {
-            const base64 = dataUrl.split(',')[1] || '';
-            return Math.ceil((base64.length * 3) / 4);
-        };
-
-        const loadImageElement = (file) => new Promise((resolve, reject) => {
-            const url = URL.createObjectURL(file);
-            const image = new Image();
-            image.onload = () => {
-                URL.revokeObjectURL(url);
-                resolve(image);
-            };
-            image.onerror = () => {
-                URL.revokeObjectURL(url);
-                reject(new Error('Unable to load image.'));
-            };
-            image.src = url;
-        });
-
-        const compressImage = async (file) => {
-            const image = await loadImageElement(file);
-            const canvas = document.createElement('canvas');
-            const targetBytes = 20000;
-            let quality = 0.7;
-            let width = image.width;
-            let height = image.height;
-            const maxDimension = 700;
-
-            if (width > height && width > maxDimension) {
-                height = Math.round((height / width) * maxDimension);
-                width = maxDimension;
-            } else if (height > maxDimension) {
-                width = Math.round((width / height) * maxDimension);
-                height = maxDimension;
-            }
-
-            const drawToCanvas = (targetWidth, targetHeight) => {
-                canvas.width = targetWidth;
-                canvas.height = targetHeight;
-                const ctx = canvas.getContext('2d', { alpha: false });
-                if (!ctx) {
-                    throw new Error('Image compression is not supported in this browser.');
-                }
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
             };
 
-            drawToCanvas(width, height);
-            let dataUrl = canvas.toDataURL('image/jpeg', quality);
-
-            while (calculateDataUrlBytes(dataUrl) > targetBytes && quality > 0.3) {
-                quality = Math.max(0.3, quality - 0.1);
-                dataUrl = canvas.toDataURL('image/jpeg', quality);
-            }
-
-            while (calculateDataUrlBytes(dataUrl) > targetBytes && width > 150 && height > 150) {
-                width = Math.round(width * 0.85);
-                height = Math.round(height * 0.85);
-                drawToCanvas(width, height);
-                dataUrl = canvas.toDataURL('image/jpeg', quality);
-            }
-
-            return dataUrl;
-        };
-
-        const ensurePassImageReady = (img) => new Promise((resolve, reject) => {
-            if (!img) {
-                resolve();
-                return;
-            }
-            if (img.complete && img.naturalWidth > 0) {
-                resolve();
-                return;
-            }
-            img.onload = () => resolve();
-            img.onerror = () => reject(new Error('Unable to load pass preview.'));
-        });
-
-        const capturePassAsPng = async (container) => {
-            await ensurePassImageReady(container.querySelector('img'));
-            const canvas = await html2canvas(container, {
-                backgroundColor: null,
-                scale: Math.min(3, window.devicePixelRatio || 1.5),
-                useCORS: true,
-            });
-            return canvas.toDataURL('image/png');
-        };
-
-        const bindDownloadButton = (button, container, filename, feedbackElement) => {
-            button.onclick = async () => {
-                button.disabled = true;
-                button.classList.add('disabled');
-                try {
-                    const pngDataUrl = await capturePassAsPng(container);
-                    const link = document.createElement('a');
-                    link.href = pngDataUrl;
-                    link.download = `${filename}.png`;
-                    link.rel = 'noopener';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                } catch (error) {
-                    console.error(error);
-                    if (feedbackElement) {
-                        toggleAlert(feedbackElement, 'Could not prepare the PNG. Please try again.', 'error');
-                    } else {
-                        alert('Could not prepare the PNG. Please try again.');
-                    }
-                } finally {
-                    button.disabled = false;
-                    button.classList.remove('disabled');
-                }
+            const showRegisterForm = () => {
+                registerColumn.classList.remove('d-none');
+                searchColumn.classList.add('d-none');
+                hideLayerIfVisible(searchCard);
+                hideLayerIfVisible(searchResultCard);
+                hideLayerIfVisible(registerSuccess);
+                showLayer(registerCard);
             };
-        };
 
-        registrationForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            avatarPreview.style.borderColor = defaultBorderColor;
+            const showSearchForm = () => {
+                registerColumn.classList.add('d-none');
+                searchColumn.classList.remove('d-none');
+                hideLayerIfVisible(registerSuccess);
+                hideLayerIfVisible(registerCard);
+                hideLayerIfVisible(searchResultCard);
+                showLayer(searchCard);
+                setTimeout(() => searchPhoneInput.focus(), 220);
+            };
 
-            const profileFile = avatarInput.files?.[0];
-            if (!profileFile) {
-                toggleAlert(registrationFeedback, 'Please upload an image.', 'error');
-                avatarPreview.style.borderColor = 'rgba(220, 38, 38, 0.6)';
+            const resetAvatar = () => {
+                avatarImage.src = '';
+                avatarImage.hidden = true;
+                avatarPlaceholder.hidden = false;
+                avatarPreview.style.borderColor = defaultBorderColor;
                 avatarPreview.classList.remove('has-image');
-                return;
-            }
-
-            const formData = new FormData(registrationForm);
-            const payload = {
-                fullName: formData.get('fullName'),
-                phone: formData.get('phone'),
-                email: formData.get('email'),
-                city: formData.get('city'),
-                state: formData.get('state'),
+                avatarInput.value = '';
             };
 
-            submitButton.disabled = true;
+            const toggleAlert = (element, message, state) => {
+                if (!element) return;
+                element.textContent = message || '';
+                element.classList.add('alert');
+                element.classList.remove('alert-success', 'alert-danger', 'alert-info', 'show');
 
-            try {
-                toggleAlert(registrationFeedback, 'Compressing your photo…', 'info');
-                const compressedImage = await compressImage(profileFile);
-                if (!compressedImage) {
-                    throw new Error('Unable to process the selected image. Please try another file.');
+                if (!message) {
+                    element.classList.add('d-none');
+                    return;
                 }
-                payload.profileImage = compressedImage;
 
-                toggleAlert(registrationFeedback, 'Generating your e-pass…', 'info');
-                const response = await fetch('/.netlify/functions/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                const variant = state === 'success' ? 'alert-success' : state === 'error' ? 'alert-danger' : 'alert-info';
+                element.classList.add(variant);
+                element.classList.remove('d-none');
+                requestAnimationFrame(() => element.classList.add('show'));
+            };
+
+            const calculateDataUrlBytes = (dataUrl) => {
+                const base64 = dataUrl.split(',')[1] || '';
+                return Math.ceil((base64.length * 3) / 4);
+            };
+
+            const loadImageElement = (file) => new Promise((resolve, reject) => {
+                const url = URL.createObjectURL(file);
+                const image = new Image();
+                image.onload = () => {
+                    URL.revokeObjectURL(url);
+                    resolve(image);
+                };
+                image.onerror = () => {
+                    URL.revokeObjectURL(url);
+                    reject(new Error('Unable to load image.'));
+                };
+                image.src = url;
+            });
+
+            const compressImage = async (file) => {
+                const image = await loadImageElement(file);
+                const canvas = document.createElement('canvas');
+                const targetBytes = 20000;
+                let quality = 0.7;
+                let width = image.width;
+                let height = image.height;
+                const maxDimension = 700;
+
+                if (width > height && width > maxDimension) {
+                    height = Math.round((height / width) * maxDimension);
+                    width = maxDimension;
+                } else if (height > maxDimension) {
+                    width = Math.round((width / height) * maxDimension);
+                    height = maxDimension;
+                }
+
+                const drawToCanvas = (targetWidth, targetHeight) => {
+                    canvas.width = targetWidth;
+                    canvas.height = targetHeight;
+                    const ctx = canvas.getContext('2d', { alpha: false });
+                    if (!ctx) {
+                        throw new Error('Image compression is not supported in this browser.');
+                    }
+                    ctx.imageSmoothingEnabled = true;
+                    ctx.imageSmoothingQuality = 'high';
+                    ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+                };
+
+                drawToCanvas(width, height);
+                let dataUrl = canvas.toDataURL('image/jpeg', quality);
+
+                while (calculateDataUrlBytes(dataUrl) > targetBytes && quality > 0.3) {
+                    quality = Math.max(0.3, quality - 0.1);
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                while (calculateDataUrlBytes(dataUrl) > targetBytes && width > 150 && height > 150) {
+                    width = Math.round(width * 0.85);
+                    height = Math.round(height * 0.85);
+                    drawToCanvas(width, height);
+                    dataUrl = canvas.toDataURL('image/jpeg', quality);
+                }
+
+                return dataUrl;
+            };
+
+            const ensurePassImageReady = (img) => new Promise((resolve, reject) => {
+                if (!img) {
+                    resolve();
+                    return;
+                }
+                if (img.complete && img.naturalWidth > 0) {
+                    resolve();
+                    return;
+                }
+                img.onload = () => resolve();
+                img.onerror = () => reject(new Error('Unable to load pass preview.'));
+            });
+
+            const capturePassAsPng = async (container) => {
+                await ensurePassImageReady(container.querySelector('img'));
+                const canvas = await html2canvas(container, {
+                    backgroundColor: null,
+                    scale: Math.min(3, window.devicePixelRatio || 1.5),
+                    useCORS: true,
                 });
+                return canvas.toDataURL('image/png');
+            };
 
-                const data = await response.json();
+            const bindDownloadButton = (button, container, filename, feedbackElement) => {
+                if (!button || !container) return;
+                button.addEventListener('click', async () => {
+                    setButtonLoading(button, true);
+                    try {
+                        const pngDataUrl = await capturePassAsPng(container);
+                        const link = document.createElement('a');
+                        link.href = pngDataUrl;
+                        link.download = `${filename}.png`;
+                        link.rel = 'noopener';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    } catch (error) {
+                        console.error(error);
+                        if (feedbackElement) {
+                            toggleAlert(feedbackElement, 'Could not prepare the PNG. Please try again.', 'error');
+                        } else {
+                            alert('Could not prepare the PNG. Please try again.');
+                        }
+                    } finally {
+                        setButtonLoading(button, false);
+                    }
+                });
+            };
 
-                if (response.status === 409) {
-                    throw new Error(data.message || 'This phone number already has a pass. Use the lookup instead.');
+            avatarPreview.addEventListener('click', () => {
+                avatarInput.click();
+            });
+
+            avatarPreview.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+                    event.preventDefault();
+                    avatarInput.click();
+                }
+            });
+
+            avatarInput.addEventListener('change', (event) => {
+                const file = event.target.files?.[0];
+                if (!file) {
+                    resetAvatar();
+                    return;
                 }
 
-                if (!response.ok || !data.success) {
-                    throw new Error(data.message || 'Registration failed. Please try again.');
+                if (!file.type.startsWith('image/')) {
+                    alert('Please choose a valid image file.');
+                    avatarInput.value = '';
+                    return;
                 }
 
+                const reader = new FileReader();
+                reader.onload = (loadEvent) => {
+                    avatarImage.src = loadEvent.target?.result || '';
+                    avatarImage.hidden = false;
+                    avatarPlaceholder.hidden = true;
+                    avatarPreview.style.borderColor = '#1d4ed8';
+                    avatarPreview.classList.add('has-image');
+                };
+                reader.readAsDataURL(file);
+            });
+
+            const phoneInput = document.getElementById('phone');
+            phoneInput.addEventListener('input', () => {
+                phoneInput.value = phoneInput.value.replace(/\D/g, '').slice(0, 10);
+            });
+
+            searchPhoneInput.addEventListener('input', () => {
+                searchPhoneInput.value = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
+                const digits = searchPhoneInput.value;
+                if (searchSubmitButton) {
+                    searchSubmitButton.disabled = digits.length !== 10;
+                }
+
+                if (digits.length === 10) {
+                    if (searchDebounceId) {
+                        clearTimeout(searchDebounceId);
+                    }
+                    searchDebounceId = setTimeout(() => {
+                        searchDebounceId = null;
+                        performSearch({ reason: 'auto' });
+                    }, 280);
+                } else if (searchDebounceId) {
+                    clearTimeout(searchDebounceId);
+                    searchDebounceId = null;
+                }
+            });
+
+            const performSearch = async ({ reason = 'submit' } = {}) => {
+                const phone = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
+
+                if (!phone) {
+                    if (reason === 'submit') {
+                        toggleAlert(searchFeedback, 'Enter your 10-digit phone number to continue.', 'error');
+                    }
+                    return;
+                }
+
+                if (searchAbortController) {
+                    searchAbortController.abort();
+                }
+
+                searchAbortController = new AbortController();
+                const currentController = searchAbortController;
+
+                if (searchSubmitButton) {
+                    setButtonLoading(searchSubmitButton, true);
+                }
+                toggleAlert(searchFeedback, 'Searching for your pass…', 'info');
+
+                try {
+                    const response = await fetch('/.netlify/functions/find-pass', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phone }),
+                        signal: currentController.signal,
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.message || 'We could not locate your e-pass.');
+                    }
+
+                    const passAvailable = setPassImageSource(searchImage, data.epass);
+                    searchName.textContent = data.attendee?.fullName || '';
+                    searchReg.textContent = data.attendee?.registrationId
+                        ? `Registration ID: ${data.attendee.registrationId}`
+                        : '';
+
+                    if (!passAvailable) {
+                        throw new Error('We found your pass, but the preview failed. Please try again.');
+                    }
+
+                    toggleAlert(searchFeedback, 'Pass located! Tap download to save your pass.', 'success');
+
+                    hideLayer(searchCard);
+                    showLayer(searchResultCard);
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        return;
+                    }
+                    console.error(error);
+                    toggleAlert(searchFeedback, error.message, 'error');
+                } finally {
+                    if (searchSubmitButton) {
+                        setButtonLoading(searchSubmitButton, false);
+                    }
+                    if (searchAbortController === currentController) {
+                        searchAbortController = null;
+                    }
+                }
+            };
+
+            const handleRegistrationSuccess = (data) => {
                 const passAvailable = setPassImageSource(epassImage, data.epass);
                 epassName.textContent = data.attendee?.fullName || '';
-                epassReg.textContent = data.attendee?.registrationId ? `Registration ID: ${data.attendee.registrationId}` : '';
+                epassReg.textContent = data.attendee?.registrationId
+                    ? `Registration ID: ${data.attendee.registrationId}`
+                    : '';
 
                 if (!passAvailable) {
                     throw new Error('We generated your pass, but the preview failed. Please try again.');
                 }
+
+                const isUpdate = data.mode === 'updated';
+                const successMessage = isUpdate
+                    ? 'You were already registered. We refreshed your pass below.'
+                    : 'Save the pass or create one for another attendee.';
 
                 toggleAlert(registrationFeedback, '🎉 Pass generated successfully! Tap download to save your pass.', 'success');
 
                 registerColumn.classList.remove('d-none');
                 searchColumn.classList.add('d-none');
                 hideLayer(registerCard);
-                registerSuccessMessage.textContent = data.mode === 'updated'
-                    ? 'Pass updated. Download the latest copy or create one for another attendee.'
-                    : 'Save the pass or create one for another attendee.';
+                registerSuccessMessage.textContent = successMessage;
                 showLayer(registerSuccess);
 
-                registrationForm.reset();
-                stateSelect.selectedIndex = 0;
-                resetAvatar();
-            } catch (error) {
-                console.error(error);
-                toggleAlert(registrationFeedback, error.message, 'error');
-                avatarPreview.style.borderColor = error.message.toLowerCase().includes('image')
-                    ? 'rgba(220, 38, 38, 0.6)'
-                    : defaultBorderColor;
-            } finally {
-                submitButton.disabled = false;
-            }
-        });
+                if (isUpdate && existingModal) {
+                    existingModalMessage.textContent = 'You are already registered. Download your latest pass below.';
+                    setPassImageSource(existingPassImage, data.epass);
+                    existingModal.show();
+                }
+            };
 
-        registerAgainBtn.addEventListener('click', () => {
-            toggleAlert(registrationFeedback, '', '');
-            toggleAlert(searchFeedback, '', '');
-            searchForm.reset();
-            showRegisterForm();
-            avatarPreview.style.borderColor = defaultBorderColor;
-            fullNameInput.focus();
-        });
+            registrationForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                avatarPreview.style.borderColor = defaultBorderColor;
 
-        document.getElementById('openSearchBtn')?.addEventListener('click', () => {
-            toggleAlert(registrationFeedback, '', '');
-            toggleAlert(searchFeedback, '', '');
-            showSearchForm();
-        });
-
-        document.getElementById('backToRegisterBtn')?.addEventListener('click', () => {
-            toggleAlert(searchFeedback, '', '');
-            showRegisterForm();
-            fullNameInput.focus();
-        });
-
-        searchForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const phone = searchPhoneInput.value.replace(/\D/g, '').slice(0, 10);
-
-            if (!phone) {
-                toggleAlert(searchFeedback, 'Enter your 10-digit phone number to continue.', 'error');
-                return;
-            }
-
-            toggleAlert(searchFeedback, 'Searching for your pass…', 'info');
-
-            const payload = { phone };
-
-            try {
-                const response = await fetch('/.netlify/functions/find-pass', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
-
-                const data = await response.json();
-
-                if (!response.ok || !data.success) {
-                    throw new Error(data.message || 'We could not locate your e-pass.');
+                const profileFile = avatarInput.files?.[0];
+                if (!profileFile) {
+                    toggleAlert(registrationFeedback, 'Please upload an image.', 'error');
+                    avatarPreview.style.borderColor = 'rgba(220, 38, 38, 0.6)';
+                    avatarPreview.classList.remove('has-image');
+                    return;
                 }
 
-                const passAvailable = setPassImageSource(searchImage, data.epass);
-                searchName.textContent = data.attendee?.fullName || '';
-                searchReg.textContent = data.attendee?.registrationId
-                    ? `Registration ID: ${data.attendee.registrationId}`
-                    : '';
+                const formData = new FormData(registrationForm);
+                const payload = {
+                    fullName: formData.get('fullName'),
+                    phone: formData.get('phone'),
+                    email: formData.get('email'),
+                    city: formData.get('city'),
+                    state: formData.get('state'),
+                };
 
-                if (!passAvailable) {
-                    throw new Error('We found your pass, but the preview failed. Please try again.');
+                setButtonLoading(submitButton, true);
+
+                try {
+                    toggleAlert(registrationFeedback, 'Compressing your photo…', 'info');
+                    const compressedImage = await compressImage(profileFile);
+                    if (!compressedImage) {
+                        throw new Error('Unable to process the selected image. Please try another file.');
+                    }
+                    payload.profileImage = compressedImage;
+
+                    toggleAlert(registrationFeedback, 'Generating your e-pass…', 'info');
+                    const response = await fetch('/.netlify/functions/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+
+                    const data = await response.json();
+
+                    if (response.status === 409) {
+                        throw new Error(data.message || 'This phone number already has a pass. Use the lookup instead.');
+                    }
+
+                    if (!response.ok || !data.success) {
+                        throw new Error(data.message || 'Registration failed. Please try again.');
+                    }
+
+                    handleRegistrationSuccess(data);
+
+                    registrationForm.reset();
+                    stateSelect.selectedIndex = 0;
+                    resetAvatar();
+                } catch (error) {
+                    console.error(error);
+                    toggleAlert(registrationFeedback, error.message, 'error');
+                    avatarPreview.style.borderColor = error.message.toLowerCase().includes('image')
+                        ? 'rgba(220, 38, 38, 0.6)'
+                        : defaultBorderColor;
+                } finally {
+                    setButtonLoading(submitButton, false);
                 }
+            });
 
-                toggleAlert(searchFeedback, 'Pass located! Tap download to save your pass.', 'success');
+            registerAgainBtn.addEventListener('click', () => {
+                toggleAlert(registrationFeedback, '', '');
+                toggleAlert(searchFeedback, '', '');
+                searchForm.reset();
+                if (searchSubmitButton) {
+                    searchSubmitButton.disabled = true;
+                }
+                showRegisterForm();
+                avatarPreview.style.borderColor = defaultBorderColor;
+                fullNameInput.focus();
+            });
 
-                hideLayer(searchCard);
-                showLayer(searchResultCard);
-            } catch (error) {
-                console.error(error);
-                toggleAlert(searchFeedback, error.message, 'error');
+            document.getElementById('openSearchBtn')?.addEventListener('click', () => {
+                toggleAlert(registrationFeedback, '', '');
+                toggleAlert(searchFeedback, '', '');
+                showSearchForm();
+            });
+
+            document.getElementById('backToRegisterBtn')?.addEventListener('click', () => {
+                toggleAlert(searchFeedback, '', '');
+                showRegisterForm();
+                fullNameInput.focus();
+            });
+
+            searchForm.addEventListener('submit', (event) => {
+                event.preventDefault();
+                performSearch({ reason: 'submit' });
+            });
+
+            searchAgainBtn.addEventListener('click', () => {
+                toggleAlert(searchFeedback, '', '');
+                searchForm.reset();
+                if (searchSubmitButton) {
+                    searchSubmitButton.disabled = true;
+                }
+                hideLayer(searchResultCard);
+                showLayer(searchCard);
+                setTimeout(() => searchPhoneInput.focus(), 220);
+            });
+
+            document.getElementById('searchBackToRegister')?.addEventListener('click', () => {
+                toggleAlert(searchFeedback, '', '');
+                searchForm.reset();
+                if (searchSubmitButton) {
+                    searchSubmitButton.disabled = true;
+                }
+                showRegisterForm();
+                fullNameInput.focus();
+            });
+
+            bindDownloadButton(epassDownload, epassPreviewCard, 'digital-pass', registrationFeedback);
+            bindDownloadButton(searchDownload, searchPreviewCard, 'digital-pass', searchFeedback);
+            bindDownloadButton(existingDownloadBtn, existingPassPreview, 'digital-pass', registrationFeedback);
+
+            if (searchSubmitButton) {
+                searchSubmitButton.disabled = true;
             }
-        });
 
-        searchAgainBtn.addEventListener('click', () => {
-            toggleAlert(searchFeedback, '', '');
-            searchForm.reset();
-            hideLayer(searchResultCard);
-            showLayer(searchCard);
-            setTimeout(() => searchPhoneInput.focus(), 220);
-        });
-
-        document.getElementById('searchBackToRegister')?.addEventListener('click', () => {
-            toggleAlert(searchFeedback, '', '');
-            searchForm.reset();
             showRegisterForm();
-            fullNameInput.focus();
         });
-
-        bindDownloadButton(epassDownload, epassPreviewCard, 'digital-pass', registrationFeedback);
-        bindDownloadButton(searchDownload, searchPreviewCard, 'digital-pass', searchFeedback);
-        showRegisterForm();
     </script>
 </body>
 
