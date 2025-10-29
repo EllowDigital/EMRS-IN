@@ -499,7 +499,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 // If server marks stats as stale, show a non-blocking admin banner so admin knows data may be out-of-date
                 try {
                     if (stats && stats.stale) {
-                        showAdminStatus('Stats are currently stale/unavailable. Showing fallback values.', 10);
+                        const msg = stats.message || 'Stats are currently stale/unavailable. Showing fallback values.';
+                        showAdminStatus(msg, 10);
+                        // show debug detail if provided (only in debug env on server)
+                        if (stats.debug) showToast(`Debug: ${stats.debug}`, true, 8000);
                     }
                 } catch (e) { /* ignore */ }
             } else {
@@ -562,15 +565,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Show a prominent admin status banner with auto-refresh countdown
     let adminStatusTimer = null;
+    // Backoff state for admin status retries to avoid tight retry loops
+    const adminStatusBackoff = { attempts: 0, lastShownAt: 0, baseSeconds: 5, maxSeconds: 300 };
     function showAdminStatus(message, seconds = 10) {
         if (!ui.adminStatusBanner) return;
+        // If we already have stale data available, prefer a non-blocking toast instead of the banner
+        if ((message && message.toLowerCase().includes('database unreachable')) && (appState.lastStats || appState.systemStatus)) {
+            // Show a single toast and avoid showing the banner which triggers retries
+            showToast('Database is temporarily unreachable — showing cached values where possible.', true, 6000);
+            // Update backoff state so future real banners are rate limited
+            adminStatusBackoff.attempts += 1;
+            adminStatusBackoff.lastShownAt = Date.now();
+            return;
+        }
+
         ui.adminStatusMessage.textContent = message;
         ui.adminStatusSubtext.textContent = `This page will retry in ${seconds} seconds.`;
         ui.adminStatusBanner.classList.remove('d-none');
         // Clear any existing timer
         if (adminStatusTimer) clearInterval(adminStatusTimer);
         hideLoader();
-        let remaining = seconds;
+
+        // Apply exponential backoff: if we've shown this banner recently, increase the wait time
+        const now = Date.now();
+        if (adminStatusBackoff.lastShownAt && (now - adminStatusBackoff.lastShownAt) < 60 * 1000) {
+            adminStatusBackoff.attempts = Math.min(adminStatusBackoff.attempts + 1, 10);
+        } else {
+            adminStatusBackoff.attempts = 0;
+        }
+        adminStatusBackoff.lastShownAt = now;
+
+        const backoffSeconds = Math.min(adminStatusBackoff.baseSeconds * Math.pow(2, adminStatusBackoff.attempts), adminStatusBackoff.maxSeconds);
+        let remaining = Math.max(seconds, backoffSeconds);
+        ui.adminStatusSubtext.textContent = `This page will retry in ${remaining} seconds.`;
         adminStatusTimer = setInterval(() => {
             remaining -= 1;
             ui.adminStatusSubtext.textContent = `This page will retry in ${remaining} seconds.`;

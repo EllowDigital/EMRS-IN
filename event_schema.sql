@@ -65,3 +65,73 @@ SELECT
 -- Verification Complete
 -- -----------------------------------------------------------------------------
 SELECT 'EMRS-IN schema setup script completed successfully.' AS status;
+
+-- -----------------------------------------------------------------------------
+-- BACKWARD-COMPATIBILITY & PERFORMANCE ADDITIONS
+-- Add optional alias columns and search index to match application expectations
+-- These are idempotent and safe to run repeatedly.
+-- -----------------------------------------------------------------------------
+
+-- 1) Add convenience alias columns that some functions expect (registration_id, full_name, phone_number)
+ALTER TABLE attendees ADD COLUMN IF NOT EXISTS registration_id TEXT;
+ALTER TABLE attendees ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE attendees ADD COLUMN IF NOT EXISTS phone_number TEXT;
+
+-- Populate alias columns from existing columns when empty
+UPDATE attendees SET registration_id = pass_id WHERE registration_id IS NULL AND pass_id IS NOT NULL;
+UPDATE attendees SET full_name = name WHERE full_name IS NULL AND name IS NOT NULL;
+UPDATE attendees SET phone_number = phone WHERE phone_number IS NULL AND phone IS NOT NULL;
+
+-- Create trigger function to keep alias columns in sync on insert/update
+CREATE OR REPLACE FUNCTION attendees_sync_aliases() RETURNS trigger AS $$
+BEGIN
+    NEW.registration_id := COALESCE(NEW.registration_id, NEW.pass_id);
+    NEW.full_name := COALESCE(NEW.full_name, NEW.name);
+    NEW.phone_number := COALESCE(NEW.phone_number, NEW.phone);
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_attendees_sync_aliases ON attendees;
+CREATE TRIGGER trg_attendees_sync_aliases
+BEFORE INSERT OR UPDATE ON attendees
+FOR EACH ROW EXECUTE FUNCTION attendees_sync_aliases();
+
+-- 2) Optional check_ins table: if your code records check-ins to a separate table, create it.
+CREATE TABLE IF NOT EXISTS check_ins (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    attendee_id UUID REFERENCES attendees(id) ON DELETE CASCADE,
+    checked_in_at TIMESTAMPTZ DEFAULT NOW(),
+    source TEXT,
+    metadata JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_checkins_attendee_id ON check_ins(attendee_id);
+
+-- 3) Add tsvector column and GIN index to speed up attendee text search
+ALTER TABLE attendees ADD COLUMN IF NOT EXISTS search_tsv tsvector;
+
+-- Populate search_tsv for existing rows
+UPDATE attendees SET search_tsv = to_tsvector('english', coalesce(full_name,'') || ' ' || coalesce(email,'') || ' ' || coalesce(registration_id,'')) WHERE search_tsv IS NULL;
+
+-- Create trigger to keep search_tsv up-to-date
+CREATE OR REPLACE FUNCTION attendees_update_search_tsv() RETURNS trigger AS $$
+BEGIN
+    NEW.search_tsv := to_tsvector('english', coalesce(NEW.full_name,'') || ' ' || coalesce(NEW.email,'') || ' ' || coalesce(NEW.registration_id,''));
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_attendees_update_search_tsv ON attendees;
+CREATE TRIGGER trg_attendees_update_search_tsv
+BEFORE INSERT OR UPDATE ON attendees
+FOR EACH ROW EXECUTE FUNCTION attendees_update_search_tsv();
+
+CREATE INDEX IF NOT EXISTS idx_attendees_search_tsv ON attendees USING GIN (search_tsv);
+
+-- 4) Recommend a trigram index on registration_id and full_name for fast ILIKE queries (optional)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX IF NOT EXISTS idx_attendees_regid_trgm ON attendees USING GIN (registration_id gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_attendees_fullname_trgm ON attendees USING GIN (full_name gin_trgm_ops);
+
+-- End of backward-compat/perf additions

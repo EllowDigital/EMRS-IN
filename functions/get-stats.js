@@ -132,14 +132,18 @@ exports.handler = async (event, context) => {
             console.warn('Returning stale cached stats due to DB error.');
             // mark as stale so clients can choose how to present it
             const stale = Object.assign({}, statsCache.data, { stale: true, note: 'stale_cached_value' });
+            if (process.env.ADMIN_DEBUG === 'true') {
+                stale.debug = (error && error.message) ? String(error.message) : 'no-error-info';
+            }
             return { statusCode: 200, body: JSON.stringify(stale) };
         }
 
         // No cache available: return a safe, empty fallback rather than 503 so admin UI can render
         console.warn('No cached stats available; returning safe fallback due to DB error.');
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ total_attendees: 0, checked_in_count: 0, stale: true, message: 'Database unreachable, returning fallback values' })
-        };
+        const fallback = { total_attendees: 0, checked_in_count: 0, stale: true, message: 'Database unreachable, returning fallback values' };
+        if (process.env.ADMIN_DEBUG === 'true') {
+            fallback.debug = (error && error.message) ? String(error.message) : 'no-error-info';
+        }
+        return { statusCode: 200, body: JSON.stringify(fallback) };
     }
 };

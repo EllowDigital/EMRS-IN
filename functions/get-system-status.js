@@ -95,14 +95,18 @@ exports.handler = async (event, context) => {
         if (configCache.data) {
             console.warn('Returning stale cached system status due to DB error.');
             const stale = Object.assign({}, configCache.data, { stale: true, note: 'stale_cached_value' });
+            if (process.env.ADMIN_DEBUG === 'true') {
+                stale.debug = (error && error.message) ? String(error.message) : 'no-error-info';
+            }
             return { statusCode: 200, body: JSON.stringify(stale) };
         }
 
         // No cache: return a safe default so token validation and UI can proceed. Mark as stale so UI can surface a banner.
         console.warn('No cached system status available; returning safe fallback due to DB error.');
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ db_connected: false, registration_enabled: false, maintenance_mode: true, stale: true, message: 'Database unreachable, returning fallback system status' })
-        };
+        const fallback = { db_connected: false, registration_enabled: false, maintenance_mode: true, stale: true, message: 'Database unreachable, returning fallback system status' };
+        if (process.env.ADMIN_DEBUG === 'true') {
+            fallback.debug = (error && error.message) ? String(error.message) : 'no-error-info';
+        }
+        return { statusCode: 200, body: JSON.stringify(fallback) };
     }
 };
