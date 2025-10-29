@@ -1,3 +1,40 @@
 [build]
+  # Where to publish the built site. This project serves files from the repo root
+  # so we keep publish = ".". If you have a build step that outputs to `dist` or
+  # `public`, update this value accordingly.
+  publish = "."
+
+  # Directory that contains Netlify Functions (serverless handlers)
+  functions = "netlify/functions"
+
+  # Optional build command. If you have a build step (Sass, bundler, etc.) set
+  # it here, for example: "npm run build". Leave empty to skip build step.
+  # command = "npm run build"
+
+[dev]
+  # Local dev server settings (used by `netlify dev`)
+  port = 8888
   publish = "."
   functions = "netlify/functions"
+
+[functions]
+  # Use esbuild for fast local/CI bundling. Change to "zisi" or remove if not desired.
+  node_bundler = "esbuild"
+
+[[redirects]]
+  # Optional convenience: expose serverless functions under /api/<fn>
+  # so client code can call /api/verify instead of /.netlify/functions/verify
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = false
+
+[[headers]]
+  # Basic security headers applied to all routes. These are helpful but
+  # conservative — if you have stricter CSP or other requirements adjust here.
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
