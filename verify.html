@@ -6,12 +6,104 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>E-Pass Verify — Kiosk</title>
     <meta name="description" content="E-Pass Verification Kiosk (demo)" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
+        integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        html,body{height:100%}
-        body{background:#f8fafc}
-        .video-placeholder{background:linear-gradient(180deg,#000,#0b1220);min-height:240px}
-        .log-box{max-height:160px;overflow:auto}
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            background: #f8fafc
+        }
+
+        .video-placeholder {
+            background: linear-gradient(180deg, #000, #0b1220);
+            min-height: 240px;
+            position: relative
+        }
+
+        /* Scanner overlay visuals */
+        .scanner-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        .scanner-grid {
+            position: absolute;
+            inset: 0;
+            opacity: .12;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 28px 28px
+        }
+
+        .scanner-box {
+            width: 60%;
+            max-width: 520px;
+            aspect-ratio: 1;
+            background: transparent;
+            border: 2px solid rgba(255, 255, 255, 0.18);
+            box-shadow: 0 6px 20px rgba(2, 6, 23, 0.6);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden
+        }
+
+        .scanner-box::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 8px;
+            box-shadow: 0 0 40px rgba(0, 135, 255, 0.06) inset
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, rgba(0, 200, 255, 0), rgba(0, 200, 255, 0.9), rgba(0, 200, 255, 0));
+            top: 0;
+            animation: scanMove 2s linear infinite
+        }
+
+        @keyframes scanMove {
+            0% {
+                transform: translateY(-2%)
+            }
+
+            50% {
+                transform: translateY(100%)
+            }
+
+            100% {
+                transform: translateY(200%)
+            }
+        }
+
+        .scan-success {
+            animation: flash 500ms ease-in-out
+        }
+
+        @keyframes flash {
+            0% {
+                box-shadow: 0 0 0 rgba(0, 255, 150, 0)
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(0, 255, 150, 0.6)
+            }
+
+            100% {
+                box-shadow: 0 0 0 rgba(0, 255, 150, 0)
+            }
+        }
     </style>
 </head>
 
@@ -19,7 +111,8 @@
     <header class="bg-white border-bottom">
         <div class="container py-3 d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width:44px;height:44px;font-weight:700">E</div>
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center"
+                    style="width:44px;height:44px;font-weight:700">E</div>
                 <div>
                     <h1 class="h5 mb-0">E-Pass Verification</h1>
                     <div class="small text-muted">Check-in kiosk — scan or enter Registration ID</div>
@@ -34,7 +127,7 @@
             <div class="row g-4">
 
                 <!-- Scanner / Manual entry (cards) -->
-                <div class="col-12 col-lg-8">
+                <div id="leftColumn" class="col-12 col-lg-8">
                     <div class="card shadow-sm">
                         <div class="card-body">
                             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -42,16 +135,25 @@
                                 <div class="small text-muted">Camera feed (uses device camera)</div>
                             </div>
 
-                            <div class="video-placeholder rounded mb-3 position-relative overflow-hidden d-flex align-items-center justify-content-center text-white">
+                            <div
+                                class="video-placeholder rounded mb-3 position-relative overflow-hidden d-flex align-items-center justify-content-center text-white">
                                 <video id="video" class="w-100 h-100 d-none" autoplay playsinline></video>
                                 <div id="videoPlaceholder" class="text-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="mb-2 text-white-50"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h3l2 2h4l2-2h3a2 2 0 002-2V7"/></svg>
-                                    <div class="small opacity-75">Point your camera at a QR code to scan. Allow camera permissions when prompted.</div>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" fill="none"
+                                        viewBox="0 0 24 24" stroke="currentColor" class="mb-2 text-white-50">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                                            d="M3 7v10a2 2 0 002 2h3l2 2h4l2-2h3a2 2 0 002-2V7" />
+                                    </svg>
+                                    <div class="small opacity-75">Point your camera at a QR code to scan. Allow camera
+                                        permissions when prompted.</div>
                                 </div>
                                 <div class="position-absolute bottom-0 start-0 p-3 d-flex">
-                                    <button id="openCameraBtn" class="btn btn-outline-primary btn-sm me-2">Open Camera</button>
-                                    <button id="simulateScanBtn" class="btn btn-primary btn-sm me-2">Simulate Scan</button>
-                                    <button id="pickRandomBtn" class="btn btn-outline-secondary btn-sm">Pick Random</button>
+                                    <button id="openCameraBtn" class="btn btn-outline-primary btn-sm me-2">Open
+                                        Camera</button>
+                                    <button id="simulateScanBtn" class="btn btn-primary btn-sm me-2">Simulate
+                                        Scan</button>
+                                    <button id="pickRandomBtn" class="btn btn-outline-secondary btn-sm">Pick
+                                        Random</button>
                                 </div>
                             </div>
 
@@ -59,7 +161,8 @@
                                 <div class="col-12 col-md-8">
                                     <label for="manualId" class="form-label mb-1">Manual Registration ID</label>
                                     <div class="input-group">
-                                        <input id="manualId" type="text" class="form-control" placeholder="e.g. UP25-ABCD1234" />
+                                        <input id="manualId" type="text" class="form-control"
+                                            placeholder="e.g. UP25-ABCD1234" />
                                         <button id="lookupBtn" class="btn btn-success">Lookup</button>
                                     </div>
                                     <div class="form-text">If scanner fails, enter the Registration ID here.</div>
@@ -76,21 +179,25 @@
                 </div>
 
                 <!-- User info / actions column -->
-                <div class="col-12 col-lg-4">
+                <div id="rightColumn" class="col-12 col-lg-4 d-none">
                     <div class="card shadow-sm h-100">
                         <div class="card-body d-flex flex-column">
                             <h3 class="h6">Verified Attendee</h3>
                             <p class="small text-muted">Profile information appears here after successful lookup.</p>
 
-                            <div id="emptyState" class="flex-fill d-flex flex-column align-items-center justify-content-center text-muted">
-                                <img src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=400&auto=format&fit=crop&ixlib=rb-4.0.3&s=placeholder" alt="placeholder" class="rounded-circle mb-2" style="width:96px;height:96px;object-fit:cover;"/>
+                            <div id="emptyState"
+                                class="flex-fill d-flex flex-column align-items-center justify-content-center text-muted">
+                                <img src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=400&auto=format&fit=crop&ixlib=rb-4.0.3&s=placeholder"
+                                    alt="placeholder" class="rounded-circle mb-2"
+                                    style="width:96px;height:96px;object-fit:cover;" />
                                 <div class="fw-semibold">No attendee selected</div>
                                 <div class="small">Scan a QR or enter a Registration ID to begin.</div>
                             </div>
 
                             <div id="userCard" class="d-none">
                                 <div class="d-flex align-items-center gap-3 mb-3">
-                                    <img id="userPhoto" src="" alt="profile" class="rounded-circle" style="width:72px;height:72px;object-fit:cover;border:1px solid #e9ecef;" />
+                                    <img id="userPhoto" src="" alt="profile" class="rounded-circle"
+                                        style="width:72px;height:72px;object-fit:cover;border:1px solid #e9ecef;" />
                                     <div>
                                         <div id="userName" class="fw-semibold">Full Name</div>
                                         <div id="userReg" class="small text-muted">Registration ID</div>
@@ -105,7 +212,8 @@
 
                                 <div class="mt-auto d-flex gap-2">
                                     <button id="checkinBtn" class="btn btn-primary flex-fill" disabled>Check In</button>
-                                    <button id="nextBtn" class="btn btn-outline-secondary flex-fill">Verify Next Person</button>
+                                    <button id="nextBtn" class="btn btn-outline-secondary flex-fill">Verify Next
+                                        Person</button>
                                 </div>
                             </div>
 
@@ -118,9 +226,28 @@
         </div>
     </main>
 
-    <footer class="bg-white border-top py-2 text-center small text-muted">© 2025 EllowDigital · Verification Kiosk</footer>
+    <footer class="bg-white border-top py-2 text-center small text-muted">© 2025 EllowDigital · Verification Kiosk
+    </footer>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js" integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Not found popup card -->
+    <div id="notFoundCard" class="position-fixed top-50 start-50 translate-middle d-none"
+        style="z-index:1050; width:360px;">
+        <div class="card shadow-lg border-danger">
+            <div class="card-body text-center">
+                <h5 class="card-title text-danger">Attendee Not Found</h5>
+                <p class="card-text">We couldn't find an attendee with that Registration ID. Please try again or
+                    register the attendee.</p>
+                <div class="d-flex justify-content-center gap-2">
+                    <button id="notFoundClose" class="btn btn-secondary btn-sm">Close</button>
+                    <button id="notFoundManual" class="btn btn-outline-primary btn-sm">Enter Manually</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
+        integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
+        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
 
     <script>
@@ -151,14 +278,19 @@
         const nextBtn = document.getElementById('nextBtn');
         const feedback = document.getElementById('feedback');
 
-    // Camera / scanner elements
-    const openCameraBtn = document.getElementById('openCameraBtn');
-    const video = document.getElementById('video');
-    const videoPlaceholder = document.getElementById('videoPlaceholder');
-    let cameraStream = null;
-    let scanning = false;
-    const scanCanvas = document.createElement('canvas');
-    const scanCtx = scanCanvas.getContext && scanCanvas.getContext('2d');
+        // Camera / scanner elements
+        const openCameraBtn = document.getElementById('openCameraBtn');
+        const video = document.getElementById('video');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
+        const leftColumn = document.getElementById('leftColumn');
+        const rightColumn = document.getElementById('rightColumn');
+        const notFoundCard = document.getElementById('notFoundCard');
+        const notFoundClose = document.getElementById('notFoundClose');
+        const notFoundManual = document.getElementById('notFoundManual');
+        let cameraStream = null;
+        let scanning = false;
+        const scanCanvas = document.createElement('canvas');
+        const scanCtx = scanCanvas.getContext && scanCanvas.getContext('2d');
 
         let current = null;
 
@@ -173,11 +305,17 @@
         function showUser(user) {
             current = user;
             if (!user) {
+                // initial state: show only the search (left) column
+                rightColumn.classList.add('d-none');
+                leftColumn.classList.remove('d-none');
                 emptyState.classList.remove('d-none');
                 userCard.classList.add('d-none');
                 feedback.textContent = 'No attendee selected';
                 return;
             }
+            // hide search column and reveal result card
+            leftColumn.classList.add('d-none');
+            rightColumn.classList.remove('d-none');
             emptyState.classList.add('d-none');
             userCard.classList.remove('d-none');
             userPhoto.src = user.profileUrl || 'https://images.unsplash.com/photo-1502685104226-ee32379fefbe?q=80&w=400&auto=format&fit=crop&ixlib=rb-4.0.3&s=placeholder';
@@ -264,7 +402,7 @@
             try {
                 const j = JSON.parse(text);
                 return j.registrationId || j.registration_id || j.reg || j.id || null;
-            } catch (_) {}
+            } catch (_) { }
             // try regex for UP25-XXXX
             const m = text.match(/(UP25[-_A-Z0-9]+)/i);
             if (m) return m[1];
@@ -317,6 +455,16 @@
             await startCamera();
         });
 
+        // Not found controls
+        notFoundClose.addEventListener('click', () => {
+            notFoundCard.classList.add('d-none');
+            manualId.focus();
+        });
+        notFoundManual.addEventListener('click', () => {
+            notFoundCard.classList.add('d-none');
+            manualId.focus();
+        });
+
         lookupBtn.addEventListener('click', async () => {
             const id = manualId.value.trim();
             if (!id) { feedback.textContent = 'Please enter a Registration ID.'; return; }
@@ -333,7 +481,13 @@
             checkinBtn.disabled = true; const prev = checkinBtn.innerHTML; checkinBtn.innerHTML = 'Checking…';
             feedback.textContent = 'Checking in…';
             try {
-                const data = await api('checkin', current.registrationId);
+                // Use separate checkin function endpoint
+                const res = await fetch('/.netlify/functions/checkin', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ registrationId: current.registrationId })
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data?.message || 'Check-in failed');
                 log('Check-in: ' + current.registrationId + ' → ' + (data.attendee?.status || 'Checked-In'));
                 showUser(data.attendee);
                 feedback.textContent = 'Checked in successfully';
@@ -350,9 +504,13 @@
                 log('Found: ' + id + ' → ' + (data.attendee.fullName || 'No name'));
                 feedback.textContent = 'Attendee found';
             } catch (err) {
-                console.error(err); feedback.textContent = err.message || 'Not found';
+                console.error(err);
+                const msg = err.message || 'Not found';
+                feedback.textContent = msg;
                 showUser(null);
-                log('Lookup failed for ' + id + ' — ' + (err.message || 'Not found'));
+                // show not-found popup card
+                notFoundCard.classList.remove('d-none');
+                log('Lookup failed for ' + id + ' — ' + msg);
             }
         }
 
