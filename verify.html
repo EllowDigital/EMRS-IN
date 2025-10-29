@@ -150,10 +150,12 @@
                                 <div class="position-absolute bottom-0 start-0 p-3 d-flex">
                                     <button id="openCameraBtn" class="btn btn-outline-primary btn-sm me-2">Open
                                         Camera</button>
-                                    <button id="simulateScanBtn" class="btn btn-primary btn-sm me-2">Simulate
-                                        Scan</button>
-                                    <button id="pickRandomBtn" class="btn btn-outline-secondary btn-sm">Pick
-                                        Random</button>
+                                </div>
+                                <div id="scannerOverlay" class="scanner-overlay d-none" aria-hidden="true">
+                                    <div class="scanner-grid"></div>
+                                    <div class="scanner-box" id="scannerBox">
+                                        <div class="scan-line" id="scanLine"></div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -172,8 +174,7 @@
                                 </div>
                             </div>
 
-                            <div class="small text-muted mb-2">Scanner log:</div>
-                            <div id="log" class="border rounded p-2 bg-light log-box small"></div>
+                            <!-- scanner log removed in production version -->
                         </div>
                     </div>
                 </div>
@@ -252,18 +253,7 @@
 
     <script>
         // Client logic (adapted to Bootstrap classes)
-        const logEl = document.getElementById('log');
-        function log(msg) {
-            const tm = new Date().toLocaleTimeString();
-            logEl.innerHTML = `<div>${tm} — ${escapeHtml(msg)}</div>` + logEl.innerHTML;
-        }
-        function escapeHtml(s) { return String(s).replace(/[&<>\\\"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
-
-        const sampleIds = ['UP25-ABCD1234', 'UP25-X9YZ5678', 'UP25-TEST0001', 'UP25-JOHN2025'];
-
-        const simulateScanBtn = document.getElementById('simulateScanBtn');
-        const pickRandomBtn = document.getElementById('pickRandomBtn');
-        const lookupBtn = document.getElementById('lookupBtn');
+    const lookupBtn = document.getElementById('lookupBtn');
         const manualId = document.getElementById('manualId');
         const clearBtn = document.getElementById('clearBtn');
         const emptyState = document.getElementById('emptyState');
@@ -342,12 +332,13 @@
                 await video.play();
                 video.classList.remove('d-none');
                 videoPlaceholder.classList.add('d-none');
+                const overlay = document.getElementById('scannerOverlay'); if (overlay) overlay.classList.remove('d-none');
                 openCameraBtn.textContent = 'Close Camera';
                 openCameraBtn.classList.remove('btn-outline-primary');
                 openCameraBtn.classList.add('btn-outline-danger');
                 scanning = true;
                 requestAnimationFrame(scanFrame);
-                log('Camera started');
+                feedback.textContent = 'Camera started';
             } catch (err) {
                 console.error('startCamera error', err);
                 feedback.textContent = 'Unable to access camera: ' + (err.message || err.name);
@@ -364,10 +355,31 @@
             video.srcObject = null;
             video.classList.add('d-none');
             videoPlaceholder.classList.remove('d-none');
+            const overlay = document.getElementById('scannerOverlay'); if (overlay) overlay.classList.add('d-none');
             openCameraBtn.textContent = 'Open Camera';
             openCameraBtn.classList.remove('btn-outline-danger');
             openCameraBtn.classList.add('btn-outline-primary');
-            log('Camera stopped');
+            feedback.textContent = 'Camera stopped';
+        }
+
+        // small beep using WebAudio
+        function playBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const o = ctx.createOscillator();
+                const g = ctx.createGain();
+                o.type = 'sine';
+                o.frequency.value = 880;
+                g.gain.value = 0.0001;
+                o.connect(g); g.connect(ctx.destination);
+                o.start();
+                // ramp gain up then down for short beep
+                g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+                setTimeout(() => { try { o.stop(); ctx.close(); } catch(e){} }, 200);
+            } catch (e) {
+                // ignore audio failures
+            }
         }
 
         async function scanFrame() {
@@ -411,7 +423,9 @@
         }
 
         function handleScanned(payload) {
-            log('QR scanned: ' + payload);
+            // play success sound / vibration and animate
+            try { playBeep(); if (navigator.vibrate) navigator.vibrate(200); } catch(e){}
+            const box = document.getElementById('scannerBox'); if (box) { box.classList.add('scan-success'); setTimeout(()=>box.classList.remove('scan-success'),700); }
             const id = parseRegistrationFromPayload(payload);
             if (!id) {
                 feedback.textContent = 'QR scanned but registration ID not found';
@@ -435,17 +449,7 @@
             return data;
         }
 
-        simulateScanBtn.addEventListener('click', async () => {
-            const id = sampleIds[Math.floor(Math.random() * sampleIds.length)];
-            log('Simulated scan → ' + id);
-            manualId.value = id;
-            await doLookup(id);
-        });
-
-        pickRandomBtn.addEventListener('click', () => {
-            const id = sampleIds[Math.floor(Math.random() * sampleIds.length)];
-            manualId.value = id; log('Picked random ID: ' + id);
-        });
+        // simulation controls removed for production
 
         openCameraBtn.addEventListener('click', async () => {
             if (scanning) {
@@ -472,9 +476,9 @@
             try { await doLookup(id); } finally { lookupBtn.disabled = false; lookupBtn.innerHTML = prev; }
         });
 
-        clearBtn.addEventListener('click', () => { manualId.value = ''; showUser(null); log('Cleared input/display'); });
+    clearBtn.addEventListener('click', () => { manualId.value = ''; showUser(null); feedback.textContent = 'Cleared'; });
 
-        nextBtn.addEventListener('click', () => { manualId.value = ''; showUser(null); log('Ready for next person'); });
+    nextBtn.addEventListener('click', () => { manualId.value = ''; showUser(null); feedback.textContent = 'Ready for next person'; });
 
         checkinBtn.addEventListener('click', async () => {
             if (!current) return;
@@ -488,7 +492,6 @@
                 });
                 const data = await res.json();
                 if (!res.ok) throw new Error(data?.message || 'Check-in failed');
-                log('Check-in: ' + current.registrationId + ' → ' + (data.attendee?.status || 'Checked-In'));
                 showUser(data.attendee);
                 feedback.textContent = 'Checked in successfully';
             } catch (err) {
@@ -501,7 +504,6 @@
             try {
                 const data = await api('lookup', id);
                 showUser(data.attendee);
-                log('Found: ' + id + ' → ' + (data.attendee.fullName || 'No name'));
                 feedback.textContent = 'Attendee found';
             } catch (err) {
                 console.error(err);
@@ -510,13 +512,12 @@
                 showUser(null);
                 // show not-found popup card
                 notFoundCard.classList.remove('d-none');
-                log('Lookup failed for ' + id + ' — ' + msg);
             }
         }
 
         // initialize
         showUser(null);
-        log('Kiosk ready');
+        feedback.textContent = 'Ready';
     </script>
 </body>
 
