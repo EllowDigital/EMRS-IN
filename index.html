@@ -40,6 +40,7 @@
             --pass-divider: rgba(17, 37, 104, 0.18);
             --pass-ink: #0f172a;
             --pass-label: #142966;
+            --pass-card-width: 360px;
             font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--app-text);
             background-color: var(--app-bg);
@@ -96,6 +97,27 @@
             padding: clamp(12px, 4vw, 24px) 0;
         }
 
+        #registerColumn,
+        #searchColumn {
+            display: flex;
+            flex-direction: column;
+            gap: clamp(24px, 3vw, 32px);
+        }
+
+        #registerColumn>.app-card,
+        #searchColumn>.app-card {
+            flex: 1 1 auto;
+        }
+
+        #registerCard,
+        #registerSuccess,
+        #searchCard,
+        #searchResultCard {
+            width: min(100%, 640px);
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .card-heading {
             display: flex;
             flex-direction: column;
@@ -130,14 +152,18 @@
 
         .avatar-wrapper {
             position: relative;
-            width: 154px;
-            height: 154px;
+            width: clamp(120px, 32vw, 172px);
+            aspect-ratio: 1 / 1;
             margin: 0 auto;
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .avatar-preview {
             width: 100%;
-            height: 100%;
+            aspect-ratio: 1 / 1;
             border-radius: 50%;
             border: 3px solid #d4dae6;
             background: #f1f4f9;
@@ -201,6 +227,15 @@
             box-shadow: 0 16px 26px rgba(15, 23, 42, 0.28);
         }
 
+        .upload-layout {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .upload-copy {
+            max-width: 320px;
+        }
+
         .upload-zone {
             border: 1px solid rgba(148, 163, 184, 0.3);
             border-radius: 22px;
@@ -210,6 +245,16 @@
 
         .upload-zone p:last-of-type {
             margin-bottom: 0;
+        }
+
+        @media (min-width: 576px) {
+            .upload-layout {
+                justify-content: flex-start;
+            }
+
+            .upload-copy {
+                max-width: 360px;
+            }
         }
 
         .form-label {
@@ -249,11 +294,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: clamp(16px, 4vw, 28px);
+            padding-block: clamp(12px, 3vw, 28px);
+            padding-inline: clamp(0px, calc((100vw - var(--pass-card-width)) / 2), 28px);
+            max-width: 100%;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .pass-card {
-            width: clamp(248px, 52vw, 360px);
+            width: var(--pass-card-width);
+            max-width: none;
             aspect-ratio: 7 / 11;
             border-radius: 32px;
             background: linear-gradient(180deg, var(--pass-bg-top) 0%, var(--pass-bg-bottom) 100%);
@@ -299,18 +349,18 @@
             color: var(--pass-ink);
             border-top-left-radius: 30px;
             border-top-right-radius: 30px;
-            padding: clamp(26px, 4vw, 32px) clamp(22px, 4vw, 28px) clamp(24px, 4vw, 28px);
+            padding: 30px 28px 26px;
             display: flex;
             flex-direction: column;
-            gap: clamp(22px, 3.2vw, 30px);
+            gap: 26px;
             box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
         }
 
         .pass-card__grid {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr);
+            grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
             align-items: center;
-            gap: clamp(18px, 4vw, 26px);
+            gap: 24px;
         }
 
         .pass-card__photo {
@@ -321,8 +371,8 @@
         }
 
         .pass-card__photo figure {
-            width: clamp(112px, 34vw, 128px);
-            height: clamp(112px, 34vw, 128px);
+            width: 124px;
+            height: 124px;
             border-radius: 999px;
             border: 4px solid rgba(9, 24, 104, 0.95);
             overflow: hidden;
@@ -382,7 +432,8 @@
         }
 
         .pass-card__qr figure {
-            width: clamp(118px, 35vw, 132px);
+            width: 130px;
+            height: 130px;
             border-radius: 16px;
             background: #ffffff;
             border: 2px solid rgba(4, 23, 113, 0.22);
@@ -447,49 +498,17 @@
             line-height: 1.3;
         }
 
-        @media (max-width: 420px) {
-            .pass-card {
-                width: min(82vw, 320px);
-            }
-
-            .pass-card__body {
-                padding: 24px 20px 22px;
-                gap: 20px;
-            }
-
-            .pass-card__grid {
-                grid-template-columns: minmax(0, 1fr);
-            }
-
-            .pass-card__divider {
-                display: none;
-            }
-
-            .pass-card__photo figure,
-            .pass-card__qr figure {
-                width: 110px;
-                height: 110px;
-            }
-
-            .pass-card__meta {
-                grid-template-columns: 1fr;
-                text-align: center;
-            }
-
-            .pass-card__meta .pass-card__info {
-                align-items: center;
+        @media (max-width: 540px) {
+            .pass-preview {
+                padding-block: clamp(10px, 4vw, 20px);
+                padding-inline: clamp(0px, calc((100vw - var(--pass-card-width)) / 2), 20px);
             }
         }
 
-        @media (min-width: 420px) {
-            .pass-card__grid {
-                grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
-            }
-        }
-
-        @media (min-width: 992px) {
-            .pass-card {
-                width: 360px;
+        @media (max-width: 400px) {
+            .pass-preview {
+                padding-block: clamp(8px, 5vw, 18px);
+                padding-inline: clamp(0px, calc((100vw - var(--pass-card-width)) / 2), 12px);
             }
         }
 
@@ -653,6 +672,30 @@
             box-shadow: 0 16px 28px rgba(37, 99, 235, 0.22);
         }
 
+        .toast-container {
+            pointer-events: none;
+        }
+
+        .toast-container .toast {
+            pointer-events: auto;
+        }
+
+        .toast-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.25);
+            font-size: 1.1rem;
+        }
+
+        .toast-message {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
         footer {
             color: rgba(71, 85, 105, 0.8);
         }
@@ -677,13 +720,9 @@
                 margin-bottom: 0;
             }
 
-            .avatar-wrapper {
-                width: 140px;
-                height: 140px;
-            }
-
             .pass-preview {
-                width: min(100%, 340px);
+                margin-left: auto;
+                margin-right: auto;
             }
         }
     </style>
@@ -698,7 +737,7 @@
         </header>
 
         <main class="app-main">
-            <div class="row g-4 align-items-start justify-content-center">
+            <div class="row g-4 g-xl-5 align-items-stretch justify-content-center">
                 <div id="registerColumn" class="col-12 col-lg-7 col-xl-6">
                     <div id="registerCard" class="card app-card fade-layer fade show"
                         aria-labelledby="register-heading">
@@ -712,7 +751,7 @@
                             <div class="upload-zone mb-4">
                                 <p class="text-secondary fw-semibold mb-3">Fill out the form below to secure your entry.
                                 </p>
-                                <div class="d-flex flex-column flex-sm-row align-items-center gap-4">
+                                <div class="upload-layout d-flex flex-column flex-sm-row align-items-center gap-4">
                                     <div class="avatar-wrapper">
                                         <div class="avatar-preview" id="avatarPreview" role="button" tabindex="0"
                                             aria-controls="avatarInput" aria-label="Profile photo preview">
@@ -724,7 +763,7 @@
                                             <i class="fa-solid fa-camera"></i>
                                         </label>
                                     </div>
-                                    <div class="text-center text-sm-start">
+                                    <div class="upload-copy text-center text-sm-start">
                                         <p class="fw-semibold mb-1">Choose a clear, front-facing photo.</p>
                                         <p class="text-secondary small mb-0">JPEG or PNG • Max 5 MB • We’ll crop and
                                             optimize it automatically.</p>
@@ -972,6 +1011,7 @@
             const existingDownloadBtn = document.getElementById('existingDownloadBtn');
             const existingModalMessage = document.getElementById('alreadyRegisteredMessage');
             const bootstrapModal = window.bootstrap?.Modal;
+            const bootstrapToastClass = window.bootstrap?.Toast;
             const existingModal = bootstrapModal && existingModalElement
                 ? new bootstrapModal(existingModalElement, { backdrop: 'static' })
                 : null;
@@ -983,6 +1023,70 @@
             passTemplateHost.style.opacity = '0';
             passTemplateHost.style.pointerEvents = 'none';
             document.body.appendChild(passTemplateHost);
+
+            const toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 start-50 translate-middle-x p-3';
+            toastContainer.style.zIndex = '1100';
+            toastContainer.style.minWidth = 'min(320px, 90vw)';
+            toastContainer.setAttribute('aria-live', 'polite');
+            toastContainer.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(toastContainer);
+
+            const showToastMessage = (message, state = 'info') => {
+                if (!message || !bootstrapToastClass) {
+                    return;
+                }
+
+                const variantMap = {
+                    success: { tone: 'success', icon: 'fa-solid fa-circle-check' },
+                    error: { tone: 'danger', icon: 'fa-solid fa-circle-exclamation' },
+                    info: { tone: 'primary', icon: 'fa-solid fa-circle-info' },
+                };
+
+                const config = variantMap[state] || variantMap.info;
+                const toastElement = document.createElement('div');
+                toastElement.className = `toast align-items-center text-bg-${config.tone} border-0 shadow-lg fade`;
+                toastElement.setAttribute('role', 'status');
+                toastElement.setAttribute('aria-live', 'polite');
+                toastElement.setAttribute('aria-atomic', 'true');
+
+                const body = document.createElement('div');
+                body.className = 'd-flex align-items-center gap-3 px-3 py-2';
+
+                const iconWrap = document.createElement('span');
+                iconWrap.className = 'toast-icon flex-shrink-0';
+
+                const iconElement = document.createElement('i');
+                iconElement.className = config.icon;
+                iconWrap.appendChild(iconElement);
+
+                const messageWrap = document.createElement('div');
+                messageWrap.className = 'toast-message flex-grow-1';
+                messageWrap.textContent = message;
+
+                const closeButton = document.createElement('button');
+                closeButton.type = 'button';
+                closeButton.className = 'btn-close btn-close-white ms-auto';
+                closeButton.setAttribute('data-bs-dismiss', 'toast');
+                closeButton.setAttribute('aria-label', 'Close notification');
+
+                body.appendChild(iconWrap);
+                body.appendChild(messageWrap);
+                body.appendChild(closeButton);
+                toastElement.appendChild(body);
+                toastContainer.appendChild(toastElement);
+
+                const toastInstance = new bootstrapToastClass(toastElement, {
+                    delay: state === 'error' ? 4200 : 3400,
+                    autohide: true,
+                });
+
+                toastElement.addEventListener('hidden.bs.toast', () => {
+                    toastElement.remove();
+                });
+
+                toastInstance.show();
+            };
 
             const defaultBorderColor = '#d4dae6';
             let searchAbortController = null;
@@ -1074,6 +1178,10 @@
                 element.classList.add(variant);
                 element.classList.remove('d-none');
                 requestAnimationFrame(() => element.classList.add('show'));
+
+                if (state === 'success' || state === 'error') {
+                    showToastMessage(message, state);
+                }
             };
 
             const calculateDataUrlBytes = (dataUrl) => {
@@ -1226,6 +1334,14 @@
                     throw new Error('Pass is not ready to download.');
                 }
                 const clone = cardElement.cloneNode(true);
+                const cardWidth = getComputedStyle(document.documentElement)
+                    .getPropertyValue('--pass-card-width')
+                    .trim();
+                if (cardWidth) {
+                    clone.style.width = cardWidth;
+                    clone.style.maxWidth = cardWidth;
+                }
+                clone.style.transform = 'none';
                 passTemplateHost.innerHTML = '';
                 passTemplateHost.appendChild(clone);
                 await waitForImages(clone);
