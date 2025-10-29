@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "private": true,
     "type": "module",
+    "main": "index.html",
     "scripts": {
         "dev": "netlify dev"
     },
@@ -10,5 +11,7 @@
         "cloudinary": "^1.41.3",
         "postgres": "^3.4.3",
         "qrcode": "^1.5.3"
-    }
+    },
+    "author": "EllowDigital",
+    "license": "ISC"
 }

@@ -3,20 +3,28 @@
 
 <head>
     <meta charset="UTF-8">
-    <!DOCTYPE html>
-    <html lang="en">
-
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>EMRS E-Pass Portal</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"">
-        <link rel=" stylesheet"
-            href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-        <style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMRS E-Pass Portal</title>
+    <meta name="theme-color" content="#ffffff">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="E-Pass">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="assets/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png">
+    <link rel="icon" href="assets/favicon/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
+        integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+        integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A=="
+        crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
             :root {
                 font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
                 color: #0f172a;
@@ -162,8 +170,8 @@
                     min-width: auto;
                 }
             }
-        </style>
-    </head>
+    </style>
+</head>
 
 <body>
     <div class="container py-5 py-lg-5">
@@ -178,8 +186,8 @@
                 entry pass ready to download or share from any device.</p>
         </header>
 
-        <div class="row g-4 g-xxl-5 align-items-start">
-            <div class="col-lg-7">
+    <div class="row g-4 g-xxl-5 align-items-start justify-content-center">
+            <div id="registerColumn" class="col-lg-7">
                 <div id="registerCard" class="card app-card fade-layer fade show" aria-labelledby="register-title">
                     <div class="card-body">
                         <div
@@ -270,7 +278,7 @@
                         <h2 class="fw-bold mb-2">Your e-pass is ready!</h2>
                         <p class="text-secondary mb-4" id="registerSuccessMessage">Download the PNG pass or generate
                             another one immediately.</p>
-                        <div class="pass-preview mx-auto mb-4">
+                        <div class="pass-preview mx-auto mb-4" id="epassPreviewCard">
                             <img id="epassImage" class="img-fluid" alt="Generated EMRS e-pass">
                         </div>
                         <div class="mb-4">
@@ -278,15 +286,14 @@
                             <span class="text-secondary" id="epassReg"></span>
                         </div>
                         <div class="pass-actions d-flex flex-column flex-sm-row gap-3 justify-content-center">
-                            <a id="epassDownload"
-                                class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2"
-                                download="emrs-epass.png">
-                                <i class="bi bi-download"></i>
+                            <button type="button" id="epassDownload"
+                                class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2">
+                                <i class="fa-solid fa-download"></i>
                                 <span>Download E-Pass</span>
-                            </a>
+                            </button>
                             <button type="button" id="registerAgainBtn"
                                 class="btn btn-outline-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2">
-                                <i class="bi bi-person-plus"></i>
+                                <i class="fa-solid fa-user-plus"></i>
                                 <span>Register New Pass</span>
                             </button>
                         </div>
@@ -294,25 +301,19 @@
                 </div>
             </div>
 
-            <div class="col-lg-5">
+            <div id="searchColumn" class="col-lg-5">
                 <div id="searchCard" class="card app-card search-layer fade-layer fade show"
                     aria-labelledby="find-title">
                     <div class="card-body">
                         <h3 id="find-title" class="fw-semibold mb-2">Find an existing e-pass</h3>
-                        <p class="text-secondary mb-4">Enter the phone number or email used during registration. We’ll
-                            pull your
-                            most recent pass instantly.</p>
+                        <p class="text-secondary mb-4">Enter the phone number used during registration and we’ll pull
+                            your most recent pass instantly.</p>
                         <form id="searchForm" class="needs-validation" novalidate>
                             <div class="mb-3">
                                 <label for="searchPhone" class="form-label fw-semibold">Phone number</label>
                                 <input id="searchPhone" name="searchPhone" type="tel"
                                     class="form-control form-control-lg" placeholder="9876543210" pattern="\d{10}"
                                     maxlength="10" inputmode="numeric">
-                            </div>
-                            <div class="mb-3">
-                                <label for="searchEmail" class="form-label fw-semibold">Email address</label>
-                                <input id="searchEmail" name="searchEmail" type="email"
-                                    class="form-control form-control-lg" placeholder="name@email.com">
                             </div>
                             <button type="submit" class="btn btn-outline-primary btn-lg w-100">Search E-Pass</button>
                         </form>
@@ -328,7 +329,7 @@
                         <h3 class="fw-bold mb-2">We found your pass</h3>
                         <p class="text-secondary mb-4" id="searchMessage">Show this pass at entry or download it as a
                             PNG.</p>
-                        <div class="pass-preview mx-auto mb-4">
+                        <div class="pass-preview mx-auto mb-4" id="searchPreviewCard">
                             <img id="searchImage" class="img-fluid" alt="Retrieved EMRS e-pass">
                         </div>
                         <div class="mb-3">
@@ -336,15 +337,14 @@
                             <span class="text-secondary" id="searchReg"></span>
                         </div>
                         <div class="pass-actions d-flex flex-column flex-sm-row gap-3 justify-content-center">
-                            <a id="searchDownload"
-                                class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2"
-                                download="emrs-epass.png">
-                                <i class="bi bi-download"></i>
+                            <button type="button" id="searchDownload"
+                                class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2">
+                                <i class="fa-solid fa-download"></i>
                                 <span>Download E-Pass</span>
-                            </a>
+                            </button>
                             <button type="button" id="searchAgainBtn"
                                 class="btn btn-outline-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2">
-                                <i class="bi bi-search"></i>
+                                <i class="fa-solid fa-magnifying-glass"></i>
                                 <span>Search again</span>
                             </button>
                         </div>
@@ -357,9 +357,7 @@
         </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-q2nyq7rlaRykWGBqBPdZiZsa1+lZeFePmSu2VvulaHYodEc/WWEDuJeCQM2ngiZX" crossorigin="anonymous"
-        defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
     <script>
         const avatarInput = document.getElementById('avatarInput');
         const avatarImage = document.getElementById('avatarImage');
@@ -367,6 +365,7 @@
         const avatarPreview = document.getElementById('avatarPreview');
 
         const registrationForm = document.getElementById('registrationForm');
+    const fullNameInput = document.getElementById('fullName');
         const registrationFeedback = document.getElementById('registrationFeedback');
         const stateSelect = document.getElementById('state');
         const submitButton = registrationForm.querySelector('button[type="submit"]');
@@ -394,6 +393,9 @@
         const searchReg = document.getElementById('searchReg');
         const searchDownload = document.getElementById('searchDownload');
 
+    const registerColumn = document.getElementById('registerColumn');
+    const searchColumn = document.getElementById('searchColumn');
+
         const defaultBorderColor = 'rgba(59, 130, 246, 0.4)';
 
         const showLayer = (element) => {
@@ -415,6 +417,24 @@
                     element.classList.add('d-none');
                 }
             }, 260);
+        };
+
+        const hideLayerIfVisible = (element) => {
+            if (!element) return;
+            if (element.classList.contains('show') && !element.classList.contains('d-none')) {
+                hideLayer(element);
+            } else {
+                element.classList.add('d-none');
+            }
+        };
+
+        const restoreDefaultView = () => {
+            registerColumn.classList.remove('d-none');
+            searchColumn.classList.remove('d-none');
+            hideLayerIfVisible(registerSuccess);
+            showLayer(registerCard);
+            hideLayerIfVisible(searchResultCard);
+            showLayer(searchCard);
         };
 
         const resetAvatar = () => {
@@ -631,6 +651,8 @@
                 toggleAlert(registrationFeedback, '🎉 Pass generated successfully! Preparing your download…', 'success');
                 await prepareDownloadLink(epassDownload, passDataUrl, 'emrs-epass');
 
+                registerColumn.classList.remove('d-none');
+                searchColumn.classList.add('d-none');
                 hideLayer(registerCard);
                 registerSuccessMessage.textContent = 'Download your PNG pass or register another attendee immediately.';
                 showLayer(registerSuccess);
@@ -651,8 +673,11 @@
 
         registerAgainBtn.addEventListener('click', () => {
             toggleAlert(registrationFeedback, '', '');
-            showLayer(registerCard);
-            hideLayer(registerSuccess);
+            toggleAlert(searchFeedback, '', '');
+            searchForm.reset();
+            restoreDefaultView();
+            avatarPreview.style.borderColor = defaultBorderColor;
+            fullNameInput.focus();
         });
 
         searchForm.addEventListener('submit', async (event) => {
@@ -697,6 +722,9 @@
 
                 hideLayer(searchCard);
                 showLayer(searchResultCard);
+                searchColumn.classList.remove('d-none');
+                registerColumn.classList.add('d-none');
+                hideLayerIfVisible(registerSuccess);
             } catch (error) {
                 console.error(error);
                 toggleAlert(searchFeedback, error.message, 'error');
@@ -705,9 +733,9 @@
 
         searchAgainBtn.addEventListener('click', () => {
             toggleAlert(searchFeedback, '', '');
+            toggleAlert(registrationFeedback, '', '');
             searchForm.reset();
-            showLayer(searchCard);
-            hideLayer(searchResultCard);
+            restoreDefaultView();
             searchPhoneInput.focus();
         });
     </script>
