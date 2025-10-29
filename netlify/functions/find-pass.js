@@ -44,23 +44,23 @@ export const handler = async (event) => {
         let phone = normalizePhone(query.phone);
         let email = (query.email || '').trim().toLowerCase();
 
-            if (event.httpMethod === 'POST') {
+        if (event.httpMethod === 'POST') {
             if (!event.body) {
                 return errorResponse(400, 'Request body is empty.');
             }
 
             const contentType = event.headers['content-type'] || event.headers['Content-Type'] || '';
-                if (!contentType.includes('application/json')) {
+            if (!contentType.includes('application/json')) {
                 return errorResponse(415, 'Unsupported content type. Use application/json.');
             }
 
-                const rawBody = event.isBase64Encoded
-                    ? Buffer.from(event.body, 'base64').toString('utf8')
-                    : event.body;
-                const payload = JSON.parse(rawBody);
-                phone = normalizePhone(payload.phone ?? phone);
-                const emailCandidate = payload.email ?? email ?? '';
-                email = String(emailCandidate).trim().toLowerCase();
+            const rawBody = event.isBase64Encoded
+                ? Buffer.from(event.body, 'base64').toString('utf8')
+                : event.body;
+            const payload = JSON.parse(rawBody);
+            phone = normalizePhone(payload.phone ?? phone);
+            const emailCandidate = payload.email ?? email ?? '';
+            email = String(emailCandidate).trim().toLowerCase();
         }
 
         if (!phone && !email) {
