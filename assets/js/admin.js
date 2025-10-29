@@ -418,12 +418,37 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(result.message || 'Login failed');
 
             if (result && result.token) {
-                appState.isLoggedIn = true;
-                // Keep token only in-memory; optionally persist to sessionStorage for seamless tabs
+                // Store token and validate server-side by fetching system status/stats before showing dashboard
                 appState.staffToken = result.token;
                 try { sessionStorage.setItem('staff_token', result.token); window.__STAFF_TOKEN = result.token; } catch (e) { /* ignore */ }
-                setUIState('dashboard');
-                initializeAppDashboard();
+                // parse payload so we can schedule refresh
+                const payload = parseJwtPayload(result.token) || {};
+                if (payload && payload.exp) scheduleTokenRefresh(result.token, payload.exp);
+
+                // Tentatively set logged-in so fetchDashboardData will include Authorization header
+                appState.isLoggedIn = true;
+                hideAdminStatus();
+                showLoader();
+                // Validate server accepts token and fetch initial data
+                const dashResult = await fetchDashboardData();
+                if (dashResult && dashResult.ok) {
+                    setUIState('dashboard');
+                    // Load attendee list after successful dashboard load
+                    await searchAttendees();
+                    initializeAppDashboard();
+                } else {
+                    // If unauthorized or other failure, clear token and show error
+                    try { sessionStorage.removeItem('staff_token'); } catch (e) { }
+                    appState.staffToken = null;
+                    appState.isLoggedIn = false;
+                    if (dashResult && dashResult.reason === 'unauthorized') {
+                        showLoginMessage('Login succeeded locally but server rejected token. Please check server config.');
+                    } else {
+                        showLoginMessage('Login succeeded but initial data failed to load. ' + (dashResult && dashResult.text ? dashResult.text : '')); 
+                    }
+                    setUIState('login');
+                }
+                hideLoader();
             }
         } catch (error) {
             showLoginMessage(error.message || 'An unknown error occurred.');
@@ -450,11 +475,12 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const txt = await statsRes.text().catch(() => statsRes.status);
                 console.warn('Failed to load stats:', statsRes.status, txt);
-                showToast('Could not load stats: ' + (txt || statsRes.status), true);
-                // If server reported 503 (DB timeout/unreachable) show admin status and auto-refresh
+                // Return failure so caller can react (e.g. logout or retry)
+                if (statsRes.status === 401) return { ok: false, reason: 'unauthorized' };
                 if (statsRes.status === 503) {
                     showAdminStatus(`Database unreachable. Retrying shortly...`);
                 }
+                return { ok: false, reason: 'stats_failed', status: statsRes.status, text: txt };
             }
             if (statusRes.ok) {
                 appState.systemStatus = await statusRes.json();
@@ -462,22 +488,23 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 const txt = await statusRes.text().catch(() => statusRes.status);
                 console.warn('Failed to load system status:', statusRes.status, txt);
-                showToast('Could not load system status: ' + (txt || statusRes.status), true);
-                if (statusRes.status === 503) {
-                    showAdminStatus(`System configuration unavailable. Retrying shortly...`);
-                }
+                if (statusRes.status === 401) return { ok: false, reason: 'unauthorized' };
+                if (statusRes.status === 503) showAdminStatus(`System configuration unavailable. Retrying shortly...`);
+                return { ok: false, reason: 'status_failed', status: statusRes.status, text: txt };
             }
             if (healthRes.ok) {
                 const health = await healthRes.json(); // Mocking health from system status for now
                 appState.healthStatus = { api: 'ok', db: health.db_connected ? 'ok' : 'error', cloudinary: 'ok' };
                 updateHealthStatusUI();
             }
+            return { ok: true };
         } catch (error) {
             console.error("Failed to fetch dashboard data:", error);
             // If thrown from our retryFetch wrapper, it may be an object with stage
             const rawErr = error && error.err ? error.err : error;
             const msg = rawErr && rawErr.message ? rawErr.message : 'Network or database error.';
             showAdminStatus(`Connection error: ${msg}`, 15);
+            return { ok: false, reason: 'exception', error: rawErr };
         }
     }
 
