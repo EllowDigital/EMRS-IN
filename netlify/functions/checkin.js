@@ -59,6 +59,24 @@ export const handler = async (event) => {
             where id = ${existing.id}
         `;
 
+        // Record the check-in in the checkins table. Accept optional location and method from the client.
+        const { location, method } = payload || {};
+        // Normalize method to allowed enum values: 'qr_scan' or 'manual_lookup'
+        const methodVal = (method === 'manual_lookup' || method === 'manual') ? 'manual_lookup' : 'qr_scan';
+        try {
+            // Insert only if a conflicting checkin of the same method doesn't already exist. Use WHERE NOT EXISTS to respect the partial unique index.
+            await sql`
+                insert into checkins (attendee_id, method, location)
+                select ${existing.id}, ${methodVal}, ${location || null}
+                where not exists (
+                    select 1 from checkins c where c.attendee_id = ${existing.id} and c.method = ${methodVal}
+                )
+            `;
+        } catch (e) {
+            // ignore insert errors (e.g., race/unique violations)
+            console.warn('checkins insert warning', e?.message || e);
+        }
+
         const updated = await sql`
             select registration_id, full_name, phone, email, profile_url, status
             from attendees

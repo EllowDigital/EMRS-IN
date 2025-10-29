@@ -1,461 +1,345 @@
 <!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>E-Pass Verify — Kiosk</title>
-    <meta name="description" content="E-Pass Verification Kiosk" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css"
-        integrity="sha512-2bBQCjcnw658Lho4nlXJcc6WkV/UxpE/sAokbXPxQNGqmNdQrWqtw26Ns9kFF/yG792pKR1Sx8/Y1Lf1XN4GKA=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
-    <style>
-        :root { --brand: #0d6efd; }
-        html, body { height: 100%; }
-        body { background: linear-gradient(180deg,#f8fafc,#f1f5f9); font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; }
-        .navbar { background: transparent; }
-        .app-card { border: 1px solid rgba(148, 163, 184, 0.12); border-radius: 18px; box-shadow: 0 18px 46px rgba(2,6,23,0.06); background: rgba(255,255,255,0.96); }
-        .top-nav { backdrop-filter: blur(6px); background: rgba(255,255,255,0.6); box-shadow: 0 6px 18px rgba(2,6,23,0.06); border-radius: .5rem; }
-        .video-placeholder { background: linear-gradient(180deg,#030614,#071026); min-height: 360px; position: relative; border-radius: .5rem; }
-        .scanner-overlay { position: absolute; inset: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; }
-        .scanner-grid { position: absolute; inset: 0; opacity: .10; background-image: linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px); background-size: 28px 28px; }
-        .scanner-box { width: 60%; max-width: 560px; aspect-ratio: 1; background: transparent; border: 2px dashed rgba(255,255,255,0.12); box-shadow: 0 12px 40px rgba(2,6,23,0.45); border-radius: 12px; position: relative; overflow: hidden; }
-        .scanner-box::after { content: ''; position: absolute; inset: 0; border-radius: 12px; box-shadow: 0 0 60px rgba(0,135,255,0.06) inset; }
-        .scan-line { position: absolute; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, rgba(0,200,255,0), rgba(0,200,255,0.95), rgba(0,200,255,0)); top: 0; animation: scanMove 1800ms linear infinite; }
-        @keyframes scanMove { 0% { transform: translateY(-5%); } 50% { transform: translateY(100%); } 100% { transform: translateY(205%); } }
-        .scan-success { animation: flash 520ms ease-in-out; }
-        @keyframes flash { 0% { box-shadow: 0 0 0 rgba(0,255,150,0); } 50% { box-shadow: 0 0 24px rgba(0,255,150,0.6); } 100% { box-shadow: 0 0 0 rgba(0,255,150,0); } }
-        .card-modern { border-radius: 12px; border: 0; box-shadow: 0 8px 30px rgba(2,6,23,0.06); }
-        .camera-status { min-width: 140px; text-align: center; }
-    </style>
-</head>
-
-<body class="d-flex flex-column h-100">
-    <header>
-        <nav class="navbar py-3">
-            <div class="container text-center">
-                <div class="navbar-brand mx-auto fw-bold fs-5">Verification Kiosk</div>
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>E-Pass Verify</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+        <style>
+            body { background: #f7f9fc; }
+            .scanner-card { max-width: 740px; margin: 36px auto; }
+            #video { width:100%; height:auto; border-radius: 8px; display:block; }
+            #videoPlaceholder { width:100%; height:320px; background:#e9ecef; display:flex; align-items:center; justify-content:center; border-radius:8px; color:#6c757d; }
+            #scannerOverlay { position:absolute; inset:0; pointer-events:none; }
+            .scanner-box { width:68%; max-width:420px; height:180px; margin:0 auto; border:3px dashed rgba(255,255,255,0.8); box-shadow:0 6px 18px rgba(0,0,0,0.08); border-radius:12px; }
+            .scan-success { animation: flash 0.6s ease; }
+            @keyframes flash { 0%{ box-shadow:0 0 0 0 rgba(16,185,129,0.0)} 50%{ box-shadow:0 0 0 10px rgba(16,185,129,0.12)} 100%{ box-shadow:0 0 0 0 rgba(16,185,129,0)} }
+            .result-avatar { width:120px; height:120px; object-fit:cover; border-radius:999px; border:4px solid #fff; box-shadow:0 6px 18px rgba(0,0,0,0.08); }
+        </style>
+    </head>
+    <body>
+        <nav class="navbar navbar-dark bg-primary py-2">
+            <div class="container-fluid justify-content-center">
+                <span class="navbar-brand mb-0 h4 text-white">E-Pass Check-In</span>
             </div>
         </nav>
-    </header>
 
-    <main class="flex-fill">
-        <div class="container py-4">
-            <div class="row g-4">
-
-                <!-- Scanner / Manual entry (cards) -->
-                <div id="leftColumn" class="col-12 col-lg-8">
-                    <div class="card card-modern app-card">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h2 class="h5 mb-0">Live Scanner</h2>
-                                <div class="small text-muted">Camera feed (uses device camera)</div>
+        <main class="container">
+            <div class="card scanner-card shadow-sm">
+                <div class="card-body">
+                    <div id="scanner-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <strong>Scan QR</strong>
+                                <div class="text-muted small">Camera will start automatically. Or use manual lookup.</div>
                             </div>
+                            <div>
+                                <button id="switch-to-manual" class="btn btn-outline-secondary btn-sm">Manual lookup</button>
+                            </div>
+                        </div>
 
-                            <div
-                                class="video-placeholder rounded mb-3 position-relative overflow-hidden d-flex align-items-center justify-content-center text-white"
-                                style="background: linear-gradient(180deg,#07145d 0%, #020b3a 100%); box-shadow: 0 18px 46px rgba(2,6,23,0.08);">
-                                <video id="video" class="w-100 h-100 d-none" autoplay playsinline></video>
-                                <div id="videoPlaceholder" class="text-center text-white">
-                                    <div style="width:86px;height:86px;border-radius:999px;background:rgba(255,255,255,0.06);display:inline-grid;place-items:center;margin-bottom:10px;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none"
-                                            viewBox="0 0 24 24" stroke="currentColor" class="text-white-50">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                                                d="M3 7v10a2 2 0 002 2h3l2 2h4l2-2h3a2 2 0 002-2V7" />
-                                        </svg>
-                                    </div>
-                                    <div class="fw-semibold">Ready to scan</div>
-                                    <div class="small opacity-75">Point your camera at a QR code. Allow camera access when prompted.</div>
-                                </div>
-                                <div class="position-absolute bottom-0 start-0 p-3 d-flex">
-                                    <button id="openCameraBtn" class="btn btn-outline-primary btn-sm me-2">Open
-                                        Camera</button>
-                                </div>
-                                <div id="scannerOverlay" class="scanner-overlay d-none" aria-hidden="true">
-                                    <div class="scanner-grid"></div>
-                                    <div class="scanner-box" id="scannerBox">
-                                        <div class="scan-line" id="scanLine"></div>
-                                    </div>
+                        <div style="position:relative;">
+                            <video id="video" class="d-none" playsinline muted></video>
+                            <div id="videoPlaceholder"><div class="text-center"><i class="bi bi-camera-video" style="font-size:36px"></i><div class="small mt-2">Camera preview</div></div></div>
+                            <div id="scannerOverlay" class="d-none" aria-hidden="true">
+                                <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+                                    <div id="scannerBox" class="scanner-box"></div>
                                 </div>
                             </div>
+                        </div>
 
-                            <div class="row align-items-end g-2 mb-3">
-                                <div class="col-12 col-md-8">
-                                    <label for="manualId" class="form-label mb-1">Manual Registration ID</label>
-                                    <div class="input-group">
-                                        <input id="manualId" type="text" class="form-control"
-                                            placeholder="e.g. UP25-ABCD1234" />
-                                        <button id="lookupBtn" class="btn btn-success">Lookup</button>
-                                    </div>
-                                    <div class="form-text">If scanner fails, enter the Registration ID here.</div>
-                                </div>
-                                <div class="col-12 col-md-4 text-md-end">
-                                    <button id="clearBtn" class="btn btn-link">Clear</button>
-                                </div>
-                            </div>
-
-                            <!-- scanner log removed in production version -->
+                        <div class="mt-3 d-flex justify-content-between align-items-center">
+                            <div id="feedback" class="text-muted small">Ready</div>
+                            <div id="cameraStatus" class="badge bg-secondary">Camera: Off</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- User info / actions column -->
-                <div id="rightColumn" class="col-12 col-lg-4 d-none">
-                    <div class="card card-modern h-100">
-                        <div class="card-body d-flex flex-column">
-                            <h3 class="h6">Verified Attendee</h3>
-                            <p class="small text-muted">Profile information appears here after successful lookup.</p>
+                    <!-- manual lookup -->
+                    <form id="manual-lookup-form" class="d-none mt-3">
+                        <div class="input-group">
+                            <input id="reg-id-input" class="form-control" placeholder="Enter Registration ID (eg UP25-...)" />
+                            <button id="lookup-btn" class="btn btn-primary" type="submit">Lookup</button>
+                        </div>
+                        <div id="lookup-spinner" class="spinner-border spinner-border-sm text-primary mt-2 d-none" role="status"><span class="visually-hidden">Loading</span></div>
+                    </form>
 
-                            <div id="emptyState"
-                                class="flex-fill d-flex flex-column align-items-center justify-content-center text-muted">
-                                <img src="https://images.unsplash.com/photo-1607746882042-944635dfe10e?q=80&w=400&auto=format&fit=crop&ixlib=rb-4.0.3&s=placeholder"
-                                    alt="placeholder" class="rounded-circle mb-2"
-                                    style="width:96px;height:96px;object-fit:cover;" />
-                                <div class="fw-semibold">No attendee selected</div>
-                                <div class="small">Scan a QR or enter a Registration ID to begin.</div>
+                    <!-- results -->
+                    <div id="results-section" class="d-none mt-4 text-center">
+                        <span id="result-status-badge" class="d-inline-block mb-3">
+                            <span id="result-status-badge-text" class="badge bg-success">VERIFIED</span>
+                        </span>
+
+                        <div class="d-flex flex-column align-items-center gap-2">
+                            <img id="result-avatar" class="result-avatar" src="https://placehold.co/150x150/6c757d/white?text=No+Photo" alt="avatar" />
+                            <h5 id="result-name" class="mb-0">Name</h5>
+                            <div id="result-reg-id" class="text-danger fw-bold">REG-0000</div>
+                            <div id="result-phone" class="text-muted small">Phone</div>
+                            <div id="result-email" class="text-muted small">Email</div>
+
+                            <div class="mt-3 w-100">
+                                <button id="checkin-btn" class="btn btn-success btn-lg w-100">Confirm Check-In <span id="checkin-spinner" class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"></span></button>
+                                <button id="clear-btn-bottom" class="btn btn-outline-secondary btn-sm mt-2 w-100">Clear / Next</button>
                             </div>
-
-                            <div id="userCard" class="d-none">
-                                <div class="d-flex align-items-center gap-3 mb-3">
-                                    <img id="userPhoto" src="" alt="profile" class="rounded-circle"
-                                        style="width:72px;height:72px;object-fit:cover;border:1px solid #e9ecef;" />
-                                    <div>
-                                        <div id="userName" class="fw-semibold">Full Name</div>
-                                        <div id="userReg" class="small text-muted">Registration ID</div>
-                                        <div id="userStatus" class="badge bg-warning text-dark mt-1">Status</div>
-                                    </div>
-                                </div>
-
-                                <div class="mb-3 small text-muted">
-                                    <div><strong>Phone:</strong> <span id="userPhone">+91 9876543210</span></div>
-                                    <div><strong>Email:</strong> <span id="userEmail">jane@example.com</span></div>
-                                </div>
-
-                                <div class="mt-auto d-flex gap-2">
-                                    <button id="checkinBtn" class="btn btn-primary flex-fill" disabled>Check In</button>
-                                    <button id="nextBtn" class="btn btn-outline-secondary flex-fill">Verify Next
-                                        Person</button>
-                                </div>
-                            </div>
-
-                            <div id="feedback" class="text-center small text-muted mt-3">&nbsp;</div>
                         </div>
                     </div>
-                </div>
 
-            </div>
-        </div>
-    </main>
-
-    <footer class="bg-white border-top py-2 text-center small text-muted">© 2025 EllowDigital · Verification Kiosk
-    </footer>
-
-    <!-- Not found popup card -->
-    <div id="notFoundCard" class="position-fixed top-50 start-50 translate-middle d-none"
-        style="z-index:1050; width:360px;">
-        <div class="card shadow-lg border-danger">
-            <div class="card-body text-center">
-                <h5 class="card-title text-danger">Attendee Not Found</h5>
-                <p class="card-text">We couldn't find an attendee with that Registration ID. Please try again or
-                    register the attendee.</p>
-                <div class="d-flex justify-content-center gap-2">
-                    <button id="notFoundClose" class="btn btn-secondary btn-sm">Close</button>
-                    <button id="notFoundManual" class="btn btn-outline-primary btn-sm">Enter Manually</button>
                 </div>
             </div>
-        </div>
-    </div>
+        </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"
-        integrity="sha512-HvOjJrdwNpDbkGJIG2ZNqDlVqMo77qbs4Me4cah0HoDrfhrbA+8SBlZn1KrvAQw7cILLPFJvdwIgphzQmMm+Pw=="
-        crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+        <script>
+            // Client scanner & check-in logic
+            const video = document.getElementById('video');
+            const videoPlaceholder = document.getElementById('videoPlaceholder');
+            const scannerOverlay = document.getElementById('scannerOverlay');
+            const scanCanvas = document.createElement('canvas');
+            const scanCtx = scanCanvas.getContext && scanCanvas.getContext('2d');
 
-    <script>
-        // Client logic (adapted to Bootstrap classes)
-    const lookupBtn = document.getElementById('lookupBtn');
-        const manualId = document.getElementById('manualId');
-        const clearBtn = document.getElementById('clearBtn');
-        const emptyState = document.getElementById('emptyState');
-        const userCard = document.getElementById('userCard');
-        const userPhoto = document.getElementById('userPhoto');
-        const userName = document.getElementById('userName');
-        const userReg = document.getElementById('userReg');
-        const userPhone = document.getElementById('userPhone');
-        const userEmail = document.getElementById('userEmail');
-        const userStatus = document.getElementById('userStatus');
-        const checkinBtn = document.getElementById('checkinBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        const feedback = document.getElementById('feedback');
+            const scannerSection = document.getElementById('scanner-section');
+            const resultsSection = document.getElementById('results-section');
+            const switchToManualBtn = document.getElementById('switch-to-manual');
+            const manualForm = document.getElementById('manual-lookup-form');
+            const regIdInput = document.getElementById('reg-id-input');
+            const lookupBtnManual = document.getElementById('lookup-btn');
+            const lookupSpinner = document.getElementById('lookup-spinner');
 
-        // Camera / scanner elements
-        const openCameraBtn = document.getElementById('openCameraBtn');
-        const video = document.getElementById('video');
-        const videoPlaceholder = document.getElementById('videoPlaceholder');
-        const leftColumn = document.getElementById('leftColumn');
-        const rightColumn = document.getElementById('rightColumn');
-        const notFoundCard = document.getElementById('notFoundCard');
-        const notFoundClose = document.getElementById('notFoundClose');
-        const notFoundManual = document.getElementById('notFoundManual');
-        let cameraStream = null;
-        let scanning = false;
-        const scanCanvas = document.createElement('canvas');
-        const scanCtx = scanCanvas.getContext && scanCanvas.getContext('2d');
+            const feedback = document.getElementById('feedback');
+            const cameraStatus = document.getElementById('cameraStatus');
 
-        let current = null;
+            const resultStatusText = document.getElementById('result-status-badge-text');
+            const resultAvatar = document.getElementById('result-avatar');
+            const resultName = document.getElementById('result-name');
+            const resultRegId = document.getElementById('result-reg-id');
+            const resultPhone = document.getElementById('result-phone');
+            const resultEmail = document.getElementById('result-email');
+            const checkinBtn = document.getElementById('checkin-btn');
+            const checkinSpinner = document.getElementById('checkin-spinner');
+            const clearBtnBottom = document.getElementById('clear-btn-bottom');
+            const scannerBox = document.getElementById('scannerBox');
 
-        function normalizeStatus(raw) {
-            if (!raw) return 'Pending';
-            const s = String(raw).toLowerCase();
-            if (s.includes('check')) return 'Checked-In';
-            if (s.includes('issue') || s.includes('epass')) return 'Issued';
-            return raw;
-        }
+            let cameraStream = null;
+            let scanning = false;
+            let current = null;
+            let lastLookupMethod = 'qr_scan'; // 'qr_scan' or 'manual_lookup'
 
-        function showUser(user) {
-            current = user;
-            if (!user) {
-                // initial state: show only the search (left) column
-                rightColumn.classList.add('d-none');
-                leftColumn.classList.remove('d-none');
-                emptyState.classList.remove('d-none');
-                userCard.classList.add('d-none');
-                feedback.textContent = 'No attendee selected';
-                return;
+            function normalizeStatus(raw) {
+                if (!raw) return 'Pending';
+                const s = String(raw).toLowerCase();
+                if (s.includes('check')) return 'Checked-In';
+                if (s.includes('issue') || s.includes('epass')) return 'Issued';
+                return raw;
             }
-            // hide search column and reveal result card
-            leftColumn.classList.add('d-none');
-            rightColumn.classList.remove('d-none');
-            emptyState.classList.add('d-none');
-            userCard.classList.remove('d-none');
-            userPhoto.src = user.profileUrl || 'https://images.unsplash.com/photo-1502685104226-ee32379fefbe?q=80&w=400&auto=format&fit=crop&ixlib=rb-4.0.3&s=placeholder';
-            userName.textContent = user.fullName || 'Unknown';
-            userReg.textContent = user.registrationId;
-            userPhone.textContent = user.phone || '—';
-            userEmail.textContent = user.email || '—';
-            const friendly = normalizeStatus(user.status);
-            userStatus.textContent = friendly;
-            userStatus.className = 'badge mt-1 ' + (friendly === 'Checked-In' ? 'bg-success' : 'bg-warning text-dark');
-            checkinBtn.disabled = friendly === 'Checked-In';
-            feedback.textContent = friendly === 'Checked-In' ? 'Already checked in' : 'Ready to check in';
-        }
 
-        // --- Camera / QR scanning logic ---
-        async function startCamera() {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                feedback.textContent = 'Camera not supported in this browser';
-                return;
-            }
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
-                video.srcObject = cameraStream;
-                await video.play();
-                video.classList.remove('d-none');
-                videoPlaceholder.classList.add('d-none');
-                const overlay = document.getElementById('scannerOverlay'); if (overlay) overlay.classList.remove('d-none');
-                openCameraBtn.textContent = 'Close Camera';
-                openCameraBtn.classList.remove('btn-outline-primary');
-                openCameraBtn.classList.add('btn-outline-danger');
-                const camStatus = document.getElementById('cameraStatus'); if (camStatus) { camStatus.textContent = 'Camera: On'; camStatus.classList.remove('bg-secondary','bg-danger'); camStatus.classList.add('bg-success'); }
-                scanning = true;
-                requestAnimationFrame(scanFrame);
-                feedback.textContent = 'Camera started';
-            } catch (err) {
-                console.error('startCamera error', err);
-                feedback.textContent = 'Unable to access camera: ' + (err.message || err.name);
-                const camStatus = document.getElementById('cameraStatus'); if (camStatus) { camStatus.textContent = 'Camera: Error'; camStatus.classList.remove('bg-success','bg-secondary'); camStatus.classList.add('bg-danger'); }
-            }
-        }
-
-        function stopCamera() {
-            scanning = false;
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(t => t.stop());
-                cameraStream = null;
-            }
-            video.pause();
-            video.srcObject = null;
-            video.classList.add('d-none');
-            videoPlaceholder.classList.remove('d-none');
-            const overlay = document.getElementById('scannerOverlay'); if (overlay) overlay.classList.add('d-none');
-            openCameraBtn.textContent = 'Open Camera';
-            openCameraBtn.classList.remove('btn-outline-danger');
-            openCameraBtn.classList.add('btn-outline-primary');
-            const camStatus = document.getElementById('cameraStatus'); if (camStatus) { camStatus.textContent = 'Camera: Off'; camStatus.classList.remove('bg-success','bg-danger'); camStatus.classList.add('bg-secondary'); }
-            feedback.textContent = 'Camera stopped';
-        }
-
-        // small beep using WebAudio
-        function playBeep() {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const o = ctx.createOscillator();
-                const g = ctx.createGain();
-                o.type = 'sine';
-                o.frequency.value = 880;
-                g.gain.value = 0.0001;
-                o.connect(g); g.connect(ctx.destination);
-                o.start();
-                // ramp gain up then down for short beep
-                g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
-                g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
-                setTimeout(() => { try { o.stop(); ctx.close(); } catch(e){} }, 200);
-            } catch (e) {
-                // ignore audio failures
-            }
-        }
-
-        async function scanFrame() {
-            try {
-                if (!scanning) return;
-                const vw = video.videoWidth;
-                const vh = video.videoHeight;
-                if (!vw || !vh) {
-                    requestAnimationFrame(scanFrame);
+            function showUser(user) {
+                current = user;
+                if (!user) {
+                    resultsSection.classList.add('d-none');
+                    scannerSection.classList.remove('d-none');
+                    manualForm.classList.add('d-none');
+                    feedback.textContent = 'Ready';
                     return;
                 }
-                scanCanvas.width = vw;
-                scanCanvas.height = vh;
-                if (!scanCtx) { requestAnimationFrame(scanFrame); return; }
-                scanCtx.drawImage(video, 0, 0, vw, vh);
-                const img = scanCtx.getImageData(0, 0, vw, vh);
-                const qr = window.jsQR ? window.jsQR(img.data, img.width, img.height) : null;
-                if (qr && qr.data) {
-                    // found QR code
-                    handleScanned(qr.data);
-                    return;
+
+                // populate result UI
+                resultAvatar.src = user.profileUrl || 'https://placehold.co/150x150/6c757d/white?text=No+Photo';
+                resultName.textContent = user.fullName || 'Unknown';
+                resultRegId.textContent = user.registrationId || '';
+                resultPhone.textContent = user.phone || '—';
+                resultEmail.textContent = user.email || '—';
+
+                const friendly = normalizeStatus(user.status);
+                if (friendly === 'Checked-In') {
+                    resultStatusText.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>ALREADY CHECKED IN';
+                    checkinBtn.disabled = true;
+                } else {
+                    resultStatusText.innerHTML = '<i class="bi bi-check-circle-fill me-2"></i>VERIFIED';
+                    checkinBtn.disabled = false;
                 }
-            } catch (err) {
-                console.error('scanFrame error', err);
+
+                // switch views
+                scannerSection.classList.add('d-none');
+                resultsSection.classList.remove('d-none');
             }
-            requestAnimationFrame(scanFrame);
-        }
 
-        function parseRegistrationFromPayload(text) {
-            if (!text) return null;
-            // try JSON
-            try {
-                const j = JSON.parse(text);
-                return j.registrationId || j.registration_id || j.reg || j.id || null;
-            } catch (_) { }
-            // try regex for UP25-XXXX
-            const m = text.match(/(UP25[-_A-Z0-9]+)/i);
-            if (m) return m[1];
-            // fallback: return entire trimmed text
-            return text.trim();
-        }
-
-        function handleScanned(payload) {
-            // play success sound / vibration and animate
-            try { playBeep(); if (navigator.vibrate) navigator.vibrate(200); } catch(e){}
-            const box = document.getElementById('scannerBox'); if (box) { box.classList.add('scan-success'); setTimeout(()=>box.classList.remove('scan-success'),700); }
-            const id = parseRegistrationFromPayload(payload);
-            if (!id) {
-                feedback.textContent = 'QR scanned but registration ID not found';
-                stopCamera();
-                return;
-            }
-            manualId.value = id;
-            stopCamera();
-            // small delay to allow UI update
-            setTimeout(() => doLookup(id), 150);
-        }
-
-        async function api(action, registrationId) {
-            const body = { action, registrationId };
-            const res = await fetch('/.netlify/functions/verify', {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data?.message || 'Server error');
-            return data;
-        }
-
-        // simulation controls removed for production
-
-        openCameraBtn.addEventListener('click', async () => {
-            if (scanning) {
-                stopCamera();
-                return;
-            }
-            await startCamera();
-        });
-
-        // Not found controls
-        notFoundClose.addEventListener('click', () => {
-            notFoundCard.classList.add('d-none');
-            manualId.focus();
-        });
-        notFoundManual.addEventListener('click', () => {
-            notFoundCard.classList.add('d-none');
-            manualId.focus();
-        });
-
-        lookupBtn.addEventListener('click', async () => {
-            const id = manualId.value.trim();
-            if (!id) { feedback.textContent = 'Please enter a Registration ID.'; return; }
-            lookupBtn.disabled = true; const prev = lookupBtn.innerHTML; lookupBtn.innerHTML = 'Looking…';
-            try { await doLookup(id); } finally { lookupBtn.disabled = false; lookupBtn.innerHTML = prev; }
-        });
-
-    clearBtn.addEventListener('click', () => { manualId.value = ''; showUser(null); feedback.textContent = 'Cleared'; });
-
-    nextBtn.addEventListener('click', () => { manualId.value = ''; showUser(null); feedback.textContent = 'Ready for next person'; });
-
-        checkinBtn.addEventListener('click', async () => {
-            if (!current) return;
-            checkinBtn.disabled = true; const prev = checkinBtn.innerHTML; checkinBtn.innerHTML = 'Checking…';
-            feedback.textContent = 'Checking in…';
-            try {
-                // Use separate checkin function endpoint
-                const res = await fetch('/.netlify/functions/checkin', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ registrationId: current.registrationId })
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data?.message || 'Check-in failed');
-                showUser(data.attendee);
-                feedback.textContent = 'Checked in successfully';
-            } catch (err) {
-                console.error(err); feedback.textContent = err.message || 'Check-in failed';
-            } finally { checkinBtn.innerHTML = prev; checkinBtn.disabled = current && normalizeStatus(current.status) === 'Checked-In'; }
-        });
-
-        async function doLookup(id) {
-            feedback.textContent = 'Looking up…';
-            try {
-                const data = await api('lookup', id);
-                showUser(data.attendee);
-                feedback.textContent = 'Attendee found';
-            } catch (err) {
-                console.error(err);
-                const msg = err.message || 'Not found';
-                feedback.textContent = msg;
-                showUser(null);
-                // show not-found popup card
-                notFoundCard.classList.remove('d-none');
-            }
-        }
-
-        // initialize
-        showUser(null);
-        feedback.textContent = 'Ready';
-
-        // Attempt to auto-start camera on load (graceful if permissions denied)
-        window.addEventListener('load', () => {
-            // small delay so UI paints before permission prompt
-            setTimeout(async () => {
+            // camera control
+            async function startCamera() {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
                 try {
-                    await startCamera();
-                } catch (e) {
-                    // startCamera handles feedback; ignore here
-                    console.warn('Auto-start camera failed', e);
+                    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+                    video.srcObject = cameraStream;
+                    await video.play();
+                    video.classList.remove('d-none');
+                    videoPlaceholder.classList.add('d-none');
+                    if (scannerOverlay) scannerOverlay.classList.remove('d-none');
+                    cameraStatus.textContent = 'Camera: On';
+                    cameraStatus.classList.remove('bg-secondary');
+                    cameraStatus.classList.add('bg-success');
+                    scanning = true;
+                    requestAnimationFrame(scanFrame);
+                } catch (err) {
+                    console.warn('camera start failed', err);
+                    feedback.textContent = 'Camera denied or not available';
+                    manualForm.classList.remove('d-none');
+                    cameraStatus.textContent = 'Camera: Error';
+                    cameraStatus.classList.remove('bg-success');
+                    cameraStatus.classList.add('bg-danger');
                 }
-            }, 300);
-        });
-    </script>
-</body>
+            }
 
+            function stopCamera() {
+                scanning = false;
+                if (cameraStream) {
+                    cameraStream.getTracks().forEach(t => t.stop());
+                    cameraStream = null;
+                }
+                try { video.pause(); } catch (e) { }
+                video.srcObject = null;
+                video.classList.add('d-none');
+                videoPlaceholder.classList.remove('d-none');
+                if (scannerOverlay) scannerOverlay.classList.add('d-none');
+                cameraStatus.textContent = 'Camera: Off';
+                cameraStatus.classList.remove('bg-success','bg-danger');
+                cameraStatus.classList.add('bg-secondary');
+            }
+
+            function playBeep() {
+                try {
+                    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    const o = ctx.createOscillator();
+                    const g = ctx.createGain();
+                    o.type = 'sine'; o.frequency.value = 880; g.gain.value = 0.0001;
+                    o.connect(g); g.connect(ctx.destination); o.start();
+                    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.01);
+                    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.18);
+                    setTimeout(() => { try { o.stop(); ctx.close(); } catch (e) { } }, 200);
+                } catch (e) { }
+            }
+
+            async function scanFrame() {
+                try {
+                    if (!scanning || !video || !scanCtx) return;
+                    const vw = video.videoWidth, vh = video.videoHeight;
+                    if (!vw || !vh) { requestAnimationFrame(scanFrame); return; }
+                    scanCanvas.width = vw; scanCanvas.height = vh;
+                    scanCtx.drawImage(video, 0, 0, vw, vh);
+                    const img = scanCtx.getImageData(0, 0, vw, vh);
+                    const qr = window.jsQR ? window.jsQR(img.data, img.width, img.height) : null;
+                    if (qr && qr.data) { handleScanned(qr.data); return; }
+                } catch (err) { console.error('scan error', err); }
+                requestAnimationFrame(scanFrame);
+            }
+
+            function parseRegistrationFromPayload(text) {
+                if (!text) return null;
+                try { const j = JSON.parse(text); return j.registrationId || j.registration_id || j.reg || j.id || null; } catch (e) { }
+                const m = text.match(/(UP25[-_A-Z0-9]+)/i); if (m) return m[1]; return text.trim();
+            }
+
+            function handleScanned(payload) {
+                try { playBeep(); if (navigator.vibrate) navigator.vibrate(200); } catch (e) { }
+                const id = parseRegistrationFromPayload(payload);
+                if (!id) { manualForm.classList.remove('d-none'); feedback.textContent = 'QR scanned but registration ID not found'; return; }
+                lastLookupMethod = 'qr_scan';
+                stopCamera();
+                if (scannerBox) { scannerBox.classList.add('scan-success'); setTimeout(()=>scannerBox.classList.remove('scan-success'),700); }
+                setTimeout(() => doLookup(id, lastLookupMethod), 150);
+            }
+
+            async function apiLookup(id) {
+                const res = await fetch('/.netlify/functions/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'lookup', registrationId: id }) });
+                const data = await res.json(); if (!res.ok) throw new Error(data?.message || 'Server error'); return data;
+            }
+
+            async function doLookup(id, method = 'manual_lookup') {
+                feedback.textContent = 'Looking up…';
+                try {
+                    lookupSpinner && (lookupSpinner.classList.remove('d-none'));
+                    const data = await apiLookup(id);
+                    lastLookupMethod = (method === 'qr_scan') ? 'qr_scan' : 'manual_lookup';
+                    showUser(data.attendee);
+                    feedback.textContent = 'Attendee found';
+                } catch (err) {
+                    console.error(err);
+                    manualForm.classList.remove('d-none');
+                    feedback.textContent = err.message || 'Attendee not found';
+                    alert(err.message || 'Attendee not found');
+                } finally {
+                    lookupSpinner && (lookupSpinner.classList.add('d-none'));
+                }
+            }
+
+            // manual form
+            if (switchToManualBtn) switchToManualBtn.addEventListener('click', () => {
+                stopCamera(); manualForm.classList.remove('d-none');
+                scannerSection.classList.add('d-none');
+                regIdInput.focus();
+            });
+
+            if (manualForm) manualForm.addEventListener('submit', async (e) => {
+                e.preventDefault(); const id = (regIdInput.value || '').trim(); if (!id) { regIdInput.classList.add('is-invalid'); return; }
+                regIdInput.classList.remove('is-invalid'); lastLookupMethod = 'manual_lookup'; await doLookup(id, 'manual_lookup');
+            });
+
+            // clear / next handlers
+            function resetToScanner() {
+                resultsSection.classList.add('d-none');
+                manualForm.classList.add('d-none');
+                scannerSection.classList.remove('d-none');
+                // clear result fields
+                resultAvatar.src = 'https://placehold.co/150x150/6c757d/white?text=No+Photo';
+                resultName.textContent = '';
+                resultRegId.textContent = '';
+                resultPhone.textContent = '';
+                resultEmail.textContent = '';
+                // restart camera
+                startCamera();
+            }
+
+            if (clearBtnBottom) clearBtnBottom.addEventListener('click', resetToScanner);
+
+            // try to get geolocation (promisified)
+            function getLocation(timeout = 4000) {
+                return new Promise((resolve) => {
+                    if (!navigator.geolocation) return resolve(null);
+                    let done = false;
+                    const onSuccess = (pos) => { if (done) return; done = true; resolve(`${pos.coords.latitude},${pos.coords.longitude}`); };
+                    const onFail = () => { if (done) return; done = true; resolve(null); };
+                    navigator.geolocation.getCurrentPosition(onSuccess, onFail, { maximumAge: 60*1000, timeout });
+                    setTimeout(() => { if (!done) { done = true; resolve(null); } }, timeout+200);
+                });
+            }
+
+            // check-in
+            if (checkinBtn) checkinBtn.addEventListener('click', async () => {
+                if (!current) return;
+                checkinBtn.disabled = true; checkinSpinner && (checkinSpinner.classList.remove('d-none'));
+                feedback.textContent = 'Checking in…';
+                try {
+                    const location = await getLocation(3500);
+                    const payload = { registrationId: current.registrationId, method: lastLookupMethod, location };
+                    const res = await fetch('/.netlify/functions/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    const data = await res.json();
+                    if (!res.ok) throw new Error(data?.message || 'Check-in failed');
+                    showUser(data.attendee);
+                    feedback.textContent = 'Checked in successfully';
+                    // small visual confirmation
+                    try { playBeep(); if (navigator.vibrate) navigator.vibrate(200); } catch (_) {}
+                } catch (err) {
+                    console.error(err);
+                    feedback.textContent = err.message || 'Check-in failed';
+                    alert(err.message || 'Check-in failed');
+                } finally {
+                    checkinSpinner && (checkinSpinner.classList.add('d-none'));
+                    checkinBtn.disabled = current && normalizeStatus(current.status) === 'Checked-In';
+                }
+            });
+
+            // auto-start camera on load
+            window.addEventListener('load', () => { setTimeout(() => { startCamera().catch(()=>{}); }, 250); });
+        </script>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    </body>
 </html>
