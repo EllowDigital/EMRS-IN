@@ -11,6 +11,9 @@ function getSqlClient() {
 // Cache discovered table columns for short TTL to avoid querying information_schema on every call
 const tableColsCache = { ts: 0, cols: null, ttl: 60 * 1000 };
 
+// Cache last successful search result to serve as a graceful fallback on DB transient errors.
+const lastSearchCache = { ts: 0, payload: null, ttl: 30 * 1000 };
+
 async function listAttendeeColumns(sql) {
     const now = Date.now();
     if (tableColsCache.cols && (now - tableColsCache.ts) < tableColsCache.ttl) return tableColsCache.cols;
@@ -163,13 +166,22 @@ exports.handler = async (event, context) => {
 
         const total = parseInt(totalResult[0].count, 10) || 0;
 
-        return {
-            statusCode: 200,
-            body: JSON.stringify({ attendees, total, page: parseInt(page, 10), limit: parseInt(limit, 10), totalPages: Math.ceil(total / limit) }),
-        };
+        const payload = { attendees, total, page: parseInt(page, 10), limit: parseInt(limit, 10), totalPages: Math.ceil(total / limit) };
+        // update lastSearchCache
+        lastSearchCache.ts = Date.now();
+        lastSearchCache.payload = payload;
+
+        return { statusCode: 200, body: JSON.stringify(payload) };
     } catch (error) {
         console.error('Error searching attendees:', error && error.message ? error.message : error);
+        // On transient DB errors, return cached last search if available to avoid blocking admin
         if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
+            const now = Date.now();
+            if (lastSearchCache.payload && (now - lastSearchCache.ts) < lastSearchCache.ttl) {
+                console.warn('Returning stale cached attendee search results due to DB error.');
+                const stale = Object.assign({}, lastSearchCache.payload, { stale: true, note: 'stale_cached_search' });
+                return { statusCode: 200, body: JSON.stringify(stale) };
+            }
             return { statusCode: 503, body: JSON.stringify({ message: 'Database unreachable' }) };
         }
         return { statusCode: 500, body: JSON.stringify({ message: 'Internal Server Error' }) };

@@ -98,12 +98,11 @@ exports.handler = async (event, context) => {
             return { statusCode: 200, body: JSON.stringify(stale) };
         }
 
-        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
-            return {
-                statusCode: 503,
-                body: JSON.stringify({ db_connected: false, registration_enabled: false, maintenance_mode: true, error: 'Database unreachable. Assuming maintenance mode.' }),
-            };
-        }
-        return { statusCode: 500, body: JSON.stringify({ db_connected: false, registration_enabled: false, maintenance_mode: true, error: 'Could not connect to the database or read configuration.' }) };
+        // No cache: return a safe default so token validation and UI can proceed. Mark as stale so UI can surface a banner.
+        console.warn('No cached system status available; returning safe fallback due to DB error.');
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ db_connected: false, registration_enabled: false, maintenance_mode: true, stale: true, message: 'Database unreachable, returning fallback system status' })
+        };
     }
 };

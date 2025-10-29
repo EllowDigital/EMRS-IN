@@ -464,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     setUIState('dashboard');
                     showAdminStatus('Logged in but some backend data is currently unavailable. Showing cached/partial data where possible.', 20);
                     // Initialize dashboard but skip the initial full attendee search to avoid extra DB pressure.
-                    initializeAppDashboard();
+                    initializeAppDashboard(true);
                 }
                 hideLoader();
             }
@@ -492,6 +492,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (statsRes.ok) {
                 const stats = await statsRes.json();
                 updateStats(stats);
+                // If server marks stats as stale, show a non-blocking admin banner so admin knows data may be out-of-date
+                try {
+                    if (stats && stats.stale) {
+                        showAdminStatus('Stats are currently stale/unavailable. Showing fallback values.', 10);
+                    }
+                } catch (e) { /* ignore */ }
             } else {
                 const txt = await statsRes.text().catch(() => statsRes.status);
                 console.warn('Failed to load stats:', statsRes.status, txt);
@@ -697,9 +703,16 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Failed to search attendees:", error);
             const message = error.message || 'Could not load attendee data.';
             appState.isLoadingAttendees = false;
-            ui.attendeeTablePlaceholder.innerHTML = `<p class="text-danger">${message}</p>`;
-            ui.attendeeTablePlaceholder.style.display = 'block';
-            ui.attendeeTableBody.innerHTML = '';
+            // If we already have attendees displayed, preserve them and show a non-blocking toast
+            if (Array.isArray(appState.attendees) && appState.attendees.length > 0) {
+                showToast(message, true, 5000);
+                // keep current table rendered
+                renderAttendeeTable();
+            } else {
+                ui.attendeeTablePlaceholder.innerHTML = `<p class="text-danger">${message}</p>`;
+                ui.attendeeTablePlaceholder.style.display = 'block';
+                ui.attendeeTableBody.innerHTML = '';
+            }
             // hide header spinner if present
             const headerSpinner = document.getElementById('attendee-table-spinner');
             if (headerSpinner) headerSpinner.classList.add('d-none');
@@ -1053,9 +1066,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Initializer ---
-    function initializeAppDashboard() {
+    function initializeAppDashboard(skipInitialSearch = false) {
+        // Fetch dashboard data and optionally run initial attendee search.
         fetchDashboardData();
-        searchAttendees(); // Initial load
+        if (!skipInitialSearch) searchAttendees(); // Initial load (unless caller requests skip)
         // Reduce polling frequency to 60s to lower backend pressure and avoid timeouts
         setInterval(fetchDashboardData, 60000); // Refresh data every 60 seconds
     }

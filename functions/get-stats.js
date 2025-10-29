@@ -135,9 +135,11 @@ exports.handler = async (event, context) => {
             return { statusCode: 200, body: JSON.stringify(stale) };
         }
 
-        if (error && error.code && (error.code === 'ETIMEDOUT' || error.code === 'EHOSTUNREACH' || error.code === 'ECONNRESET')) {
-            return { statusCode: 503, body: JSON.stringify({ message: 'Database unreachable (timeout). Please try again later.' }) };
-        }
-        return { statusCode: 500, body: JSON.stringify({ message: 'Internal Server Error' }) };
+        // No cache available: return a safe, empty fallback rather than 503 so admin UI can render
+        console.warn('No cached stats available; returning safe fallback due to DB error.');
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ total_attendees: 0, checked_in_count: 0, stale: true, message: 'Database unreachable, returning fallback values' })
+        };
     }
 };
