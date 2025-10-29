@@ -19,78 +19,161 @@
         </style>
     </head>
     <body>
-        <nav class="navbar navbar-dark bg-primary py-2">
-            <div class="container-fluid justify-content-center">
-                <span class="navbar-brand mb-0 h4 text-white">E-Pass Check-In</span>
+        <header style="background: linear-gradient(135deg,#0ea5a4 0%, #3b82f6 100%); padding:28px 0; color:#fff;">
+            <div class="container d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:48px;height:48px;border-radius:10px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center">
+                        <i class="bi bi-award-fill" style="font-size:20px;color:#fff"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-0">E-Pass Check-In</h4>
+                        <div class="small opacity-75">Fast scanner • QR & Manual • Geolocation</div>
+                    </div>
+                </div>
+                <div class="text-end small opacity-75">Event: <strong>UP25 Conference</strong></div>
             </div>
-        </nav>
+        </header>
 
-        <main class="container">
-            <div class="card scanner-card shadow-sm">
-                <div class="card-body">
-                    <div id="scanner-section">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div>
-                                <strong>Scan QR</strong>
-                                <div class="text-muted small">Camera will start automatically. Or use manual lookup.</div>
-                            </div>
-                            <div>
-                                <button id="switch-to-manual" class="btn btn-outline-secondary btn-sm">Manual lookup</button>
-                            </div>
-                        </div>
+        <main class="container py-4">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="card shadow-lg overflow-hidden" style="border-radius:14px;">
+                        <div class="row g-0">
+                            <div class="col-md-6" style="background: linear-gradient(180deg, rgba(59,130,246,0.06), transparent);">
+                                <div class="p-4 d-flex flex-column" style="min-height:360px; align-items:stretch; justify-content:space-between;">
+                                    <div>
+                                        <h5 class="mb-1">Scanner</h5>
+                                        <p class="small text-muted mb-3">Camera will attempt to auto-start. Use manual lookup if camera isn't available.</p>
+                                    </div>
 
-                        <div style="position:relative;">
-                            <video id="video" class="d-none" playsinline muted></video>
-                            <div id="videoPlaceholder"><div class="text-center"><i class="bi bi-camera-video" style="font-size:36px"></i><div class="small mt-2">Camera preview</div></div></div>
-                            <div id="scannerOverlay" class="d-none" aria-hidden="true">
-                                <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
-                                    <div id="scannerBox" class="scanner-box"></div>
+                                    <div style="position:relative;">
+                                        <video id="video" class="d-none" playsinline muted></video>
+                                        <div id="videoPlaceholder" style="height:220px;border-radius:10px;background:#eef2ff;display:flex;align-items:center;justify-content:center;">
+                                            <div class="text-center text-primary">
+                                                <i class="bi bi-camera-reels" style="font-size:40px"></i>
+                                                <div class="small mt-2">Camera preview</div>
+                                            </div>
+                                        </div>
+                                        <div id="scannerOverlay" class="d-none" aria-hidden="true">
+                                            <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; pointer-events:none;">
+                                                <div id="scannerBox" class="scanner-box" style="background:linear-gradient(90deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 50%, rgba(255,255,255,0.04) 100%); overflow:hidden;">
+                                                    <div class="scan-beam" aria-hidden="true"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="d-flex align-items-center justify-content-between mt-3">
+                                        <div>
+                                            <div id="feedback" class="small text-muted">Ready</div>
+                                            <div id="loc-display" class="small text-muted mt-1" aria-live="polite"></div>
+                                        </div>
+                                        <div>
+                                            <span id="cameraStatus" class="badge bg-secondary">Camera: Off</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-3 d-flex gap-2">
+                                        <button id="switch-to-manual" class="btn btn-outline-light btn-sm flex-grow-1">Manual lookup</button>
+                                        <button id="toggle-camera" class="btn btn-light btn-sm">Toggle</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 bg-white p-4">
+                                <div id="manual-lookup-form" class="mb-3 d-none">
+                                    <label for="reg-id-input" class="form-label small">Registration ID</label>
+                                    <div class="input-group mb-2">
+                                        <input id="reg-id-input" class="form-control" placeholder="UP25-..." aria-label="Registration ID" />
+                                        <button id="lookup-btn" class="btn btn-primary">Lookup</button>
+                                    </div>
+                                    <div id="lookup-spinner" class="spinner-border spinner-border-sm text-primary d-none" role="status"><span class="visually-hidden">Loading</span></div>
+                                </div>
+
+                                <div id="results-section" class="text-center d-none">
+                                    <div id="result-status-badge" class="mb-2">
+                                        <span id="result-status-badge-text" class="badge bg-success">VERIFIED</span>
+                                    </div>
+                                    <img id="result-avatar" class="result-avatar mb-2" src="https://placehold.co/150x150/6c757d/white?text=No+Photo" alt="avatar" />
+                                    <h5 id="result-name" class="mb-0">Name</h5>
+                                    <div id="result-reg-id" class="text-danger fw-bold small">REG-0000</div>
+                                    <div id="result-phone" class="text-muted small">Phone</div>
+                                    <div id="result-email" class="text-muted small">Email</div>
+                                    <div id="result-method" class="text-muted small mt-1">Method: <span class="fw-medium">qr_scan</span></div>
+                                    <div id="result-location" class="text-muted small mt-1">Location: <span class="fw-medium">—</span></div>
+
+                                    <div class="mt-3">
+                                        <button id="checkin-btn" class="btn btn-success btn-lg w-100">Confirm Check-In <span id="checkin-spinner" class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"></span></button>
+                                        <button id="clear-btn-bottom" class="btn btn-outline-secondary btn-sm mt-2 w-100">Clear / Next</button>
+                                    </div>
+                                </div>
+
+                                <div id="empty-state" class="text-center text-muted small">
+                                    Scan a QR or use manual lookup to find an attendee.
                                 </div>
                             </div>
                         </div>
-
-                        <div class="mt-3 d-flex justify-content-between align-items-center">
-                            <div id="feedback" class="text-muted small">Ready</div>
-                            <div id="cameraStatus" class="badge bg-secondary">Camera: Off</div>
-                        </div>
                     </div>
-
-                    <!-- manual lookup -->
-                    <form id="manual-lookup-form" class="d-none mt-3">
-                        <div class="input-group">
-                            <input id="reg-id-input" class="form-control" placeholder="Enter Registration ID (eg UP25-...)" />
-                            <button id="lookup-btn" class="btn btn-primary" type="submit">Lookup</button>
-                        </div>
-                        <div id="lookup-spinner" class="spinner-border spinner-border-sm text-primary mt-2 d-none" role="status"><span class="visually-hidden">Loading</span></div>
-                    </form>
-
-                    <!-- results -->
-                    <div id="results-section" class="d-none mt-4 text-center">
-                        <span id="result-status-badge" class="d-inline-block mb-3">
-                            <span id="result-status-badge-text" class="badge bg-success">VERIFIED</span>
-                        </span>
-
-                        <div class="d-flex flex-column align-items-center gap-2">
-                            <img id="result-avatar" class="result-avatar" src="https://placehold.co/150x150/6c757d/white?text=No+Photo" alt="avatar" />
-                            <h5 id="result-name" class="mb-0">Name</h5>
-                            <div id="result-reg-id" class="text-danger fw-bold">REG-0000</div>
-                            <div id="result-phone" class="text-muted small">Phone</div>
-                            <div id="result-email" class="text-muted small">Email</div>
-
-                            <div class="mt-3 w-100">
-                                <button id="checkin-btn" class="btn btn-success btn-lg w-100">Confirm Check-In <span id="checkin-spinner" class="spinner-border spinner-border-sm text-light ms-2 d-none" role="status"></span></button>
-                                <button id="clear-btn-bottom" class="btn btn-outline-secondary btn-sm mt-2 w-100">Clear / Next</button>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
             </div>
         </main>
 
+        <!-- toast -->
+        <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1100">
+            <div id="app-toast" class="toast align-items-center text-bg-dark" role="status" aria-live="polite" aria-atomic="true">
+                <div class="d-flex">
+                    <div class="toast-body"></div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+            </div>
+        </div>
+
+        <div id="confetti-root" aria-hidden="true"></div>
+
         <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
         <script>
-            // Client scanner & check-in logic
+            // UI enhancements: scan beam animation & confetti
+            const scannerBoxEl = document.getElementById('scannerBox');
+            if (scannerBoxEl) {
+                const style = document.createElement('style');
+                style.textContent = `
+                    .scan-beam { position:absolute; left:-40%; top:0; width:40%; height:100%; background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.18) 50%, rgba(255,255,255,0) 100%); transform:skewX(-12deg); animation: beam 2.2s linear infinite; }
+                    @keyframes beam { 0%{ left:-40% } 50%{ left:60% } 100%{ left:-40% } }
+                `;
+                document.head.appendChild(style);
+            }
+
+            function toast(message) {
+                const t = document.getElementById('app-toast');
+                t.querySelector('.toast-body').textContent = message;
+                const bs = new bootstrap.Toast(t, { delay: 2500 });
+                bs.show();
+            }
+
+            function smallConfetti() {
+                const root = document.getElementById('confetti-root');
+                if (!root) return;
+                for (let i=0;i<24;i++) {
+                    const el = document.createElement('div');
+                    el.style.position = 'fixed';
+                    el.style.left = (50 + (Math.random()-0.5)*40) + '%';
+                    el.style.top = '-10px';
+                    el.style.width = (6+Math.random()*8)+'px';
+                    el.style.height = (8+Math.random()*10)+'px';
+                    el.style.background = ['#60a5fa','#34d399','#f472b6','#f59e0b','#a78bfa'][Math.floor(Math.random()*5)];
+                    el.style.opacity = '0.95';
+                    el.style.borderRadius = '2px';
+                    el.style.zIndex = 1200;
+                    root.appendChild(el);
+                    const fall = el.animate([
+                        { transform: 'translateY(0) rotate(0deg)', opacity:1 },
+                        { transform: `translateY(${200 + Math.random()*300}px) rotate(${ (Math.random()*720-360) }deg)`, opacity:0.9 }
+                    ], { duration: 1200 + Math.random()*900, easing: 'cubic-bezier(.2,.8,.2,1)' });
+                    fall.onfinish = () => el.remove();
+                }
+            }
+
+            // retain core scanning + checkin logic but improve UX and add keyboard shortcuts
             const video = document.getElementById('video');
             const videoPlaceholder = document.getElementById('videoPlaceholder');
             const scannerOverlay = document.getElementById('scannerOverlay');
@@ -107,6 +190,7 @@
 
             const feedback = document.getElementById('feedback');
             const cameraStatus = document.getElementById('cameraStatus');
+            const locDisplay = document.getElementById('loc-display');
 
             const resultStatusText = document.getElementById('result-status-badge-text');
             const resultAvatar = document.getElementById('result-avatar');
@@ -114,10 +198,14 @@
             const resultRegId = document.getElementById('result-reg-id');
             const resultPhone = document.getElementById('result-phone');
             const resultEmail = document.getElementById('result-email');
+            const resultMethod = document.getElementById('result-method');
+            const resultLocation = document.getElementById('result-location');
             const checkinBtn = document.getElementById('checkin-btn');
             const checkinSpinner = document.getElementById('checkin-spinner');
             const clearBtnBottom = document.getElementById('clear-btn-bottom');
-            const scannerBox = document.getElementById('scannerBox');
+            const toggleCameraBtn = document.getElementById('toggle-camera');
+
+            const emptyState = document.getElementById('empty-state');
 
             let cameraStream = null;
             let scanning = false;
@@ -136,12 +224,12 @@
                 current = user;
                 if (!user) {
                     resultsSection.classList.add('d-none');
-                    scannerSection.classList.remove('d-none');
+                    emptyState.classList.remove('d-none');
                     manualForm.classList.add('d-none');
                     feedback.textContent = 'Ready';
                     return;
                 }
-
+                emptyState.classList.add('d-none');
                 // populate result UI
                 resultAvatar.src = user.profileUrl || 'https://placehold.co/150x150/6c757d/white?text=No+Photo';
                 resultName.textContent = user.fullName || 'Unknown';
@@ -158,8 +246,11 @@
                     checkinBtn.disabled = false;
                 }
 
-                // switch views
-                scannerSection.classList.add('d-none');
+                // display method & location placeholder (filled by checkin response)
+                resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = lastLookupMethod);
+                resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = '—');
+
+                // reveal results
                 resultsSection.classList.remove('d-none');
             }
 
@@ -243,7 +334,7 @@
                 if (!id) { manualForm.classList.remove('d-none'); feedback.textContent = 'QR scanned but registration ID not found'; return; }
                 lastLookupMethod = 'qr_scan';
                 stopCamera();
-                if (scannerBox) { scannerBox.classList.add('scan-success'); setTimeout(()=>scannerBox.classList.remove('scan-success'),700); }
+                if (scannerBoxEl) { scannerBoxEl.classList.add('scan-success'); setTimeout(()=>scannerBoxEl.classList.remove('scan-success'),700); }
                 setTimeout(() => doLookup(id, lastLookupMethod), 150);
             }
 
@@ -260,11 +351,12 @@
                     lastLookupMethod = (method === 'qr_scan') ? 'qr_scan' : 'manual_lookup';
                     showUser(data.attendee);
                     feedback.textContent = 'Attendee found';
+                    toast('Attendee found');
                 } catch (err) {
                     console.error(err);
                     manualForm.classList.remove('d-none');
                     feedback.textContent = err.message || 'Attendee not found';
-                    alert(err.message || 'Attendee not found');
+                    toast(err.message || 'Attendee not found');
                 } finally {
                     lookupSpinner && (lookupSpinner.classList.add('d-none'));
                 }
@@ -273,7 +365,7 @@
             // manual form
             if (switchToManualBtn) switchToManualBtn.addEventListener('click', () => {
                 stopCamera(); manualForm.classList.remove('d-none');
-                scannerSection.classList.add('d-none');
+                scannerSection && scannerSection.classList.add('d-none');
                 regIdInput.focus();
             });
 
@@ -282,17 +374,22 @@
                 regIdInput.classList.remove('is-invalid'); lastLookupMethod = 'manual_lookup'; await doLookup(id, 'manual_lookup');
             });
 
+            // toggle camera button
+            if (toggleCameraBtn) toggleCameraBtn.addEventListener('click', () => { if (scanning) stopCamera(); else startCamera(); });
+
             // clear / next handlers
             function resetToScanner() {
                 resultsSection.classList.add('d-none');
                 manualForm.classList.add('d-none');
-                scannerSection.classList.remove('d-none');
+                scannerSection && scannerSection.classList.remove('d-none');
                 // clear result fields
                 resultAvatar.src = 'https://placehold.co/150x150/6c757d/white?text=No+Photo';
                 resultName.textContent = '';
                 resultRegId.textContent = '';
                 resultPhone.textContent = '';
                 resultEmail.textContent = '';
+                resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = '—');
+                resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = '—');
                 // restart camera
                 startCamera();
             }
@@ -318,22 +415,34 @@
                 feedback.textContent = 'Checking in…';
                 try {
                     const location = await getLocation(3500);
+                    if (location) locDisplay.textContent = `Location: ${location}`;
                     const payload = { registrationId: current.registrationId, method: lastLookupMethod, location };
                     const res = await fetch('/.netlify/functions/checkin', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     const data = await res.json();
                     if (!res.ok) throw new Error(data?.message || 'Check-in failed');
                     showUser(data.attendee);
+                    // update method & location display with values returned
+                    resultMethod.querySelector('span') && (resultMethod.querySelector('span').textContent = payload.method || 'qr_scan');
+                    resultLocation.querySelector('span') && (resultLocation.querySelector('span').textContent = payload.location || '—');
                     feedback.textContent = 'Checked in successfully';
-                    // small visual confirmation
-                    try { playBeep(); if (navigator.vibrate) navigator.vibrate(200); } catch (_) {}
+                    toast('Checked in successfully');
+                    smallConfetti();
                 } catch (err) {
                     console.error(err);
                     feedback.textContent = err.message || 'Check-in failed';
-                    alert(err.message || 'Check-in failed');
+                    toast(err.message || 'Check-in failed');
                 } finally {
                     checkinSpinner && (checkinSpinner.classList.add('d-none'));
                     checkinBtn.disabled = current && normalizeStatus(current.status) === 'Checked-In';
                 }
+            });
+
+            // keyboard shortcuts
+            window.addEventListener('keydown', (e) => {
+                if (e.key === ' ' && document.activeElement.tagName !== 'INPUT') { e.preventDefault(); // space toggles camera
+                    if (scanning) stopCamera(); else startCamera();
+                }
+                if (e.key === 'Escape') { resetToScanner(); }
             });
 
             // auto-start camera on load
