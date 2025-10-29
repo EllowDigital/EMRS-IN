@@ -31,6 +31,7 @@ function mapAttendeeRow(row) {
         email: row.email,
         city: row.city,
         state: row.state,
+        profilePublicId: row.profile_public_id,
         profileUrl: row.profile_url,
         status: row.status,
         createdAt: row.created_at,
@@ -74,6 +75,7 @@ export async function fetchAttendeeByRegistration(registrationId) {
             a.email,
             a.city,
             a.state,
+            a.profile_public_id,
             a.profile_url,
             a.status,
             a.created_at,
@@ -105,7 +107,7 @@ export async function fetchAttendeeByRegistration(registrationId) {
 export async function recordCheckin(attendeeId, options = {}) {
     await ensureSchemaReady();
     const sql = getSqlClient();
-    const method = options.method === 'manual_lookup' ? 'manual_lookup' : 'qr_scan';
+    const method = options.method === 'manual_lookup' || options.method === 'manual' ? 'manual_lookup' : 'qr_scan';
     const location = options.location || null;
     let notes = options.notes || null;
     if (notes && typeof notes !== 'string') {
@@ -114,10 +116,7 @@ export async function recordCheckin(attendeeId, options = {}) {
 
     await sql`
         insert into checkins (attendee_id, method, location, notes)
-        select ${attendeeId}, ${method}, ${location}, ${notes}
-        where not exists (
-            select 1 from checkins where attendee_id = ${attendeeId} and method = ${method}
-        )
+        values (${attendeeId}, ${method}, ${location}, ${notes})
     `;
 }
 
@@ -130,4 +129,3 @@ export async function updateAttendeeStatus(attendeeId, status = 'checked_in') {
         where id = ${attendeeId}
     `;
 }
-*** End Patch

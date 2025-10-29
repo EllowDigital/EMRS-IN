@@ -35,47 +35,16 @@ async function ensureSchema(sql) {
   `;
 
   await sql`
-    create unique index if not exists attendees_registration_id_key on attendees(registration_id)
-  `;
-  await sql`
-    create unique index if not exists attendees_phone_key on attendees(phone)
-  `;
-  await sql`
-    create index if not exists idx_attendees_email on attendees(lower(email))
-  `;
-  await sql`
-    create index if not exists idx_attendees_created_at on attendees(created_at desc)
-  `;
-
-  await sql`
-    create table if not exists checkins (
-      id uuid primary key default gen_random_uuid(),
-      attendee_id uuid not null references attendees(id) on delete cascade,
-      staff_id uuid,
-      method checkin_method not null,
-      location text,
-      notes text,
-      created_at timestamptz not null default now()
-    )
-  `;
-
-  await sql`
-    create unique index if not exists checkins_attendee_once_idx on checkins(attendee_id) where method = 'qr_scan'
-  `;
-  await sql`
-    create index if not exists idx_checkins_created_at on checkins(created_at desc)
-  `;
-
-  await sql`
-    create table if not exists staff_accounts (
-      id uuid primary key default gen_random_uuid(),
-      full_name text not null,
-      email text not null unique,
-      password_hash text not null,
-      role text not null default 'staff',
-      created_at timestamptz not null default now(),
-      last_login_at timestamptz
-    )
+    do $$
+    begin
+      if not exists (
+        select 1 from information_schema.table_constraints
+        where table_name = 'attendees' and constraint_name = 'attendees_registration_id_key'
+      ) then
+        alter table attendees add constraint attendees_registration_id_key unique (registration_id);
+      end if;
+    end;
+    $$;
   `;
 
   await sql`
@@ -83,32 +52,75 @@ async function ensureSchema(sql) {
     begin
       if not exists (
         select 1 from information_schema.table_constraints
-        where constraint_name = 'checkins_staff_id_fkey'
+        where table_name = 'attendees' and constraint_name = 'attendees_phone_key'
       ) then
-        alter table checkins
-        add constraint checkins_staff_id_fkey foreign key (staff_id) references staff_accounts(id);
+        alter table attendees add constraint attendees_phone_key unique (phone);
       end if;
     end;
     $$;
   `;
 
   await sql`
-    create table if not exists staff_tokens (
+    do $$
+    begin
+      if not exists (
+        select 1 from information_schema.table_constraints
+        where table_name = 'attendees' and constraint_name = 'attendees_phone_digits_ck'
+      ) then
+        alter table attendees add constraint attendees_phone_digits_ck check (phone ~ '^[0-9]{10}$');
+      end if;
+    end;
+    $$;
+  `;
+
+  await sql`create index if not exists idx_attendees_email on attendees(lower(email))`;
+  await sql`create index if not exists idx_attendees_created_at on attendees(created_at desc)`;
+  await sql`create index if not exists idx_attendees_status on attendees(status)`;
+  await sql`create index if not exists idx_attendees_last_qr on attendees(last_qr_requested_at desc)`;
+
+  await sql`
+    create table if not exists checkins (
       id uuid primary key default gen_random_uuid(),
-      staff_id uuid not null references staff_accounts(id) on delete cascade,
-      description text,
-      token_hash text not null,
-      expires_at timestamptz,
-      created_at timestamptz not null default now(),
-      revoked_at timestamptz
+      attendee_id uuid not null references attendees(id) on delete cascade,
+      method checkin_method not null,
+      location text,
+      notes text,
+      created_at timestamptz not null default now()
+    )
+  `;
+
+  await sql`alter table if exists checkins drop column if exists staff_id`;
+  await sql`drop index if exists checkins_attendee_once_idx`;
+  await sql`drop index if exists idx_checkins_staff_id`;
+  await sql`create index if not exists idx_checkins_attendee_id on checkins(attendee_id)`;
+  await sql`create index if not exists idx_checkins_created_at on checkins(created_at desc)`;
+
+  await sql`alter table if exists system_settings drop column if exists updated_by`;
+  await sql`drop table if exists staff_tokens cascade`;
+  await sql`drop table if exists staff_accounts cascade`;
+  await sql`drop table if exists service_health_logs cascade`;
+  await sql`drop table if exists email_log cascade`;
+  await sql`drop table if exists attendee_events cascade`;
+  await sql`drop type if exists health_status`;
+
+  await sql`
+    create table if not exists system_settings (
+      key text primary key,
+      value jsonb not null,
+      updated_at timestamptz not null default now()
     )
   `;
 
   await sql`
-    create index if not exists idx_staff_tokens_staff on staff_tokens(staff_id)
+    insert into system_settings (key, value)
+    values ('registration_open', '{"enabled": true}'::jsonb)
+    on conflict (key) do nothing
   `;
+
   await sql`
-    create index if not exists idx_staff_tokens_active on staff_tokens(staff_id, expires_at) where revoked_at is null
+    insert into system_settings (key, value)
+    values ('maintenance_mode', '{"enabled": false, "message": ""}'::jsonb)
+    on conflict (key) do nothing
   `;
 
   await sql`

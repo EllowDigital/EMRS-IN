@@ -34,6 +34,22 @@ function generateRegistrationId() {
   return `UP25-${random}`;
 }
 
+async function generateUniqueRegistrationId(sql) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const candidate = generateRegistrationId();
+    const existing = await sql`
+      select 1
+      from attendees
+      where registration_id = ${candidate}
+      limit 1
+    `;
+    if (!existing.length) {
+      return candidate;
+    }
+  }
+  throw new Error("Unable to allocate a unique registration ID. Please retry.");
+}
+
 function errorResponse(statusCode, message) {
   return {
     statusCode,
@@ -79,12 +95,12 @@ export const handler = async (event) => {
       );
     }
 
-    const fullName = (payload.fullName || "").trim();
-    const email = (payload.email || "").trim().toLowerCase();
-    const city = (payload.city || "").trim();
-    const state = (payload.state || "").trim();
-    const profileImage = payload.profileImage || null;
-    const phoneDigits = String(payload.phone || "").replace(/\D/g, "");
+  const fullName = (payload.fullName || "").trim();
+  const email = (payload.email || "").trim().toLowerCase();
+  const city = (payload.city || "").trim();
+  const state = (payload.state || "").trim();
+  const profileImage = payload.profileImage || null;
+  const phoneDigits = String(payload.phone || "").replace(/\D/g, "");
 
     if (!fullName || !email || !city || !state) {
       return errorResponse(400, "Please provide name, email, city, and state.");
@@ -105,20 +121,18 @@ export const handler = async (event) => {
     const sqlClient = getSqlClient();
     await ensureSchemaReady();
 
-    const existing = await sqlClient`
-                        select id, registration_id, profile_public_id from attendees
-                        where phone = ${phoneDigits}
-                        limit 1
-                `;
+    const [existing] = await sqlClient`
+      select id, registration_id, profile_public_id, full_name, email, city, state, phone, profile_url
+      from attendees
+      where phone = ${phoneDigits} or lower(email) = ${email}
+      order by created_at asc
+      limit 1
+    `;
 
-    let registrationId = existing.length
-      ? existing[0].registration_id
-      : generateRegistrationId();
+    let registrationId = existing ? existing.registration_id : await generateUniqueRegistrationId(sqlClient);
 
-    let profileUrl = null;
-    let profilePublicId = existing.length
-      ? existing[0].profile_public_id
-      : null;
+    let profileUrl = existing ? existing.profile_url : null;
+    let profilePublicId = existing ? existing.profile_public_id : null;
 
     const uploadOptions = {
       overwrite: true,
@@ -148,29 +162,61 @@ export const handler = async (event) => {
 
     const epass = await buildPassData({ name: fullName, registrationId });
 
-    if (existing.length) {
-      await sqlClient`
-                update attendees
-                set
-                    full_name = ${fullName},
-                    email = ${email},
-                    city = ${city},
-                    state = ${state},
-                    profile_public_id = ${profilePublicId},
-                    profile_url = ${profileUrl},
-                    status = 'epass_issued',
-                    updated_at = now(),
-                    last_qr_requested_at = now()
-                where id = ${existing[0].id}
-            `;
-    } else {
-      await sqlClient`
-                insert into attendees
-                        (registration_id, full_name, phone, email, city, state, profile_public_id, profile_url, status, last_qr_requested_at)
-                values
-                        (${registrationId}, ${fullName}, ${phoneDigits}, ${email}, ${city}, ${state}, ${profilePublicId}, ${profileUrl}, 'epass_issued', now())
-            `;
-    }
+    let mode = "created";
+
+    await sqlClient.begin(async (trx) => {
+      const record = await trx`
+        select id
+        from attendees
+        where phone = ${phoneDigits} or lower(email) = ${email}
+        limit 1
+      `;
+
+      if (record.length) {
+        mode = "updated";
+        await trx`
+          update attendees
+          set
+            full_name = ${fullName},
+            email = ${email},
+            city = ${city},
+            state = ${state},
+            profile_public_id = ${profilePublicId},
+            profile_url = ${profileUrl},
+            status = 'epass_issued',
+            updated_at = now(),
+            last_qr_requested_at = now()
+          where id = ${record[0].id}
+        `;
+      } else {
+        await trx`
+          insert into attendees (
+            registration_id,
+            full_name,
+            phone,
+            email,
+            city,
+            state,
+            profile_public_id,
+            profile_url,
+            status,
+            last_qr_requested_at
+          )
+          values (
+            ${registrationId},
+            ${fullName},
+            ${phoneDigits},
+            ${email},
+            ${city},
+            ${state},
+            ${profilePublicId},
+            ${profileUrl},
+            'epass_issued',
+            now()
+          )
+        `;
+      }
+    });
 
     return {
       statusCode: 200,
@@ -186,12 +232,21 @@ export const handler = async (event) => {
           state,
           profileUrl,
           profilePublicId,
+          status: "epass_issued",
         },
         epass,
-        mode: existing.length ? "updated" : "created",
+        mode,
       }),
     };
   } catch (error) {
+    if (error?.code === "23505") {
+      console.error("Registration conflict", error?.detail || error?.message || error);
+      return errorResponse(
+        409,
+        "An attendee with this phone or registration already exists."
+      );
+    }
+
     console.error("Unexpected error", error);
     return errorResponse(500, "Unexpected server error.");
   }
