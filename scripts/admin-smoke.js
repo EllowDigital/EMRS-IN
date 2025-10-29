@@ -14,7 +14,7 @@ if (!PASSWORD) {
 
 async function tryJson(res) {
   console.log(res.status, res.statusText);
-  try { const j = await res.json(); console.log(JSON.stringify(j, null, 2)); return j; } catch(e) { const t = await res.text(); console.log(t); return null; }
+  try { const j = await res.json(); console.log(JSON.stringify(j, null, 2)); return j; } catch (e) { const t = await res.text(); console.log(t); return null; }
 }
 
 async function fetchWithRetries(url, opts = {}, retries = 3, backoff = 300) {

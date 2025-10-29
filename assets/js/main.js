@@ -309,8 +309,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageBoxContainer.append(wrapper);
         window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    const actionBtn = wrapper.querySelector('.mh-action');
-    if (actionBtn) actionBtn.addEventListener('click', () => clearMessage());
+        const actionBtn = wrapper.querySelector('.mh-action');
+        if (actionBtn) actionBtn.addEventListener('click', () => clearMessage());
 
         if (autoHide) {
             currentMessageTimeout = setTimeout(() => {

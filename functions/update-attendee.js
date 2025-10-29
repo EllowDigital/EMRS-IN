@@ -41,10 +41,10 @@ exports.handler = async (event) => {
     try {
         const body = JSON.parse(event.body || '{}');
         const { registration_id } = body;
-    if (!registration_id) return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'registration_id required' }) };
+        if (!registration_id) return { statusCode: 400, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'registration_id required' }) };
 
-    // For admin update operations prefer default connect behavior to avoid aggressive timeouts while an admin session is active
-    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
+        // For admin update operations prefer default connect behavior to avoid aggressive timeouts while an admin session is active
+        sql = postgres(process.env.DATABASE_URL, { ssl: 'require', max: 2 });
 
         // detect column names we can update (include reg id variants)
         const colRows = await sql`
@@ -77,7 +77,7 @@ exports.handler = async (event) => {
                 if (lc.includes('pass') || lc.includes('reg')) { regCol = c; break; }
             }
         }
-    if (!regCol) return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'No registration id column available in DB' }) };
+        if (!regCol) return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: 'No registration id column available in DB' }) };
 
         // Build update SET fragment
         const setFragment = sql.join ? sql.join(updates, sql`, `) : updates.reduce((a, b) => sql`${a}, ${b}`);

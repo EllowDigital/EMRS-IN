@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
         totalPages: 1,
         totalResults: 0,
         isLoadingAttendees: false,
+        prevAttendeesJson: '',
     };
 
     // --- DOM Element Cache ---
@@ -67,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Attendees
         searchInput: document.getElementById('search-attendee-input'),
-    searchBtn: document.getElementById('search-attendee-btn'),
+        searchBtn: document.getElementById('search-attendee-btn'),
         refreshStatsBtn: document.getElementById('refresh-stats-btn'),
         filterSelect: document.getElementById('filter-attendee-select'),
         attendeeTableBody: document.getElementById('attendee-table-body'),
@@ -168,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const b64 = p64.replace(/-/g, '+').replace(/_/g, '/');
             // pad
             const pad = b64.length % 4 === 0 ? '' : '='.repeat(4 - (b64.length % 4));
-            const json = decodeURIComponent(Array.prototype.map.call(atob(b64 + pad), function(c) {
+            const json = decodeURIComponent(Array.prototype.map.call(atob(b64 + pad), function (c) {
                 return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
             }).join(''));
             return JSON.parse(json);
@@ -193,7 +194,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (payload && payload.exp) scheduleTokenRefresh(token, payload.exp);
             return true;
         } catch (e) {
-            try { sessionStorage.removeItem('staff_token'); } catch (_) {}
+            try { sessionStorage.removeItem('staff_token'); } catch (_) { }
             return false;
         }
     }
@@ -214,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (body && body.token) {
                             appState.staffToken = body.token;
                             window.__STAFF_TOKEN = body.token;
-                            try { sessionStorage.setItem('staff_token', body.token); } catch (e) {}
+                            try { sessionStorage.setItem('staff_token', body.token); } catch (e) { }
                             const p = parseJwtPayload(body.token);
                             if (p && p.exp) scheduleTokenRefresh(body.token, p.exp);
                             showToast('Session refreshed');
@@ -260,6 +261,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderAttendeeTable() {
+        // Skip render if nothing changed (simple JSON compare)
+        const json = JSON.stringify(appState.attendees || []);
+        if (json === appState.prevAttendeesJson) return;
+        appState.prevAttendeesJson = json;
+
         if (appState.attendees.length === 0) {
             ui.attendeeTablePlaceholder.innerHTML = '<p>No attendees found matching your criteria.</p>';
             ui.attendeeTablePlaceholder.style.display = 'block';
@@ -268,11 +274,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         ui.attendeeTablePlaceholder.style.display = 'none';
-        ui.attendeeTableBody.innerHTML = appState.attendees.map(attendee => `
+        // Build HTML in JS then write inside requestAnimationFrame to avoid layout thrash
+        const html = appState.attendees.map(attendee => {
+            const raw = attendee.is_checked_in ?? attendee.checked_in ?? attendee.checkedIn ?? false;
+            const isChecked = (raw === true) || (raw === 't') || (raw === 'true') || (raw === 1) || (String(raw).toLowerCase() === 'true');
+            return `
             <tr data-regid="${attendee.registration_id}">
                 <td>
                     <div class="d-flex align-items-center">
-                        <img src="${attendee.profile_pic_url || config.placeholders.avatar}" class="attendee-avatar me-3" alt="Avatar">
+                        <img src="${attendee.profile_pic_url || config.placeholders.avatar}" class="attendee-avatar me-3" alt="Avatar" loading="lazy">
                         <div>
                             <div class="fw-bold">${attendee.full_name || '—'}</div>
                             <div class="text-muted small">${attendee.email || ''}</div>
@@ -282,38 +292,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 <td>${attendee.registration_id || '—'}</td>
                 <td>${attendee.phone_number || ''}</td>
                 <td>
-                    ${(() => {
-                        // Normalize checked-in value across schema variants ('checked_in', 'is_checked_in', boolean, text 't')
-                        const raw = attendee.is_checked_in ?? attendee.checked_in ?? attendee.checkedIn ?? false;
-                        const isChecked = (raw === true) || (raw === 't') || (raw === 'true') || (raw === 1) || (String(raw).toLowerCase() === 'true');
-                        return `<span class="badge ${isChecked ? 'bg-success' : 'bg-warning'}">${isChecked ? 'Checked-In' : 'Not Checked-In'}</span>`;
-                    })()}
+                    <span class="badge ${isChecked ? 'bg-success' : 'bg-warning'}">${isChecked ? 'Checked-In' : 'Not Checked-In'}</span>
                 </td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary edit-btn" data-regid="${attendee.registration_id}">Edit</button>
                     <button class="btn btn-sm btn-outline-danger ms-2 delete-btn" data-regid="${attendee.registration_id}">Delete</button>
                 </td>
             </tr>
-        `).join('');
+        `;
+        }).join('');
+
+        requestAnimationFrame(() => { ui.attendeeTableBody.innerHTML = html; });
     }
 
     // Event delegation for edit/delete buttons in the attendee table
     if (ui.attendeeTableBody) {
         ui.attendeeTableBody.addEventListener('click', (e) => {
-        const editBtn = e.target.closest('.edit-btn');
-        if (editBtn) {
-            const regId = editBtn.dataset.regid;
-            const attendee = appState.attendees.find(a => a.registration_id === regId);
-            if (attendee) openEditModal(attendee);
-            return;
-        }
-        const deleteBtn = e.target.closest('.delete-btn');
-        if (deleteBtn) {
-            const regId = deleteBtn.dataset.regid;
-            const attendee = appState.attendees.find(a => a.registration_id === regId);
-            if (attendee) openDeleteModal(attendee);
-            return;
-        }
+            const editBtn = e.target.closest('.edit-btn');
+            if (editBtn) {
+                const regId = editBtn.dataset.regid;
+                const attendee = appState.attendees.find(a => a.registration_id === regId);
+                if (attendee) openEditModal(attendee);
+                return;
+            }
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (deleteBtn) {
+                const regId = deleteBtn.dataset.regid;
+                const attendee = appState.attendees.find(a => a.registration_id === regId);
+                if (attendee) openDeleteModal(attendee);
+                return;
+            }
         });
     }
 
@@ -373,6 +381,18 @@ document.addEventListener('DOMContentLoaded', () => {
         throw lastError;
     }
 
+    // Compatibility shim: prefer the global network.js implementation if present.
+    // This avoids race conditions where network.js may not have executed yet in some environments.
+    function fetchWithRetry(url, options = {}, ...rest) {
+        try {
+            if (typeof window !== 'undefined') {
+                const globalFn = window.fetchWithRetry || window.retryFetch || null;
+                if (typeof globalFn === 'function') return globalFn(url, options, ...rest);
+            }
+        } catch (e) { /* ignore and fall back */ }
+        return retryFetch(url, options, ...rest);
+    }
+
     async function handleLogin(password) {
         setLoginLoadingState(true);
         ui.loginMessage.innerHTML = '';
@@ -404,11 +424,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function fetchDashboardData() {
         try {
             const authHeader = { 'Authorization': `Bearer ${appState.staffToken || ''}` };
-            // Use retryFetch for transient DB/network issues
+            // Use fetchWithRetry (network.js) for transient DB/network issues. Use swr for stats to reduce DB pressure.
             const [statsRes, statusRes, healthRes] = await Promise.all([
-                retryFetch(config.api.getStats, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'stats', err: e }; }),
-                retryFetch(config.api.getSystemStatus, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'status', err: e }; }),
-                retryFetch(config.api.getSystemStatus, { headers: authHeader }, 3, 500).catch(e => { throw { stage: 'health', err: e }; }) // reuse system-status as health for now
+                fetchWithRetry(config.api.getStats, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, cache: 'swr', acceptCachedOnFail: true }).catch(e => { throw { stage: 'stats', err: e }; }),
+                fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, acceptCachedOnFail: true }).catch(e => { throw { stage: 'status', err: e }; }),
+                fetchWithRetry(config.api.getSystemStatus, { method: 'GET', headers: authHeader, retries: 2, timeout: 8000, backoff: 300, acceptCachedOnFail: true }).catch(e => { throw { stage: 'health', err: e }; }) // reuse system-status as health for now
             ]);
 
             if (statsRes.ok) {
@@ -457,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ui.adminStatusBanner.classList.remove('d-none');
         // Clear any existing timer
         if (adminStatusTimer) clearInterval(adminStatusTimer);
-                        hideLoader();
+        hideLoader();
         let remaining = seconds;
         adminStatusTimer = setInterval(() => {
             remaining -= 1;
@@ -532,21 +552,26 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const page = appState.currentPage || 1;
             const limit = appState.pageSize || 15;
-            const response = await retryFetch(`${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}&page=${page}&limit=${limit}`, {
-                headers: {
-                    'Authorization': `Bearer ${appState.staffToken || ''}`
-                }
-            }, 3, 300);
+            // Use fetchWithRetry with acceptCachedOnFail so intermittent DB failures can still show cached list
+            const url = `${config.api.searchAttendees}?query=${encodeURIComponent(query)}&filter=${filter}&page=${page}&limit=${limit}`;
+            const response = await fetchWithRetry(url, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${appState.staffToken || ''}` },
+                retries: 3,
+                timeout: 12000,
+                backoff: 300,
+                acceptCachedOnFail: true
+            });
             if (!response.ok) {
-                    const raw = await response.text().catch(() => `HTTP ${response.status}`);
-                    let msg = raw;
-                    try {
-                        const parsed = JSON.parse(raw);
-                        msg = parsed.message || raw;
-                    } catch (e) {
-                        // not JSON, leave raw
-                    }
-                    throw new Error(`Failed to fetch attendees: ${response.status} ${msg}`);
+                const raw = await response.text().catch(() => `HTTP ${response.status}`);
+                let msg = raw;
+                try {
+                    const parsed = JSON.parse(raw);
+                    msg = parsed.message || raw;
+                } catch (e) {
+                    // not JSON, leave raw
+                }
+                throw new Error(`Failed to fetch attendees: ${response.status} ${msg}`);
             }
             const payload = await response.json();
             // API returns an object { attendees, total, page, limit }
@@ -591,7 +616,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (headerSpinner) headerSpinner.classList.add('d-none');
             // If this looks like a DB/network unreachable error, show the admin banner with retry
             try {
-                const raw = error && (error.err || error) ;
+                const raw = error && (error.err || error);
                 const txt = raw && raw.message ? raw.message : String(raw);
                 if (txt.includes('503') || txt.toLowerCase().includes('database unreachable') || txt.toLowerCase().includes('timed out') || txt.toLowerCase().includes('timeout')) {
                     showAdminStatus(`Database unreachable: ${txt}`, 15);
@@ -913,7 +938,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
-    initHeaderRipples();
+    // Defer non-critical micro-interactions so they don't block initial paint.
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => initHeaderRipples(), { timeout: 300 });
+    } else {
+        setTimeout(initHeaderRipples, 300);
+    }
 
     // Pagination controls
     const prevBtn = document.getElementById('attendee-prev-btn');
@@ -937,7 +967,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function initializeAppDashboard() {
         fetchDashboardData();
         searchAttendees(); // Initial load
-        setInterval(fetchDashboardData, 30000); // Refresh data every 30 seconds
+        // Reduce polling frequency to 60s to lower backend pressure and avoid timeouts
+        setInterval(fetchDashboardData, 60000); // Refresh data every 60 seconds
     }
 
     function init() {

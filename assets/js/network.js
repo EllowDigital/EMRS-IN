@@ -53,7 +53,7 @@
 
             if (cached) {
                 // Return cached response immediately and also kick off background refresh
-                networkPromise.catch(() => {});
+                networkPromise.catch(() => { });
                 return cached.clone();
             }
             // no cache, wait for network

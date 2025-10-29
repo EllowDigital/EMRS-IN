@@ -1,12 +1,12 @@
 const postgres = require('postgres');
 
-exports.handler = async function(event, context) {
+exports.handler = async function (event, context) {
   let sql;
   try {
-  // Use a short connect timeout so public requests fail fast when DB is down
-  sql = postgres(process.env.DATABASE_URL, { ssl: 'require', connect_timeout: 5, max: 1 });
-  const configResult = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
-    
+    // Use a short connect timeout so public requests fail fast when DB is down
+    sql = postgres(process.env.DATABASE_URL, { ssl: 'require', connect_timeout: 5, max: 1 });
+    const configResult = await sql`SELECT key, value FROM system_config WHERE key IN ('registration_enabled', 'maintenance_mode')`;
+
     const status = {
       registration_enabled: configResult.find(c => c.key === 'registration_enabled')?.value === 'true',
       maintenance_mode: configResult.find(c => c.key === 'maintenance_mode')?.value === 'true',
