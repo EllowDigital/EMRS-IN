@@ -6,7 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.13.1/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="assets/css/admin.css">
     <link rel="icon" href="assets/favicon/favicon.ico">
 </head>
@@ -20,7 +21,8 @@
             <p class="text-muted mb-4">Enter the password to access the dashboard.</p>
             <form id="staff-login-form" novalidate>
                 <div class="form-floating mb-3">
-                    <input type="password" class="form-control" id="staff-password-input" placeholder="Password" required>
+                    <input type="password" class="form-control" id="staff-password-input" placeholder="Password"
+                        required>
                     <label for="staff-password-input">Password</label>
                     <div class="invalid-feedback">A password is required.</div>
                 </div>
@@ -36,21 +38,19 @@
     <header class="app-header">
         <div class="container-fluid d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <button id="menu-toggle" class="btn btn-light d-md-none" aria-label="Open menu" aria-expanded="false" title="Menu"><i class="bi bi-list"></i></button>
+                <!-- Menu toggle only on small screens; desktop shows icon-only logout on the right. -->
+                <button id="menu-toggle" class="btn btn-light d-md-none" aria-label="Open menu" aria-expanded="false"
+                    title="Menu"><i class="bi bi-list"></i></button>
                 <h1 class="h4 mb-0 fw-bold text-white">
                     <i class="bi bi-shield-lock-fill me-2"></i>Admin Dashboard
                 </h1>
             </div>
             <div class="d-flex gap-2 align-items-center">
-                <a href="/verify.html" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-qr-code-scan me-2"></i>Go to Check-In
-                </a>
+                <!-- Only Refresh Stats remains in the top navbar; other actions moved into the slide-out menu. -->
                 <button id="refresh-stats-btn" class="btn btn-outline-light btn-sm">
                     <i class="bi bi-arrow-clockwise me-1"></i>Refresh Stats
                 </button>
-                <button id="admin-logout-btn" class="btn btn-outline-light btn-sm">
-                    <i class="bi bi-box-arrow-right me-2"></i>Logout
-                </button>
+                <!-- (Desktop: no extra logout button; use Refresh only) -->
             </div>
         </div>
     </header>
@@ -141,8 +141,10 @@
                                         <small class="text-muted">Allow or prevent new user registrations.</small>
                                     </div>
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="registration-switch">
-                                        <label class="form-check-label" for="registration-switch" id="registration-label">Paused</label>
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                            id="registration-switch">
+                                        <label class="form-check-label" for="registration-switch"
+                                            id="registration-label">Paused</label>
                                     </div>
                                 </div>
                                 <div class="list-group-item d-flex justify-content-between align-items-center">
@@ -151,8 +153,10 @@
                                         <small class="text-muted">Take the entire system offline for updates.</small>
                                     </div>
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="maintenance-switch">
-                                        <label class="form-check-label" for="maintenance-switch" id="maintenance-label">Disabled</label>
+                                        <input class="form-check-input" type="checkbox" role="switch"
+                                            id="maintenance-switch">
+                                        <label class="form-check-label" for="maintenance-switch"
+                                            id="maintenance-label">Disabled</label>
                                     </div>
                                 </div>
                             </div>
@@ -192,7 +196,8 @@
                 <div class="card-body">
                     <div class="row g-3 mb-3">
                         <div class="col-md-7">
-                            <input type="text" id="search-attendee-input" class="form-control" placeholder="Search by Name, Email, or Reg. ID...">
+                            <input type="text" id="search-attendee-input" class="form-control"
+                                placeholder="Search by Name, Email, or Reg. ID...">
                         </div>
                         <div class="col-md-2">
                             <select id="filter-attendee-select" class="form-select">
@@ -206,18 +211,24 @@
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <div id="attendee-table-controls" class="d-flex justify-content-between align-items-center mb-2">
+                        <div id="attendee-table-controls"
+                            class="d-flex justify-content-between align-items-center mb-2">
                             <div>
-                                <select id="attendee-page-size" class="form-select form-select-sm" style="width:120px; display:inline-block;">
+                                <select id="attendee-page-size" class="form-select form-select-sm"
+                                    style="width:120px; display:inline-block;">
                                     <option value="10">10 / page</option>
                                     <option value="15" selected>15 / page</option>
                                     <option value="25">25 / page</option>
                                     <option value="50">50 / page</option>
                                 </select>
-                                <input id="attendee-jump-input" type="number" min="1" class="form-control form-control-sm ms-2" style="width:90px; display:inline-block;" placeholder="Page #">
+                                <input id="attendee-jump-input" type="number" min="1"
+                                    class="form-control form-control-sm ms-2" style="width:90px; display:inline-block;"
+                                    placeholder="Page #">
                                 <button id="attendee-jump-btn" class="btn btn-sm btn-outline-secondary ms-2">Go</button>
                             </div>
-                            <div id="attendee-table-spinner" class="small text-muted d-none"><span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading</div>
+                            <div id="attendee-table-spinner" class="small text-muted d-none"><span
+                                    class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                Loading</div>
                         </div>
                         <table class="table table-hover align-middle">
                             <thead class="table-light">
@@ -238,7 +249,8 @@
                     <div id="attendee-pagination" class="d-flex justify-content-between align-items-center mt-3">
                         <div>
                             <button id="attendee-prev-btn" class="btn btn-sm btn-outline-secondary">&larr; Prev</button>
-                            <button id="attendee-next-btn" class="btn btn-sm btn-outline-secondary ms-2">Next &rarr;</button>
+                            <button id="attendee-next-btn" class="btn btn-sm btn-outline-secondary ms-2">Next
+                                &rarr;</button>
                         </div>
                         <div class="small text-muted" id="attendee-page-info">Page 1</div>
                     </div>
@@ -269,29 +281,36 @@
         <div class="mobile-nav-inner">
             <div class="mobile-nav-header d-flex justify-content-between align-items-center">
                 <div class="fw-bold">Admin</div>
-                <button id="mobile-nav-close" class="btn btn-sm btn-light" aria-label="Close menu"><i class="bi bi-x"></i></button>
+                <button id="mobile-nav-close" class="btn btn-sm btn-light" aria-label="Close menu"><i
+                        class="bi bi-x"></i></button>
             </div>
             <ul class="mobile-nav-tree list-unstyled mt-3">
                 <li>
-                    <button class="mobile-nav-section-toggle btn btn-sm btn-light w-100 text-start" aria-expanded="false">
+                    <button class="mobile-nav-section-toggle btn btn-sm btn-light w-100 text-start"
+                        aria-expanded="false">
                         <i class="bi bi-house-door-fill me-2"></i> Dashboard
                     </button>
                 </li>
                 <li>
-                    <button class="mobile-nav-section-toggle btn btn-sm btn-light w-100 text-start" aria-expanded="false">
+                    <button class="mobile-nav-section-toggle btn btn-sm btn-light w-100 text-start"
+                        aria-expanded="false">
                         <i class="bi bi-people-fill me-2"></i> Attendees
                     </button>
                     <ul class="mobile-sublist list-unstyled ms-3 mt-2 mb-2">
-                        <li><a href="#attendee-table-controls" data-nav-target="attendees" class="mobile-nav-link">Search / Manage</a></li>
-                        <li><a href="#edit-attendee-modal" class="mobile-nav-link" data-bs-toggle="modal">Quick Edit (modal)</a></li>
+                        <li><a href="#attendee-table-controls" data-nav-target="attendees"
+                                class="mobile-nav-link">Search / Manage</a></li>
+                        <li><a href="#edit-attendee-modal" class="mobile-nav-link" data-bs-toggle="modal">Quick Edit
+                                (modal)</a></li>
                     </ul>
                 </li>
                 <li>
-                    <button class="mobile-nav-section-toggle btn btn-sm btn-light w-100 text-start" aria-expanded="false">
+                    <button class="mobile-nav-section-toggle btn btn-sm btn-light w-100 text-start"
+                        aria-expanded="false">
                         <i class="bi bi-heart-pulse-fill me-2"></i> System
                     </button>
                     <ul class="mobile-sublist list-unstyled ms-3 mt-2 mb-2">
-                        <li><a href="#system-health-list" data-nav-target="health" class="mobile-nav-link">Health</a></li>
+                        <li><a href="#system-health-list" data-nav-target="health" class="mobile-nav-link">Health</a>
+                        </li>
                         <li><a href="#" class="mobile-nav-link" id="mobile-system-controls-link">Controls</a></li>
                     </ul>
                 </li>
@@ -315,7 +334,8 @@
                 <form id="edit-attendee-form">
                     <div class="modal-body">
                         <input type="hidden" id="edit-registration-id">
-                        <div class="mb-2 text-muted small" id="edit-meta">Registered: <span id="edit-created-at">—</span> • Status: <span id="edit-checked-in">—</span></div>
+                        <div class="mb-2 text-muted small" id="edit-meta">Registered: <span
+                                id="edit-created-at">—</span> • Status: <span id="edit-checked-in">—</span></div>
                         <div class="mb-3">
                             <label class="form-label">Full Name</label>
                             <input id="edit-full-name" type="text" class="form-control" required aria-label="Full name">
@@ -348,7 +368,8 @@
                 </div>
                 <form id="confirm-delete-form">
                     <div class="modal-body">
-                        <p class="small text-muted">This action will permanently delete the attendee record. Please enter your admin password to confirm.</p>
+                        <p class="small text-muted">This action will permanently delete the attendee record. Please
+                            enter your admin password to confirm.</p>
                         <input type="hidden" id="delete-registration-id">
                         <div class="mb-3">
                             <label class="form-label">Admin Password</label>

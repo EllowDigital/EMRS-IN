@@ -599,10 +599,11 @@ document.addEventListener("DOMContentLoaded", () => {
         const nav = document.getElementById('mobile-nav');
         const backdrop = document.getElementById('mobile-nav-backdrop');
         if (!nav || !backdrop) return;
+        nav.inert = false;
         nav.classList.add('open');
         backdrop.classList.remove('d-none');
         nav.setAttribute('aria-hidden', 'false');
-        document.querySelectorAll('#menu-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'true'));
+        const mt = document.getElementById('menu-toggle'); if (mt) mt.setAttribute('aria-expanded', 'true');
         trapFocus(nav);
         document.body.style.overflow = 'hidden';
     }
@@ -611,11 +612,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const nav = document.getElementById('mobile-nav');
         const backdrop = document.getElementById('mobile-nav-backdrop');
         if (!nav || !backdrop) return;
+        releaseFocusTrap();
         nav.classList.remove('open');
         backdrop.classList.add('d-none');
         nav.setAttribute('aria-hidden', 'true');
-        document.querySelectorAll('#menu-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
-        releaseFocusTrap();
+        nav.inert = true;
+        const mt2 = document.getElementById('menu-toggle'); if (mt2) { mt2.setAttribute('aria-expanded', 'false'); mt2.focus(); }
         document.body.style.overflow = '';
     }
 

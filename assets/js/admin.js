@@ -754,19 +754,19 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Logout handler: clear in-memory credentials and return to login
+    // Centralized logout handler used by header and mobile menu
+    function performLogout() {
+        // Clear all in-memory credentials and redirect to public index
+        appState.staffToken = null;
+        appState.isLoggedIn = false;
+        // Try to clear any state and navigate away so session is clearly terminated
+        try { sessionStorage.removeItem('staff_token'); /* preserve other items */ } catch (err) { /* ignore */ }
+        showToast('Logged out. Redirecting to home...');
+        // Small delay to show toast, then redirect
+        setTimeout(() => { window.location.href = '/index.html'; }, 600);
+    }
     if (ui.adminLogoutBtn) {
-        ui.adminLogoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            // Clear all in-memory credentials and redirect to public index
-            appState.staffToken = null;
-            appState.isLoggedIn = false;
-            // Try to clear any state and navigate away so session is clearly terminated
-            try { sessionStorage.removeItem('staff_token'); /* preserve other items */ } catch (err) { /* ignore */ }
-            showToast('Logged out. Redirecting to home...');
-            // Small delay to show toast, then redirect
-            setTimeout(() => { window.location.href = '/index.html'; }, 600);
-        });
+        ui.adminLogoutBtn.addEventListener('click', (e) => { e.preventDefault(); performLogout(); });
     }
 
     if (ui.adminStatusRefresh) {
@@ -788,12 +788,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const nav = document.getElementById('mobile-nav');
         const backdrop = document.getElementById('mobile-nav-backdrop');
         if (!nav || !backdrop) return;
+        nav.inert = false;
         nav.classList.add('open');
         backdrop.classList.remove('d-none');
         nav.setAttribute('aria-hidden', 'false');
-        // set aria-expanded on all toggles
-        document.querySelectorAll('#menu-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'true'));
-        // trap focus inside nav
+        // set aria-expanded on the toggle
+        const mt = document.getElementById('menu-toggle'); if (mt) mt.setAttribute('aria-expanded', 'true');
+        // trap focus inside nav (focus will be moved to first focusable element)
         trapFocus(nav);
         // prevent body scroll
         document.body.style.overflow = 'hidden';
@@ -803,11 +804,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const nav = document.getElementById('mobile-nav');
         const backdrop = document.getElementById('mobile-nav-backdrop');
         if (!nav || !backdrop) return;
+        // release focus trap first to avoid aria-hidden on focused elements
+        releaseFocusTrap();
         nav.classList.remove('open');
         backdrop.classList.add('d-none');
         nav.setAttribute('aria-hidden', 'true');
-        document.querySelectorAll('#menu-toggle').forEach(btn => btn.setAttribute('aria-expanded', 'false'));
-        releaseFocusTrap();
+        nav.inert = true;
+        const mt2 = document.getElementById('menu-toggle'); if (mt2) { mt2.setAttribute('aria-expanded', 'false'); mt2.focus(); }
         document.body.style.overflow = '';
     }
 
@@ -855,7 +858,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (mobileBackdrop) mobileBackdrop.addEventListener('click', closeMobileNav);
     if (mobileNavClose) mobileNavClose.addEventListener('click', (e) => { e.preventDefault(); closeMobileNav(); });
-    if (mobileLogout) mobileLogout.addEventListener('click', (e) => { e.preventDefault(); if (ui.adminLogoutBtn) ui.adminLogoutBtn.click(); closeMobileNav(); });
+    if (mobileLogout) mobileLogout.addEventListener('click', (e) => { e.preventDefault(); performLogout(); closeMobileNav(); });
+    // No desktop logout icon; logout available from slide-out menu on small screens.
 
     // delegate mobile nav link clicks to scroll/focus sections
     document.addEventListener('click', (e) => {
@@ -964,7 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (e.key.toLowerCase() === 'r') {
                 e.preventDefault(); if (ui.refreshStatsBtn) ui.refreshStatsBtn.click();
             } else if (e.key.toLowerCase() === 'l') {
-                e.preventDefault(); if (ui.adminLogoutBtn) ui.adminLogoutBtn.click();
+                e.preventDefault(); if (ui.adminLogoutBtn) ui.adminLogoutBtn.click(); else performLogout();
             }
         });
     }
