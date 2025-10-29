@@ -34,6 +34,22 @@ async function ensureSchema(sql) {
     )
   `;
 
+  await sql`alter table attendees add column if not exists profile_public_id text`;
+  await sql`alter table attendees add column if not exists profile_url text`;
+  await sql`alter table attendees add column if not exists status attendee_status default 'registered'`;
+  await sql`alter table attendees add column if not exists last_qr_requested_at timestamptz`;
+  await sql`alter table attendees add column if not exists created_at timestamptz default now()`;
+  await sql`alter table attendees add column if not exists updated_at timestamptz default now()`;
+
+  await sql`update attendees set created_at = now() where created_at is null`;
+  await sql`update attendees set updated_at = now() where updated_at is null`;
+  await sql`alter table attendees alter column created_at set default now()`;
+  await sql`alter table attendees alter column updated_at set default now()`;
+  await sql`alter table attendees alter column created_at set not null`;
+  await sql`alter table attendees alter column updated_at set not null`;
+  await sql`alter table attendees alter column status type attendee_status using status::attendee_status`;
+  await sql`alter table attendees alter column status set default 'registered'`;
+
   await sql`
     do $$
     begin
@@ -89,6 +105,14 @@ async function ensureSchema(sql) {
     )
   `;
 
+  await sql`alter table checkins add column if not exists location text`;
+  await sql`alter table checkins add column if not exists notes text`;
+  await sql`alter table checkins add column if not exists created_at timestamptz default now()`;
+  await sql`update checkins set created_at = now() where created_at is null`;
+  await sql`alter table checkins alter column created_at set default now()`;
+  await sql`alter table checkins alter column created_at set not null`;
+  await sql`alter table checkins alter column method type checkin_method using method::checkin_method`;
+
   await sql`alter table if exists checkins drop column if exists staff_id`;
   await sql`drop index if exists checkins_attendee_once_idx`;
   await sql`drop index if exists idx_checkins_staff_id`;
@@ -110,6 +134,11 @@ async function ensureSchema(sql) {
       updated_at timestamptz not null default now()
     )
   `;
+
+  await sql`alter table system_settings add column if not exists updated_at timestamptz default now()`;
+  await sql`update system_settings set updated_at = now() where updated_at is null`;
+  await sql`alter table system_settings alter column updated_at set default now()`;
+  await sql`alter table system_settings alter column updated_at set not null`;
 
   await sql`
     insert into system_settings (key, value)
