@@ -213,9 +213,201 @@
             background: #ffffff;
         }
 
-        .pass-preview img {
-            border-radius: 24px;
+        .pass-preview {
+            border-radius: 28px;
             box-shadow: 0 28px 60px rgba(15, 23, 42, 0.18);
+            overflow: hidden;
+            background: radial-gradient(circle at top, rgba(43, 65, 197, 0.2), rgba(7, 23, 113, 0.08)), #06135a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .pass-card {
+            width: clamp(240px, 54vw, 340px);
+            aspect-ratio: 7 / 11;
+            border-radius: 28px;
+            background: #03104b;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .pass-card__lanyard-slot {
+            position: absolute;
+            inset: 18px 0 auto 0;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .pass-card__lanyard-slot::before {
+            content: '';
+            width: 180px;
+            height: 18px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.22));
+        }
+
+        .pass-card__header {
+            padding: 70px 24px 24px;
+            text-align: center;
+            letter-spacing: 0.18em;
+            font-weight: 900;
+            font-size: clamp(2rem, 5.2vw, 2.6rem);
+        }
+
+        .pass-card__body {
+            flex: 1;
+            background: linear-gradient(180deg, #ffffff 0%, #f4f6ff 100%);
+            color: #0f172a;
+            border-top-left-radius: 26px;
+            border-top-right-radius: 26px;
+            padding: 30px 24px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .pass-card__grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 22px;
+        }
+
+        .pass-card__photo {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .pass-card__photo figure {
+            width: 140px;
+            height: 140px;
+            border-radius: 999px;
+            border: 5px solid #0c238e;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #7aa6ff, #1b48d2);
+        }
+
+        .pass-card__photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .pass-card__info {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .pass-card__info-label {
+            font-size: 0.95rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #12255d;
+        }
+
+        .pass-card__info-value {
+            font-size: 1.1rem;
+            font-weight: 800;
+            color: #d0253d;
+            letter-spacing: 0.06em;
+        }
+
+        .pass-card__info-value.name {
+            color: #0f172a;
+        }
+
+        .pass-card__divider {
+            height: 100%;
+            width: 2px;
+            background-image: repeating-linear-gradient(to bottom, rgba(7, 23, 113, 0.28) 0, rgba(7, 23, 113, 0.28) 8px, transparent 8px, transparent 16px);
+            margin: 0 auto;
+        }
+
+        .pass-card__qr {
+            display: flex;
+            justify-content: center;
+        }
+
+        .pass-card__qr figure {
+            width: 140px;
+            border-radius: 16px;
+            background: #ffffff;
+            border: 3px solid rgba(4, 23, 113, 0.18);
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 0 1px rgba(4, 23, 113, 0.08);
+        }
+
+        .pass-card__qr img {
+            width: 100%;
+            height: auto;
+        }
+
+        .pass-card__footer {
+            margin-top: auto;
+            padding: 20px 18px 24px;
+            text-align: center;
+            background: #03104b;
+            color: #ffffff;
+            border-bottom-left-radius: 26px;
+            border-bottom-right-radius: 26px;
+        }
+
+        .pass-card__footer-quote {
+            font-size: 0.88rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #d4dcff;
+        }
+
+        .pass-card__meta {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 18px;
+            align-items: stretch;
+        }
+
+        .pass-card__meta .pass-card__info {
+            gap: 8px;
+        }
+
+        .pass-card__meta .pass-card__info-label {
+            font-size: 0.9rem;
+        }
+
+        .pass-card__meta .pass-card__info-value {
+            font-size: 1.05rem;
+        }
+
+        .pass-card__meta-note {
+            text-align: center;
+            font-size: 0.85rem;
+            color: rgba(15, 23, 42, 0.7);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        @media (min-width: 420px) {
+            .pass-card__grid {
+                grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr);
+                align-items: center;
+            }
         }
 
         .btn-primary {
@@ -403,8 +595,8 @@
                 height: 140px;
             }
 
-            .pass-preview img {
-                max-width: 100%;
+            .pass-preview {
+                width: min(100%, 340px);
             }
         }
     </style>
@@ -523,9 +715,7 @@
                             <h2 class="fw-bold mb-2">Your pass is ready!</h2>
                             <p class="text-secondary mb-4" id="registerSuccessMessage">Save the pass or create one for
                                 another attendee.</p>
-                            <div class="pass-preview mx-auto mb-4" id="epassPreviewCard">
-                                <img id="epassImage" class="img-fluid" alt="Generated digital pass">
-                            </div>
+                            <div class="pass-preview mx-auto mb-4" id="epassPreviewCard"></div>
                             <div class="mb-4">
                                 <h5 class="fw-semibold mb-1" id="epassName"></h5>
                                 <span class="text-secondary" id="epassReg"></span>
@@ -591,9 +781,7 @@
                             <h3 class="fw-bold mb-2">We found your pass</h3>
                             <p class="text-secondary mb-4" id="searchMessage">Display this pass at entry or download a
                                 PNG copy for your records.</p>
-                            <div class="pass-preview mx-auto mb-4" id="searchPreviewCard">
-                                <img id="searchImage" class="img-fluid" alt="Retrieved digital pass">
-                            </div>
+                            <div class="pass-preview mx-auto mb-4" id="searchPreviewCard"></div>
                             <div class="mb-3">
                                 <h5 class="fw-semibold mb-1" id="searchName"></h5>
                                 <span class="text-secondary" id="searchReg"></span>
@@ -626,9 +814,7 @@
                     <div class="modal-body pt-2">
                         <p id="alreadyRegisteredMessage" class="text-secondary mb-4">We refreshed your existing pass.
                             Download the latest copy below.</p>
-                        <div class="pass-preview mx-auto mb-4" id="existingPassPreview">
-                            <img id="existingPassImage" class="img-fluid" alt="Existing digital pass">
-                        </div>
+                        <div class="pass-preview mx-auto mb-4" id="existingPassPreview"></div>
                         <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
                             <button type="button" id="existingDownloadBtn"
                                 class="btn btn-primary btn-lg px-4 d-flex align-items-center justify-content-center gap-2">
@@ -674,7 +860,6 @@
             const registerAgainBtn = document.getElementById('registerAgainBtn');
             const registerSuccessMessage = document.getElementById('registerSuccessMessage');
 
-            const epassImage = document.getElementById('epassImage');
             const epassName = document.getElementById('epassName');
             const epassReg = document.getElementById('epassReg');
             const epassDownload = document.getElementById('epassDownload');
@@ -685,7 +870,6 @@
             const searchCard = document.getElementById('searchCard');
             const searchResultCard = document.getElementById('searchResultCard');
             const searchAgainBtn = document.getElementById('searchAgainBtn');
-            const searchImage = document.getElementById('searchImage');
             const searchName = document.getElementById('searchName');
             const searchReg = document.getElementById('searchReg');
             const searchDownload = document.getElementById('searchDownload');
@@ -697,7 +881,6 @@
             const searchColumn = document.getElementById('searchColumn');
 
             const existingModalElement = document.getElementById('alreadyRegisteredModal');
-            const existingPassImage = document.getElementById('existingPassImage');
             const existingPassPreview = document.getElementById('existingPassPreview');
             const existingDownloadBtn = document.getElementById('existingDownloadBtn');
             const existingModalMessage = document.getElementById('alreadyRegisteredMessage');
@@ -706,9 +889,15 @@
                 ? new bootstrapModal(existingModalElement, { backdrop: 'static' })
                 : null;
 
-            const defaultBorderColor = '#d4dae6';
-            const passImageUrlCache = new WeakMap();
+            const passTemplateHost = document.createElement('div');
+            passTemplateHost.setAttribute('aria-hidden', 'true');
+            passTemplateHost.style.position = 'fixed';
+            passTemplateHost.style.inset = '-9999px auto auto -9999px';
+            passTemplateHost.style.opacity = '0';
+            passTemplateHost.style.pointerEvents = 'none';
+            document.body.appendChild(passTemplateHost);
 
+            const defaultBorderColor = '#d4dae6';
             let searchAbortController = null;
             let searchDebounceId = null;
 
@@ -717,51 +906,6 @@
                 button.disabled = isLoading;
                 button.classList.toggle('is-loading', isLoading);
                 button.setAttribute('aria-busy', isLoading ? 'true' : 'false');
-            };
-
-            const setPassImageSource = (imgElement, passPayload) => {
-                if (!imgElement) {
-                    return false;
-                }
-
-                const previousUrl = passImageUrlCache.get(imgElement);
-                if (previousUrl) {
-                    URL.revokeObjectURL(previousUrl);
-                    passImageUrlCache.delete(imgElement);
-                }
-
-                imgElement.onload = null;
-                imgElement.onerror = null;
-
-                const dataUrl = passPayload?.dataUrl;
-                if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
-                    imgElement.src = dataUrl;
-                    return true;
-                }
-
-                const svgMarkup = passPayload?.svg;
-                if (typeof svgMarkup === 'string' && svgMarkup.includes('<svg')) {
-                    const blob = new Blob([svgMarkup], { type: 'image/svg+xml;charset=utf-8' });
-                    const blobUrl = URL.createObjectURL(blob);
-                    passImageUrlCache.set(imgElement, blobUrl);
-
-                    imgElement.onload = () => {
-                        URL.revokeObjectURL(blobUrl);
-                        passImageUrlCache.delete(imgElement);
-                    };
-
-                    imgElement.onerror = () => {
-                        URL.revokeObjectURL(blobUrl);
-                        passImageUrlCache.delete(imgElement);
-                        imgElement.removeAttribute('src');
-                    };
-
-                    imgElement.src = blobUrl;
-                    return true;
-                }
-
-                imgElement.removeAttribute('src');
-                return false;
             };
 
             const showLayer = (element) => {
@@ -911,35 +1055,110 @@
                 return dataUrl;
             };
 
-            const ensurePassImageReady = (img) => new Promise((resolve, reject) => {
-                if (!img) {
-                    resolve();
-                    return;
-                }
-                if (img.complete && img.naturalWidth > 0) {
-                    resolve();
-                    return;
-                }
-                img.onload = () => resolve();
-                img.onerror = () => reject(new Error('Unable to load pass preview.'));
-            });
+            const createPassCard = ({ registrationId, fullName, profileUrl, qrDataUrl }) => {
+                const card = document.createElement('article');
+                card.className = 'pass-card';
+                const initial = (fullName || 'E').trim().charAt(0).toUpperCase() || 'E';
+                card.innerHTML = `
+                    <div class="pass-card__lanyard-slot"></div>
+                    <header class="pass-card__header">E-PASS</header>
+                    <div class="pass-card__body">
+                        <div class="pass-card__grid">
+                            <div class="pass-card__photo">
+                                <figure>
+                                    ${profileUrl
+                        ? `<img src="${profileUrl}" alt="Profile photo" crossorigin="anonymous">`
+                        : `<div class="d-flex align-items-center justify-content-center w-100 h-100 text-white fw-bold fs-1">${initial}</div>`}
+                                </figure>
+                            </div>
+                            <div class="pass-card__divider" aria-hidden="true"></div>
+                            <div class="pass-card__qr">
+                                <figure>
+                                    ${qrDataUrl ? `<img src="${qrDataUrl}" alt="QR code">` : ''}
+                                </figure>
+                            </div>
+                        </div>
+                        <div class="pass-card__meta">
+                            <div class="pass-card__info">
+                                <span class="pass-card__info-label">Reg. ID</span>
+                                <span class="pass-card__info-value">${registrationId || ''}</span>
+                            </div>
+                            <div class="pass-card__info">
+                                <span class="pass-card__info-label">Name</span>
+                                <span class="pass-card__info-value name">${(fullName || '').toUpperCase()}</span>
+                            </div>
+                        </div>
+                        <div class="pass-card__meta-note">Present with a valid photo ID · Scan QR at entry</div>
+                    </div>
+                    <footer class="pass-card__footer">
+                        <div class="pass-card__footer-quote">Access opens between 09:00 and 18:00 · Arrive inspired</div>
+                    </footer>
+                `;
+                return card;
+            };
 
-            const capturePassAsPng = async (container) => {
-                await ensurePassImageReady(container.querySelector('img'));
-                const canvas = await html2canvas(container, {
-                    backgroundColor: null,
-                    scale: Math.min(3, window.devicePixelRatio || 1.5),
-                    useCORS: true,
+            const renderPassPreview = (container, passData, attendee) => {
+                if (!container) return null;
+                container.innerHTML = '';
+                if (!attendee) return null;
+                const card = createPassCard({
+                    registrationId: attendee.registrationId,
+                    fullName: attendee.fullName,
+                    profileUrl: attendee.profileUrl,
+                    qrDataUrl: passData?.qrDataUrl,
                 });
+                container.appendChild(card);
+                return card;
+            };
+
+            const waitForImages = async (element) => {
+                if (!element) return;
+                const images = Array.from(element.querySelectorAll('img'));
+                await Promise.all(images.map((img) => new Promise((resolve) => {
+                    if (img.complete && img.naturalWidth > 0) {
+                        resolve();
+                    } else {
+                        const onLoad = () => {
+                            img.removeEventListener('load', onLoad);
+                            img.removeEventListener('error', onError);
+                            resolve();
+                        };
+                        const onError = () => {
+                            img.removeEventListener('load', onLoad);
+                            img.removeEventListener('error', onError);
+                            resolve();
+                        };
+                        img.addEventListener('load', onLoad, { once: true });
+                        img.addEventListener('error', onError, { once: true });
+                    }
+                })));
+            };
+
+            const capturePassAsPng = async (cardElement) => {
+                if (!cardElement) {
+                    throw new Error('Pass is not ready to download.');
+                }
+                const clone = cardElement.cloneNode(true);
+                passTemplateHost.innerHTML = '';
+                passTemplateHost.appendChild(clone);
+                await waitForImages(clone);
+                const canvas = await html2canvas(clone, {
+                    backgroundColor: null,
+                    scale: Math.min(3, window.devicePixelRatio || 2),
+                    useCORS: true,
+                    logging: false,
+                });
+                passTemplateHost.innerHTML = '';
                 return canvas.toDataURL('image/png');
             };
 
-            const bindDownloadButton = (button, container, filename, feedbackElement) => {
-                if (!button || !container) return;
+            const bindDownloadButton = (button, getCardElement, filename, feedbackElement) => {
+                if (!button) return;
                 button.addEventListener('click', async () => {
                     setButtonLoading(button, true);
                     try {
-                        const pngDataUrl = await capturePassAsPng(container);
+                        const cardElement = getCardElement();
+                        const pngDataUrl = await capturePassAsPng(cardElement);
                         const link = document.createElement('a');
                         link.href = pngDataUrl;
                         link.download = `${filename}.png`;
@@ -1057,13 +1276,13 @@
                         throw new Error(data.message || 'We could not locate your e-pass.');
                     }
 
-                    const passAvailable = setPassImageSource(searchImage, data.epass);
+                    const passCard = renderPassPreview(searchPreviewCard, data.epass, data.attendee);
                     searchName.textContent = data.attendee?.fullName || '';
                     searchReg.textContent = data.attendee?.registrationId
                         ? `Registration ID: ${data.attendee.registrationId}`
                         : '';
 
-                    if (!passAvailable) {
+                    if (!passCard) {
                         throw new Error('We found your pass, but the preview failed. Please try again.');
                     }
 
@@ -1088,13 +1307,13 @@
             };
 
             const handleRegistrationSuccess = (data) => {
-                const passAvailable = setPassImageSource(epassImage, data.epass);
+                const passCard = renderPassPreview(epassPreviewCard, data.epass, data.attendee);
                 epassName.textContent = data.attendee?.fullName || '';
                 epassReg.textContent = data.attendee?.registrationId
                     ? `Registration ID: ${data.attendee.registrationId}`
                     : '';
 
-                if (!passAvailable) {
+                if (!passCard) {
                     throw new Error('We generated your pass, but the preview failed. Please try again.');
                 }
 
@@ -1113,7 +1332,7 @@
 
                 if (isUpdate && existingModal) {
                     existingModalMessage.textContent = 'You are already registered. Download your latest pass below.';
-                    setPassImageSource(existingPassImage, data.epass);
+                    renderPassPreview(existingPassPreview, data.epass, data.attendee);
                     existingModal.show();
                 }
             };
@@ -1232,9 +1451,24 @@
                 fullNameInput.focus();
             });
 
-            bindDownloadButton(epassDownload, epassPreviewCard, 'digital-pass', registrationFeedback);
-            bindDownloadButton(searchDownload, searchPreviewCard, 'digital-pass', searchFeedback);
-            bindDownloadButton(existingDownloadBtn, existingPassPreview, 'digital-pass', registrationFeedback);
+            bindDownloadButton(
+                epassDownload,
+                () => epassPreviewCard.querySelector('.pass-card'),
+                'digital-pass',
+                registrationFeedback,
+            );
+            bindDownloadButton(
+                searchDownload,
+                () => searchPreviewCard.querySelector('.pass-card'),
+                'digital-pass',
+                searchFeedback,
+            );
+            bindDownloadButton(
+                existingDownloadBtn,
+                () => existingPassPreview.querySelector('.pass-card'),
+                'digital-pass',
+                registrationFeedback,
+            );
 
             if (searchSubmitButton) {
                 searchSubmitButton.disabled = true;

@@ -133,7 +133,7 @@ export const handler = async (event) => {
             return errorResponse(502, 'Unable to process profile image.');
         }
 
-        const epass = await buildPassData({ name: fullName, registrationId, profileUrl });
+    const epass = await buildPassData({ name: fullName, registrationId });
 
         if (existing.length) {
             await sqlClient`
