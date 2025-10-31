@@ -1,0 +1,45 @@
+{
+  "name": "ellowreg-in",
+  "version": "6.8.0",
+  "description": "Event Management & Registration System (EMRS) by EllowDigital for handling multi-event registrations, media uploads, analytics, and Google Sheets sync.",
+  "private": true,
+  "author": "EllowDigital",
+  "license": "MIT",
+  "main": "index.js",
+  "engines": {
+    "node": "^24.0.1"
+  },
+  "scripts": {
+    "dev": "netlify dev",
+    "start": "netlify dev",
+    "deploy": "netlify deploy --prod",
+    "build": "echo 'No build step required, deploying functions.'",
+    "lint": "echo 'No lint step defined'",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "emrs",
+    "registration",
+    "netlify",
+    "serverless",
+    "cloudinary",
+    "google-sheets",
+    "event-management"
+  ],
+  "dependencies": {
+    "busboy": "^1.6.0",
+    "cloudinary": "^2.5.0",
+    "exceljs": "^4.4.0",
+    "googleapis": "^144.0.0",
+    "node-fetch": "^3.3.2",
+    "pg": "^8.13.1",
+    "pg-query-stream": "^4.3.0",
+    "razorpay": "^2.9.4"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.41",
+    "prettier": "^3.3.3",
+    "tailwindcss": "^3.4.7"
+  }
+}
