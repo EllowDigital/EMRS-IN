@@ -29,7 +29,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black" />
   <meta name="apple-mobile-web-app-title" content="EMRS Admin" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/7.0.0/css/all.min.css" />
   <style>
     :root {
@@ -796,7 +796,7 @@
     </p>
   </footer>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.7/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
   <script>
     window.addEventListener("load", () => {
       const purgeCaches = () => {
@@ -828,6 +828,24 @@
   </script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
+      // START OF FIX: Add these missing variables
+      const DEFAULT_PAGE_SIZE = 10;
+
+      let state = {
+        currentPage: 1,
+        totalPages: 1,
+        totalRecords: 0,
+        pageSize: DEFAULT_PAGE_SIZE,
+        searchTerm: "",
+        currentRecords: [],
+      };
+
+      let autoRefreshEnabled = false;
+      let autoRefreshTimeoutId = null;
+      let autoRefreshController = null;
+      let lastChangeToken = null;
+      const AUTO_REFRESH_INTERVAL_MS = 15000; // 15-second poll interval
+      // END OF FIX
       let ADMIN_SECRET_KEY = null;
 
       const POPUP_PROMPT_KEY = "emrs-allow-popups-ack";
