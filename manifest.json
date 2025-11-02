@@ -1,6 +1,6 @@
 {
-  "name": "EMRS Staff Console",
-  "short_name": "EMRS By EllowDigital",
+  "name": "EllowDigital EMRS Control Center",
+  "short_name": "EMRS Control",
   "description": "Staff-only toolkit to verify EMRS passes, manage check-ins, and sync with EllowDigital systems on the go.",
   "start_url": "/web-app.html",
   "scope": "/",
@@ -119,6 +119,9 @@
       ]
     }
   ],
-  "categories": ["productivity", "business"],
+  "categories": [
+    "productivity",
+    "business"
+  ],
   "lang": "en-IN"
 }
