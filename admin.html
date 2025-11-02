@@ -1760,14 +1760,58 @@
         setButtonLoading(confirmDeleteBtn, true);
         clearFeedbackMessage();
         try {
-          await makeApiCall("/.netlify/functions/delete-registration", {
+          const deletionResult = await makeApiCall("/.netlify/functions/delete-registration", {
             method: "DELETE",
             body: JSON.stringify({
               registrationId: deleteRegistrationId.value,
             }),
           });
           deleteModalInstance.hide();
-          setFeedbackMessage("success", "Registration deleted successfully.");
+          const feedback = (() => {
+            const base = {
+              variant: "success",
+              message: "Registration deleted successfully.",
+            };
+            const outcome = deletionResult?.cloudinary;
+            if (!outcome) {
+              return base;
+            }
+            switch (outcome.status) {
+              case "deleted":
+                return {
+                  variant: "success",
+                  message: `${base.message} Cloudinary profile image removed.`,
+                };
+              case "not_found":
+                return {
+                  variant: "success",
+                  message: `${base.message} Cloudinary image already removed.`,
+                };
+              case "no_image":
+                return {
+                  variant: "success",
+                  message: `${base.message} No profile image was stored.`,
+                };
+              case "unrecognized":
+                return {
+                  variant: "warning",
+                  message: `${base.message} Stored image URL is not a Cloudinary asset—remove manually if needed.`,
+                };
+              case "disabled":
+                return {
+                  variant: "warning",
+                  message: `${base.message} Cloudinary credentials are missing; image removal skipped.`,
+                };
+              default:
+                return outcome.message
+                  ? {
+                    variant: "warning",
+                    message: `${base.message} ${outcome.message}`,
+                  }
+                  : base;
+            }
+          })();
+          setFeedbackMessage(feedback.variant, feedback.message);
           if (state.currentRecords.length <= 1 && state.currentPage > 1) {
             state.currentPage -= 1;
           }
