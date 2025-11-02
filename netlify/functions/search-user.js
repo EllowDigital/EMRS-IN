@@ -1,8 +1,6 @@
-// /netlify/functions/update-registration.js
+// /netlify/functions/search-user.js
 
 const { pool } = require("./utils");
-
-const ALLOWED_FIELDS = ["name", "phone", "email", "city", "state"];
 
 exports.handler = async (event) => {
   const providedKey = event.headers["x-admin-key"];
@@ -15,81 +13,73 @@ exports.handler = async (event) => {
     };
   }
 
-  if (!["PUT", "PATCH"].includes(event.httpMethod)) {
+  if (event.httpMethod !== "GET") {
     return {
       statusCode: 405,
       body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
 
-  let payload;
-  try {
-    payload = JSON.parse(event.body || "{}");
-  } catch (error) {
+  const params = event.queryStringParameters || {};
+  const rawPhone =
+    typeof params.phone === "string" ? params.phone.trim() : "";
+  const rawRegistrationId =
+    typeof params.registrationId === "string"
+      ? params.registrationId.trim()
+      : "";
+
+  const phone = rawPhone ? rawPhone : null;
+  const registrationId = rawRegistrationId
+    ? rawRegistrationId.toUpperCase()
+    : null;
+
+  if (!phone && !registrationId) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "Invalid JSON payload." }),
+      body: JSON.stringify({ error: "phone or registrationId is required." }),
     };
   }
 
-  const { registrationId } = payload;
-  if (!registrationId || typeof registrationId !== "string") {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "registrationId is required." }),
-    };
-  }
-
-  const normalize = (value) => {
-    if (value === undefined) return undefined;
-    if (value === null) return null;
-    if (typeof value === "string") {
-      const trimmed = value.trim();
-      return trimmed.length === 0 ? null : trimmed;
-    }
-    return value;
-  };
-
-  const updates = {};
-  for (const field of ALLOWED_FIELDS) {
-    if (Object.prototype.hasOwnProperty.call(payload, field)) {
-      updates[field] = normalize(payload[field]);
-    }
-  }
-
-  const updateKeys = Object.keys(updates);
-  if (updateKeys.length === 0) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "No updatable fields provided." }),
-    };
-  }
-
-  const setClauses = [];
+  const whereClauses = [];
   const values = [];
   let index = 1;
-  for (const field of updateKeys) {
-    setClauses.push(`${field} = $${index}`);
-    values.push(updates[field]);
+
+  if (phone) {
+    whereClauses.push(`phone = $${index}`);
+    values.push(phone);
     index += 1;
   }
-  setClauses.push("updated_at = NOW()");
-  setClauses.push("needs_sync = true");
 
-  const normalizedRegistrationId = registrationId.trim().toUpperCase();
-  values.push(normalizedRegistrationId);
+  if (registrationId) {
+    whereClauses.push(`UPPER(reg_id) = $${index}`);
+    values.push(registrationId);
+    index += 1;
+  }
 
-  const updateQuery = `
-    UPDATE registrations
-       SET ${setClauses.join(", ")}
-    WHERE reg_id = $${index}
-    RETURNING id, reg_id, name, phone, email, city, state, pay_id, timestamp, checked_in_at;
+  const whereClause = `WHERE ${whereClauses.join(" OR ")}`;
+  const selectQuery = `
+    SELECT id,
+           "timestamp",
+           reg_id,
+           name,
+           phone,
+           email,
+           city,
+           state,
+           pay_id,
+           image_url,
+           needs_sync,
+           checked_in_at,
+           updated_at
+      FROM registrations
+      ${whereClause}
+      LIMIT 1;
   `;
 
   let dbClient;
   try {
     dbClient = await pool.connect();
-    const { rows } = await dbClient.query(updateQuery, values);
+    const { rows } = await dbClient.query(selectQuery, values);
 
     if (rows.length === 0) {
       return {
@@ -98,24 +88,20 @@ exports.handler = async (event) => {
       };
     }
 
-    // --- 3. FIX: Map correct column names to response ---
-    // (This maps to the frontend `admin.html` which expects `registration_id`)
-    const updatedRecord = {
-      ...rows[0],
-      registration_id: rows[0].reg_id,
-      payment_id: rows[0].pay_id,
+    const record = rows[0];
+    const mappedRecord = {
+      ...record,
+      registration_id: record.reg_id,
+      payment_id: record.pay_id,
     };
 
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "Registration updated successfully.",
-        record: updatedRecord, // Send the mapped record
-      }),
+      body: JSON.stringify(mappedRecord),
     };
   } catch (error) {
-    console.error("Error in update-registration function:", error);
+    console.error("Error in search-user function:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "An internal server error occurred." }),
