@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Block internal consoles from indexing
+Disallow: /admin.html
+Disallow: /verify.html
+
+Sitemap: https://get-epass.netlify.app/sitemap.xml

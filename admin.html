@@ -442,6 +442,24 @@
         <p class="text-muted text-center mb-4">
           Enter the administrator passphrase to unlock the control panel.
         </p>
+        <div id="popupPermissionBanner" class="alert alert-warning d-none" role="alert">
+          <div class="d-flex flex-column gap-2">
+            <div class="d-flex align-items-start gap-2">
+              <i class="fas fa-external-link-alt mt-1"></i>
+              <span><strong>Enable pop-ups:</strong> Excel exports open in a new tab. Please allow pop-ups for
+                this site.</span>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+              <button id="testPopupBtn" type="button" class="btn btn-warning btn-sm fw-semibold">
+                Test pop-up
+              </button>
+              <button id="dismissPopupBtn" type="button" class="btn btn-outline-secondary btn-sm fw-semibold">
+                I've enabled pop-ups
+              </button>
+            </div>
+            <p id="popupStatusText" class="small mb-0 text-muted"></p>
+          </div>
+        </div>
         <form id="loginForm" novalidate>
           <div class="mb-3">
             <label for="passwordInput" class="form-label fw-semibold">Administrator Key</label>
@@ -857,20 +875,86 @@
       let ADMIN_SECRET_KEY = null;
 
       const POPUP_PROMPT_KEY = "emrs-allow-popups-ack";
+      const popupBanner = document.getElementById("popupPermissionBanner");
+      const popupStatusText = document.getElementById("popupStatusText");
+      const popupTestBtn = document.getElementById("testPopupBtn");
+      const dismissPopupBtn = document.getElementById("dismissPopupBtn");
+
+      const setPopupStatus = (message, variant = "muted") => {
+        if (!popupStatusText) return;
+        popupStatusText.textContent = message;
+        popupStatusText.classList.remove("text-success", "text-danger", "text-muted");
+        const classMap = {
+          success: "text-success",
+          danger: "text-danger",
+          muted: "text-muted",
+        };
+        popupStatusText.classList.add(classMap[variant] || "text-muted");
+      };
+
+      const acknowledgePopups = () => {
+        try {
+          localStorage.setItem(POPUP_PROMPT_KEY, "true");
+        } catch (error) {
+          console.warn("Unable to persist popup acknowledgement", error);
+        }
+        popupBanner?.classList.add("d-none");
+      };
+
+      const showPopupBanner = () => {
+        popupBanner?.classList.remove("d-none");
+        setPopupStatus("Tap “Test pop-up” to confirm your browser allows downloads.");
+      };
+
       try {
-        if (!localStorage.getItem(POPUP_PROMPT_KEY)) {
-          setTimeout(() => {
-            const acknowledged = window.confirm(
-              "Heads up! Please allow pop-ups for this site so Excel exports can open automatically.",
-            );
-            if (acknowledged) {
-              localStorage.setItem(POPUP_PROMPT_KEY, "true");
-            }
-          }, 600);
+        if (localStorage.getItem(POPUP_PROMPT_KEY)) {
+          popupBanner?.classList.add("d-none");
+        } else {
+          showPopupBanner();
         }
       } catch (storageError) {
         console.warn("Popup reminder storage unavailable", storageError);
+        showPopupBanner();
       }
+
+      popupTestBtn?.addEventListener("click", (event) => {
+        event.preventDefault();
+        setPopupStatus("Checking pop-up permissions...", "muted");
+        let testWindow = null;
+        try {
+          testWindow = window.open("", "emrsPopupTest", "width=480,height=360");
+          if (testWindow) {
+            testWindow.document.write(
+              "<p style='font-family:Inter, sans-serif; padding:1.5rem; text-align:center;'>Pop-ups enabled for EMRS. You can close this tab.</p>",
+            );
+            testWindow.focus();
+            setTimeout(() => {
+              try {
+                testWindow.close();
+              } catch (closeError) {
+                console.debug("Unable to auto-close test pop-up", closeError);
+              }
+            }, 1500);
+            setPopupStatus("Great! Pop-ups are enabled.", "success");
+            acknowledgePopups();
+          } else {
+            setPopupStatus(
+              "Pop-up blocked. Please allow pop-ups for get-epass.netlify.app in your browser settings and try again.",
+              "danger",
+            );
+          }
+        } catch (popupError) {
+          console.warn("Pop-up test failed", popupError);
+          setPopupStatus(
+            "Pop-up blocked. Enable pop-ups and retry the test.",
+            "danger",
+          );
+        }
+      });
+
+      dismissPopupBtn?.addEventListener("click", () => {
+        acknowledgePopups();
+      });
 
       let isPollingForChanges = false;
       let isPerformingFullRefresh = false;
