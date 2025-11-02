@@ -1,37 +1,51 @@
-DROP TABLE IF EXISTS public.registrations CASCADE; -- Uncomment this line if you need to completely reset the table
+-- Creates the 'registrations' table in the 'public' schema
+CREATE TABLE IF NOT EXISTS public.registrations (
+    -- 'id' is an auto-incrementing primary key
+    id SERIAL PRIMARY KEY,
 
--- 1. CREATE TABLE with Updated Columns and Constraints
-CREATE TABLE public.registrations (
-    -- COLUMNS
-    id               SERIAL PRIMARY KEY,
-    timestamp        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    registration_id  TEXT UNIQUE NOT NULL,
-    name             TEXT,
-    phone            TEXT UNIQUE,
-    email            TEXT, -- ADDED
-    city             TEXT,
-    state            TEXT,
-    payment_id       TEXT,
-    image_url        TEXT,
-    needs_sync       BOOLEAN DEFAULT 'true',
-    checked_in_at    TIMESTAMP WITH TIME ZONE
+    -- 'timestamp' defaults to the time of insertion.
+    -- Quoted because "timestamp" is a reserved SQL keyword.
+    "timestamp" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- Note: 'company', 'address', and 'day' have been removed.
+    -- 'registration_id_text' is the unique, human-readable ID (e.g., EMRS-1234)
+    registration_id_text TEXT UNIQUE NOT NULL,
+
+    -- Attendee details
+    name TEXT,
+    phone TEXT UNIQUE,
+    email TEXT,
+    city TEXT,
+    state TEXT,
+    payment_id_text TEXT,
+    image_url TEXT,
+
+    -- 'needs_sync' flags rows for the Google Sheets sync
+    needs_sync BOOLEAN DEFAULT true,
+
+    -- 'checked_in_at' is null until the user is verified at the event
+    checked_in_at TIMESTAMP WITH TIME ZONE,
+
+    -- 'updated_at' automatically updates when the row is modified
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- 2. INDEXES
+---
+--- Create Indexes for faster queries
+---
+-- Note: Indexes for 'id' (PRIMARY KEY), 'registration_id_text' (UNIQUE),
+-- and 'phone' (UNIQUE) are created automatically by the constraints above.
 
--- Standard B-TREE index for lookups by check-in time
-CREATE INDEX idx_registrations_checked_in_at
-    ON public.registrations USING BTREE (checked_in_at);
+-- Index for quickly finding checked-in users (for stats or lookups)
+CREATE INDEX IF NOT EXISTS idx_registrations_checked_in_at
+ON public.registrations(checked_in_at);
 
--- Partial Index: Optimized for finding registrations that have NOT been checked in (WHERE checked_in_at IS NULL)
-CREATE INDEX idx_registrations_not_checked_in
-    ON public.registrations USING BTREE (registration_id)
-    WHERE checked_in_at IS NULL;
+-- A partial index to help the 'sync-with-google-sheets' function
+-- quickly find only the rows that need to be synced.
+CREATE INDEX IF NOT EXISTS idx_registrations_needs_sync
+ON public.registrations(needs_sync)
+WHERE needs_sync = true;
 
--- Index on expression: Optimized for queries that filter by the date part of the timestamp
-CREATE INDEX idx_registrations_timestamp_date
-    ON public.registrations USING BTREE (("timestamp"::date));
-
--- Note: Indexes for 'id', 'phone', and 'registration_id' are automatically created by their UNIQUE/PRIMARY KEY constraints.
+-- An expression index to speed up queries that group by date
+-- (e.g., the 'get-stats' function)
+CREATE INDEX IF NOT EXISTS idx_registrations_timestamp_date
+ON public.registrations(((timestamp)::date));

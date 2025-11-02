@@ -45,36 +45,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
 
-  <script>
-    window.addEventListener("load", () => {
-      const purgeCaches = () => {
-        if ("caches" in window) {
-          caches
-            .keys()
-            .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
-            .catch(() => undefined);
-        }
-      };
-
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker
-          .getRegistrations()
-          .then((registrations) =>
-            Promise.all(
-              registrations.map((registration) => registration.unregister()),
-            ),
-          )
-          .then(purgeCaches)
-          .catch((error) => {
-            console.error("Service worker cleanup failed:", error);
-            purgeCaches();
-          });
-      } else {
-        purgeCaches();
-      }
-    });
-  </script>
-
   <link rel="preload"
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@700&display=swap"
     as="style" onload="this.onload=null;this.rel='stylesheet'" />
