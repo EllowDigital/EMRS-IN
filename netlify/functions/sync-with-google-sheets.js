@@ -9,8 +9,8 @@ const SHEET_NAME = "Registrations";
 const formatTimestamp = (value) =>
   value
     ? new Date(value).toLocaleString("en-IN", {
-      timeZone: "Asia/Kolkata",
-    })
+        timeZone: "Asia/KKolkata",
+      })
     : "N/A";
 
 exports.handler = async (event = {}) => {
@@ -55,10 +55,10 @@ exports.handler = async (event = {}) => {
   try {
     dbClient = await pool.connect();
 
-    // --- 1. FIX: Updated SQL query to select 11 columns ---
-    // Added `district` to match the Google Sheet layout.
+    // --- 1. FIX: Removed `district` from SQL query ---
+    // This now matches your database schema from image_347ac0.png
     const { rows: registrations } = await dbClient.query(
-      `SELECT registration_id, name, phone, email, city, district, state, payment_id, timestamp, image_url, checked_in_at
+      `SELECT registration_id, name, phone, email, city, state, payment_id, timestamp, image_url, checked_in_at
          FROM registrations
         ORDER BY timestamp ASC`,
     );
@@ -70,8 +70,9 @@ exports.handler = async (event = {}) => {
       ? `'${SHEET_NAME.replace(/'/g, "''")}'`
       : SHEET_NAME;
 
-    // --- 2. FIX: Updated data range to 11 columns (A to K) ---
-    const dataRangeBase = `${safeSheetName}!A2:K`;
+    // --- 2. FIX: Updated data range to 10 columns (A to J) ---
+    // This assumes you deleted the 'DISTRICT' column from your sheet
+    const dataRangeBase = `${safeSheetName}!A2:J`;
 
     await retryWithBackoff(
       () =>
@@ -84,19 +85,18 @@ exports.handler = async (event = {}) => {
     console.log("[GSheet] Cleared data rows (headers preserved).");
 
     if (registrations.length > 0) {
-      // --- 3. FIX: Updated row mapping to 11 columns in the correct order ---
+      // --- 3. FIX: Updated row mapping to 10 columns ---
       const sheetRows = registrations.map((record) => [
         record.registration_id,         // A: REG_ID
         record.name,                    // B: NAME
         record.phone,                   // C: PHONE
         record.email,                   // D: E-MAIL
         record.city,                    // E: CITY
-        record.district,                // F: DISTRICT
-        record.state,                   // G: STATE
-        record.payment_id || "N/A",     // H: PAYMENT_ID
-        formatTimestamp(record.timestamp), // I: TIMESTAMP
-        record.image_url,               // J: PROFILE_URL
-        formatTimestamp(record.checked_in_at), // K: CHECK_IN_AT
+        record.state,                   // F: STATE (was G)
+        record.payment_id || "N/A",     // G: PAYMENT_ID (was H)
+        formatTimestamp(record.timestamp), // H: TIMESTAMP (was I)
+        record.image_url,               // I: PROFILE_URL (was J)
+        formatTimestamp(record.checked_in_at), // J: CHECK_IN_AT (was K)
       ]);
 
       const CHUNK_SIZE = 400;
@@ -108,8 +108,8 @@ exports.handler = async (event = {}) => {
         const startRow = 2 + i;
         const endRow = startRow + chunk.length - 1;
         dataRequests.push({
-          // Ensure this range also uses 11 columns (A:K)
-          range: `${safeSheetName}!A${startRow}:K${endRow}`,
+          // --- 4. FIX: Range also updated to 10 columns (A:J) ---
+          range: `${safeSheetName}!A${startRow}:J${endRow}`,
           values: chunk,
         });
       }
