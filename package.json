@@ -15,7 +15,10 @@
     "deploy": "netlify deploy --prod",
     "build": "echo 'No build step required, deploying functions.'",
     "lint": "echo 'No lint step defined'",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+  "test": "npm run test:unit && npm run test:syntax",
+  "test:unit": "node --test tests/search-user.test.js",
+    "test:syntax": "node scripts/check-syntax.js"
   },
   "keywords": [
     "emrs",
