@@ -39,8 +39,10 @@ exports.handler = async (event) => {
     dbClient = await pool.connect();
 
     const searchTerm = rawSearch ? `%${rawSearch}%` : null;
+
+    // --- 1. FIX: Use `registration_id_text` in WHERE clause ---
     const whereClause = searchTerm
-      ? "WHERE registration_id ILIKE $1 OR name ILIKE $1 OR phone ILIKE $1 OR email ILIKE $1 OR city ILIKE $1 OR state ILIKE $1"
+      ? "WHERE registration_id_text ILIKE $1 OR name ILIKE $1 OR phone ILIKE $1 OR email ILIKE $1 OR city ILIKE $1 OR state ILIKE $1"
       : "";
 
     const countQuery = `SELECT COUNT(*) AS total FROM registrations ${whereClause}`;
@@ -58,7 +60,8 @@ exports.handler = async (event) => {
     const limitIndex = searchTerm ? 2 : 1;
     const offsetIndex = searchTerm ? 3 : 2;
 
-    const selectQuery = `SELECT id, registration_id, name, phone, email, city, state, payment_id, timestamp, checked_in_at
+    // --- 2. FIX: Use `registration_id_text` and `payment_id_text` in SELECT ---
+    const selectQuery = `SELECT id, registration_id_text, name, phone, email, city, state, payment_id_text, timestamp, checked_in_at
          FROM registrations
          ${whereClause}
          ORDER BY timestamp DESC
@@ -69,11 +72,19 @@ exports.handler = async (event) => {
       selectParams,
     );
 
+    // --- 3. FIX: Map correct column names to response ---
+    // (This maps to the frontend `admin.html` which expects `registration_id`)
+    const finalResults = registrationRows.map(row => ({
+      ...row,
+      registration_id: row.registration_id_text, // Map to what frontend expects
+      payment_id: row.payment_id_text, // Map to what frontend expects
+    }));
+
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        results: registrationRows,
+        results: finalResults, // Send the mapped results
         total,
         page: safePage,
         pageSize,

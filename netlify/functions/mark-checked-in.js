@@ -2,12 +2,7 @@
 
 const { pool } = require("./utils");
 
-/**
- * A secure, admin-only serverless function to mark a registered user as "checked in"
- * by setting a timestamp in the database.
- */
 exports.handler = async (event) => {
-  // 1. Security: This function must be called with the POST method.
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
@@ -15,7 +10,6 @@ exports.handler = async (event) => {
     };
   }
 
-  // 2. Security: Check for the admin secret key in the headers.
   const providedKey = event.headers["x-admin-key"];
   const secretKey = process.env.EXPORT_SECRET_KEY;
   if (!providedKey || providedKey !== secretKey) {
@@ -26,7 +20,6 @@ exports.handler = async (event) => {
   try {
     const { registrationId } = JSON.parse(event.body);
 
-    // 3. Validation: Ensure a registration ID was provided in the request body.
     if (!registrationId || !registrationId.trim()) {
       return {
         statusCode: 400,
@@ -38,17 +31,15 @@ exports.handler = async (event) => {
 
     dbClient = await pool.connect();
 
-    // 4. Database Update: Set the check-in time and flag the record for sync.
-    // We use COALESCE to prevent accidentally overwriting an existing check-in time.
-    // This query updates the record and returns the new data in a single operation.
+    // --- 1. FIX: Use `registration_id_text` in WHERE and RETURNING ---
     const updateQuery = `
       UPDATE registrations
       SET
         checked_in_at = NOW(),
         updated_at = NOW(),
         needs_sync = true
-      WHERE registration_id = $1
-      RETURNING registration_id, name, checked_in_at;
+      WHERE registration_id_text = $1
+      RETURNING registration_id_text, name, checked_in_at;
     `;
     const { rows } = await dbClient.query(updateQuery, [
       normalizedRegistrationId,
@@ -61,12 +52,18 @@ exports.handler = async (event) => {
       };
     }
 
-    // 5. Success Response: Return a confirmation message and the updated data.
+    // --- 2. FIX: Map correct column name to response ---
+    const responseData = {
+      registration_id: rows[0].registration_id_text,
+      name: rows[0].name,
+      checked_in_at: rows[0].checked_in_at,
+    };
+
     return {
       statusCode: 200,
       body: JSON.stringify({
         message: `Successfully checked in ${rows[0].name}.`,
-        data: rows[0],
+        data: responseData,
       }),
     };
   } catch (error) {

@@ -1,107 +1,123 @@
-// /netlify/functions/search-user.js
+// /netlify/functions/update-registration.js
 
 const { pool } = require("./utils");
 
-/**
- * Netlify serverless function to search for registrations by phone number and/or registration ID.
- * This function is protected and intended for admin use only.
- */
+const ALLOWED_FIELDS = ["name", "phone", "email", "city", "state"];
+
 exports.handler = async (event) => {
-  // 1. Security Check
   const providedKey = event.headers["x-admin-key"];
   const secretKey = process.env.EXPORT_SECRET_KEY;
 
   if (!providedKey || providedKey !== secretKey) {
     return {
       statusCode: 401,
-      body: JSON.stringify({
-        error: "Unauthorized: Missing or invalid secret key.",
-      }),
+      body: JSON.stringify({ error: "Unauthorized" }),
     };
   }
 
-  // 2. Method Check
-  if (event.httpMethod !== "GET") {
+  if (!["PUT", "PATCH"].includes(event.httpMethod)) {
     return {
       statusCode: 405,
       body: JSON.stringify({ error: "Method Not Allowed" }),
     };
   }
 
-  // 3. Input Validation
-  const { phone, registrationId } = event.queryStringParameters;
-  const trimmedPhone = phone ? phone.trim() : null;
-  const trimmedRegId = registrationId
-    ? registrationId.trim().toUpperCase()
-    : null;
-
-  if (!trimmedPhone && !trimmedRegId) {
+  let payload;
+  try {
+    payload = JSON.parse(event.body || "{}");
+  } catch (error) {
     return {
       statusCode: 400,
-      body: JSON.stringify({
-        error: "Please provide a phone number or a registration ID.",
-      }),
+      body: JSON.stringify({ error: "Invalid JSON payload." }),
     };
   }
 
-  // Explicitly select all columns to ensure consistent data structure.
-  let queryText = `
-    SELECT 
-      id,
-      timestamp,
-      registration_id,
-      name,
-      phone,
-      email,
-      city,
-      state,
-      payment_id,
-      image_url,
-      needs_sync,
-      checked_in_at
-    FROM registrations 
-    WHERE
+  const { registrationId } = payload;
+  if (!registrationId || typeof registrationId !== "string") {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "registrationId is required." }),
+    };
+  }
+
+  const normalize = (value) => {
+    if (value === undefined) return undefined;
+    if (value === null) return null;
+    if (typeof value === "string") {
+      const trimmed = value.trim();
+      return trimmed.length === 0 ? null : trimmed;
+    }
+    return value;
+  };
+
+  const updates = {};
+  for (const field of ALLOWED_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(payload, field)) {
+      updates[field] = normalize(payload[field]);
+    }
+  }
+
+  const updateKeys = Object.keys(updates);
+  if (updateKeys.length === 0) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "No updatable fields provided." }),
+    };
+  }
+
+  const setClauses = [];
+  const values = [];
+  let index = 1;
+  for (const field of updateKeys) {
+    setClauses.push(`${field} = $${index}`);
+    values.push(updates[field]);
+    index += 1;
+  }
+  setClauses.push("updated_at = NOW()");
+  setClauses.push("needs_sync = true");
+
+  const normalizedRegistrationId = registrationId.trim().toUpperCase();
+  values.push(normalizedRegistrationId);
+
+  // --- 1. FIX: Use `registration_id_text` in WHERE clause ---
+  // --- 2. FIX: Use `registration_id_text` and `payment_id_text` in RETURNING clause ---
+  const updateQuery = `
+    UPDATE registrations
+       SET ${setClauses.join(", ")}
+     WHERE registration_id_text = $${index}
+     RETURNING id, registration_id_text, name, phone, email, city, state, payment_id_text, timestamp, checked_in_at;
   `;
-  const queryParams = [];
-  let conditions = [];
-  let paramIndex = 1;
-
-  if (trimmedPhone) {
-    conditions.push(`phone = $${paramIndex++}`);
-    queryParams.push(trimmedPhone);
-  }
-
-  if (trimmedRegId) {
-    conditions.push(`registration_id = $${paramIndex++}`);
-    queryParams.push(trimmedRegId);
-  }
-
-  queryText += ` ${conditions.join(" OR ")} ORDER BY timestamp DESC;`;
 
   let dbClient;
   try {
     dbClient = await pool.connect();
-    const { rows } = await dbClient.query(queryText, queryParams);
+    const { rows } = await dbClient.query(updateQuery, values);
 
-    // --- FINAL, CORRECTED RESPONSE LOGIC ---
-    // If no users are found, return a 404 with a clear error message.
-    // The frontend will handle this correctly.
     if (rows.length === 0) {
       return {
         statusCode: 404,
-        body: JSON.stringify({
-          error: "No registration found for the provided details.",
-        }),
+        body: JSON.stringify({ error: "Registration not found." }),
       };
     }
 
-    // If users are found, always return the data as a JSON array.
+    // --- 3. FIX: Map correct column names to response ---
+    // (This maps to the frontend `admin.html` which expects `registration_id`)
+    const updatedRecord = {
+      ...rows[0],
+      registration_id: rows[0].registration_id_text,
+      payment_id: rows[0].payment_id_text,
+    };
+
     return {
       statusCode: 200,
-      body: JSON.stringify(rows),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        message: "Registration updated successfully.",
+        record: updatedRecord, // Send the mapped record
+      }),
     };
   } catch (error) {
-    console.error("Error in search-user function:", error);
+    console.error("Error in update-registration function:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "An internal server error occurred." }),

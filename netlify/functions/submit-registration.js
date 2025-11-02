@@ -16,16 +16,17 @@ cloudinary.config({
   secure: true,
 });
 
-// Flag: Ensure required Cloudinary credentials are present at runtime.
 const CLOUDINARY_ENABLED = Boolean(
   process.env.CLOUDINARY_CLOUD_NAME &&
-    process.env.CLOUDINARY_API_KEY &&
-    process.env.CLOUDINARY_API_SECRET,
+  process.env.CLOUDINARY_API_KEY &&
+  process.env.CLOUDINARY_API_SECRET,
 );
 
 // Helper function to parse multipart form data
 const parseMultipartForm = (event) =>
   new Promise((resolve, reject) => {
+    // ... (No changes needed in this function) ...
+    // [Keeping this section collapsed for brevity]
     const contentType =
       event.headers["content-type"] || event.headers["Content-Type"];
     if (!contentType)
@@ -33,7 +34,7 @@ const parseMultipartForm = (event) =>
 
     const bb = busboy({
       headers: { "content-type": contentType },
-      limits: { fileSize: 10 * 1024 * 1024 },
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     });
     const fields = {};
     const files = {};
@@ -41,6 +42,7 @@ const parseMultipartForm = (event) =>
     bb.on("file", (name, file, info) => {
       const allowedTypes = ["image/jpeg", "image/png", "image/jpg"];
       if (!allowedTypes.includes(info.mimeType)) {
+        file.resume(); // Consume the stream to prevent process hanging
         return reject(
           new Error(`Invalid file type. Only JPG and PNG are allowed.`),
         );
@@ -48,7 +50,7 @@ const parseMultipartForm = (event) =>
       const chunks = [];
       file.on("data", (chunk) => chunks.push(chunk));
       file.on("limit", () =>
-        reject(new Error(`File '${info.filename}' exceeds the 5MB limit.`)),
+        reject(new Error(`File '${info.filename}' exceeds the 10MB limit.`)),
       );
       file.on("end", () => {
         files[name] = {
@@ -76,6 +78,8 @@ const parseMultipartForm = (event) =>
 // Helper function to upload to Cloudinary
 const uploadToCloudinary = (buffer, folder) =>
   new Promise((resolve, reject) => {
+    // ... (No changes needed in this function) ...
+    // [Keeping this section collapsed for brevity]
     const uploadStream = cloudinary.uploader.upload_stream(
       { folder, resource_type: "auto" },
       (err, result) => {
@@ -112,14 +116,18 @@ exports.handler = async (event) => {
   let dbClient;
   try {
     const { fields, files } = await parseMultipartForm(event);
-    const { name, phone, email, district, state } = fields;
+
+    // --- FIX: Use `city` from form fields, not `district` ---
+    // Your form.html is likely sending 'city', but your DB has 'city'.
+    // This code now handles both `city` and `district` fields for flexibility.
+    const { name, phone, email, city, district, state } = fields;
     const { profileImage } = files;
 
-    // --- FINAL IMPROVEMENT: Strict Server-Side Validation ---
     const trimmedName = name ? name.trim() : "";
     const trimmedPhone = phone ? phone.trim() : "";
     const trimmedEmail = email ? email.trim() : "";
-    const trimmedCity = district ? district.trim() : "";
+    // --- FIX: Prioritize 'city' field, fall back to 'district' ---
+    const trimmedCity = city ? city.trim() : (district ? district.trim() : "");
     const trimmedState = state ? state.trim() : "";
     const normalizedEmail = trimmedEmail.toLowerCase();
 
@@ -154,6 +162,8 @@ exports.handler = async (event) => {
     // --- End Validation Block ---
 
     dbClient = await pool.connect();
+
+    // --- 1. FIX: Select `registration_id_text` ---
     const existingUserQuery = "SELECT * FROM registrations WHERE phone = $1";
     const { rows } = await dbClient.query(existingUserQuery, [trimmedPhone]);
 
@@ -189,8 +199,9 @@ exports.handler = async (event) => {
         updateValues,
       );
 
+      // --- 2. FIX: Return `registration_id_text` as `registrationId` ---
       const registrationData = {
-        registrationId: existingRecord.registration_id,
+        registrationId: existingRecord.registration_id_text, // Corrected field
         name: existingRecord.name,
         phone: existingRecord.phone,
         email: existingRecord.email,
@@ -209,6 +220,7 @@ exports.handler = async (event) => {
     }
 
     if (!CLOUDINARY_ENABLED) {
+      // ... (No changes needed) ...
       console.error(
         "Cloudinary credentials are missing. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET in your environment.",
       );
@@ -229,6 +241,7 @@ exports.handler = async (event) => {
         CLOUDINARY_FOLDER,
       );
     } catch (cloudErr) {
+      // ... (No changes needed) ...
       console.error(
         "Cloudinary upload failed:",
         cloudErr && cloudErr.message ? cloudErr.message : cloudErr,
@@ -246,7 +259,8 @@ exports.handler = async (event) => {
     const registrationId = `EMRS-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
     const registrationTimestamp = new Date();
 
-    const insertQuery = `INSERT INTO registrations (registration_id, name, phone, email, city, state, image_url, timestamp, updated_at, needs_sync) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;`;
+    // --- 3. FIX: Insert into `registration_id_text` ---
+    const insertQuery = `INSERT INTO registrations (registration_id_text, name, phone, email, city, state, image_url, timestamp, updated_at, needs_sync) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;`;
     const values = [
       registrationId,
       trimmedName,
@@ -257,7 +271,7 @@ exports.handler = async (event) => {
       uploadResult.secure_url,
       registrationTimestamp,
       registrationTimestamp,
-      true,
+      true, // needs_sync
     ];
     const result = await dbClient.query(insertQuery, values);
     const newRecord = result.rows[0];
@@ -268,7 +282,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         status: "success",
         registrationData: {
-          registrationId: newRecord.registration_id,
+          // --- 4. FIX: Return `registration_id_text` as `registrationId` ---
+          registrationId: newRecord.registration_id_text, // Corrected field
           name: newRecord.name,
           phone: newRecord.phone,
           email: newRecord.email,
@@ -280,6 +295,7 @@ exports.handler = async (event) => {
     };
   } catch (err) {
     console.error("SUBMIT_REGISTRATION_ERROR:", err);
+    // ... (No changes needed) ...
     return {
       statusCode: 500,
       body: JSON.stringify({

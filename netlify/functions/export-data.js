@@ -30,12 +30,11 @@ exports.handler = async (event) => {
       dbClient = await pool.connect();
       console.log("Export started: Acquired database client.");
 
-      // --- CORRECTED SQL QUERY ---
-      // 'company' column removed to match new schema.
+      // --- 1. FIX: Use correct column names in SQL query ---
       const sql = `
           SELECT 
-            registration_id, name, phone, email, 
-            city, state, payment_id, timestamp, image_url,
+            registration_id_text, name, phone, email, 
+            city, state, payment_id_text, timestamp, image_url,
             checked_in_at
           FROM registrations ORDER BY timestamp ASC
         `;
@@ -72,17 +71,15 @@ exports.handler = async (event) => {
       });
       const worksheet = workbook.addWorksheet("Registrations");
 
-      // --- CORRECTED EXCEL COLUMNS ---
-      // 1. Removed 'company' column.
-      // 2. Fixed 'Email' column key from 'address' to 'email'.
+      // --- 2. FIX: Use correct keys for Excel columns ---
       worksheet.columns = [
-        { header: "Registration ID", key: "registration_id", width: 22 },
+        { header: "Registration ID", key: "registration_id_text", width: 22 },
         { header: "Name", key: "name", width: 30 },
         { header: "Phone Number", key: "phone", width: 18 },
-        { header: "Email", key: "email", width: 45 }, // KEY FIXED
+        { header: "Email", key: "email", width: 45 },
         { header: "District / City", key: "city", width: 25 },
         { header: "State", key: "state", width: 25 },
-        { header: "Payment ID", key: "payment_id", width: 30 },
+        { header: "Payment ID", key: "payment_id_text", width: 30 },
         {
           header: "Registered On",
           key: "timestamp",
