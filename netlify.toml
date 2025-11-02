@@ -1,8 +1,16 @@
+##########
 # Netlify configuration for EMRS by EllowDigital
+##########
 
 [build]
   publish = "."
   functions = "netlify/functions"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+  external_node_modules = ["pg", "googleapis"]
+  included_files = ["schema.sql"]
 
 [[redirects]]
   from = "/admin"
@@ -15,6 +23,16 @@
   status = 200
 
 [[redirects]]
+  from = "/form"
+  to = "/form.html"
+  status = 200
+
+[[redirects]]
+  from = "/web-app"
+  to = "/web-app.html"
+  status = 200
+
+[[redirects]]
   from = "/service-worker.js"
   to = "/service-worker.js"
   status = 200
@@ -23,15 +41,38 @@
 [[headers]]
   for = "/*"
   [headers.values]
+    Cache-Control = "public, max-age=60, must-revalidate"
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
     Referrer-Policy = "strict-origin-when-cross-origin"
     Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=60, must-revalidate"
 
 [[headers]]
   for = "/service-worker.js"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/assets/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/assets/vendor/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/assets/favicon/*"

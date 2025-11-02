@@ -17,6 +17,13 @@ const shouldUseSSL = (() => {
   if (override) {
     return override.toLowerCase() === "true";
   }
+
+  const rawUrl = process.env.DATABASE_URL || "";
+  const isLocalhost = rawUrl.includes("localhost") || rawUrl.includes("127.0.0.1");
+  if (isLocalhost) {
+    return false;
+  }
+
   return process.env.NODE_ENV === "production";
 })();
 
@@ -37,9 +44,8 @@ const poolConfig = {
 const pool = new Pool(poolConfig);
 
 // Optional: Add event listeners for logging and debugging pool activity
-pool.on("error", (err, client) => {
+pool.on("error", (err) => {
   console.error("[DB_POOL] Unexpected error on idle client", err);
-  process.exit(-1); // A harsh but effective way to force a container restart on critical error.
 });
 
 /**
