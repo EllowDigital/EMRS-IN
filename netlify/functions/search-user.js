@@ -20,17 +20,10 @@ exports.handler = async (event) => {
     };
   }
 
-  const params = event.queryStringParameters || {};
-  const rawPhone =
-    typeof params.phone === "string" ? params.phone.trim() : "";
-  const rawRegistrationId =
-    typeof params.registrationId === "string"
-      ? params.registrationId.trim()
-      : "";
-
-  const phone = rawPhone ? rawPhone : null;
-  const registrationId = rawRegistrationId
-    ? rawRegistrationId.toUpperCase()
+  const qs = event.queryStringParameters || {};
+  const phone = qs.phone ? String(qs.phone).trim() : null;
+  const registrationId = qs.registrationId
+    ? String(qs.registrationId).trim().toUpperCase()
     : null;
 
   if (!phone && !registrationId) {
@@ -40,75 +33,45 @@ exports.handler = async (event) => {
     };
   }
 
-  const whereClauses = [];
   const values = [];
-  let index = 1;
+  let whereClauses = [];
+  let idx = 1;
 
   if (phone) {
-    whereClauses.push(`phone = $${index}`);
+    whereClauses.push(`phone = $${idx}`);
     values.push(phone);
-    index += 1;
+    idx += 1;
   }
-
   if (registrationId) {
-    whereClauses.push(`UPPER(reg_id) = $${index}`);
+    whereClauses.push(`reg_id = $${idx}`);
     values.push(registrationId);
-    index += 1;
+    idx += 1;
   }
 
-  const whereClause = `WHERE ${whereClauses.join(" OR ")}`;
-  const selectQuery = `
-    SELECT id,
-           "timestamp",
-           reg_id,
-           name,
-           phone,
-           email,
-           city,
-           state,
-           pay_id,
-           image_url,
-           needs_sync,
-           checked_in_at,
-           updated_at
-      FROM registrations
-      ${whereClause}
-      LIMIT 1;
-  `;
+  const query = `SELECT * FROM registrations WHERE (${whereClauses.join(" OR ")}) LIMIT 1`;
 
   let dbClient;
   try {
     dbClient = await pool.connect();
-    const { rows } = await dbClient.query(selectQuery, values);
-
-    if (rows.length === 0) {
-      return {
-        statusCode: 404,
-        body: JSON.stringify({ error: "Registration not found." }),
-      };
+    const { rows } = await dbClient.query(query, values);
+    if (!rows || rows.length === 0) {
+      return { statusCode: 404, body: JSON.stringify({ error: "Not found" }) };
     }
-
-    const record = rows[0];
-    const mappedRecord = {
-      ...record,
-      registration_id: record.reg_id,
-      payment_id: record.pay_id,
+    const row = rows[0];
+    const mapped = {
+      ...row,
+      registration_id: row.reg_id,
+      payment_id: row.pay_id,
     };
-
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(mappedRecord),
+      body: JSON.stringify(mapped),
     };
   } catch (error) {
     console.error("Error in search-user function:", error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: "An internal server error occurred." }),
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: "Internal server error" }) };
   } finally {
-    if (dbClient) {
-      dbClient.release();
-    }
+    if (dbClient) dbClient.release();
   }
 };

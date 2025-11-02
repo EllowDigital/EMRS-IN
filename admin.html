@@ -1798,6 +1798,14 @@
 
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        try {
+          if (!localStorage.getItem(POPUP_PROMPT_KEY)) {
+            showPopupBanner();
+            return;
+          }
+        } catch (popupCheckError) {
+          console.warn("Popup prompt check failed:", popupCheckError);
+        }
         setButtonLoading(loginBtn, true);
         loginError.classList.add("d-none");
         try {

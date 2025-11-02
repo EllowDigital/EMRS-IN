@@ -141,17 +141,7 @@
       pointer-events: none;
     }
 
-    .scanner-overlay-message button {
-      pointer-events: all;
-    }
-
-    .permission-error-ui {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.75rem;
-      text-align: center;
-    }
+    .scanner-overlay-message button { pointer-events: all; }
 
     @keyframes sweep {
       0% {
@@ -298,18 +288,10 @@
                 <div id="qr-reader" class="w-full aspect-square"></div>
                 <div id="scannerOverlayMessage" class="scanner-overlay-message">
                   <span id="scannerOverlayText">Camera is off. Sign in to start scanning.</span>
-                  <div id="permissionErrorUI" class="hidden permission-error-ui text-slate-600">
-                    <h3 class="text-base font-semibold text-rose-600">
-                      Camera Permission Denied
-                    </h3>
-                    <p class="text-sm text-slate-500">
-                      Please allow camera access in your browser settings, then select retry below.
-                    </p>
-                    <button id="reloadPermissionBtn" type="button"
-                      class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-indigo-700">
-                      <i class="fas fa-redo" aria-hidden="true"></i>
-                      Retry Permission
-                    </button>
+                  <div id="permissionErrorUI" class="hidden">
+                    <h3 class="text-lg font-semibold">Camera Permission Denied</h3>
+                    <p class="text-sm text-slate-500">Browser blocked camera access. Please enable camera permission for this site in your browser settings and retry.</p>
+                    <button id="reloadPermissionBtn" type="button" class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Retry Permission</button>
                   </div>
                 </div>
               </div>
@@ -912,6 +894,21 @@
           resetScanTimer();
         } catch (startError) {
           console.error("Camera start failed:", startError);
+          // If browser explicitly denied camera permissions, show the permission UI
+          try {
+            const eName = startError && startError.name ? startError.name : "";
+            if (eName === "NotAllowedError" || eName === "PermissionDeniedError") {
+              const overlayTextEl = document.getElementById("scannerOverlayText");
+              const permissionUI = document.getElementById("permissionErrorUI");
+              if (overlayTextEl) overlayTextEl.style.display = "none";
+              if (permissionUI) permissionUI.classList.remove("hidden");
+              setScannerError("Camera access was denied by the browser.");
+              updateScannerState("inactive", "Camera access was denied by the browser.");
+              return;
+            }
+          } catch (uiErr) {
+            console.warn("Permission UI update failed:", uiErr);
+          }
           setScannerError(
             "Unable to start the camera. Please allow permissions or try another device.",
           );
@@ -1373,6 +1370,19 @@
           await showLogin();
         }
       });
+
+      // Retry permission button (reloads the page to re-prompt permissions)
+      const reloadPermissionBtn = document.getElementById("reloadPermissionBtn");
+      if (reloadPermissionBtn) {
+        reloadPermissionBtn.addEventListener("click", () => {
+          try {
+            location.reload();
+          } catch (err) {
+            // Fallback for older browsers
+            window.location.href = window.location.href;
+          }
+        });
+      }
 
       window.addEventListener("beforeunload", () => {
         if (scanFailureTimer) {
