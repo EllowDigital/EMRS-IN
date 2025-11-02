@@ -82,8 +82,8 @@ exports.handler = async (event) => {
   const updateQuery = `
     UPDATE registrations
        SET ${setClauses.join(", ")}
-     WHERE registration_id = $${index}
-     RETURNING id, registration_id, name, phone, email, city, state, payment_id, timestamp, checked_in_at;
+    WHERE reg_id = $${index}
+    RETURNING id, reg_id, name, phone, email, city, state, pay_id, timestamp, checked_in_at;
   `;
 
   let dbClient;
@@ -98,12 +98,18 @@ exports.handler = async (event) => {
       };
     }
 
+    const updatedRecord = {
+      ...rows[0],
+      registration_id: rows[0].reg_id,
+      payment_id: rows[0].pay_id,
+    };
+
     return {
       statusCode: 200,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: "Registration updated successfully.",
-        record: rows[0],
+        record: updatedRecord,
       }),
     };
   } catch (error) {

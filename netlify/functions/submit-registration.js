@@ -163,7 +163,6 @@ exports.handler = async (event) => {
 
     dbClient = await pool.connect();
 
-    // --- 1. FIX: Select `registration_id_text` ---
     const existingUserQuery = "SELECT * FROM registrations WHERE phone = $1";
     const { rows } = await dbClient.query(existingUserQuery, [trimmedPhone]);
 
@@ -199,9 +198,8 @@ exports.handler = async (event) => {
         updateValues,
       );
 
-      // --- 2. FIX: Return `registration_id_text` as `registrationId` ---
       const registrationData = {
-        registrationId: existingRecord.registration_id_text, // Corrected field
+        registrationId: existingRecord.reg_id,
         name: existingRecord.name,
         phone: existingRecord.phone,
         email: existingRecord.email,
@@ -259,8 +257,8 @@ exports.handler = async (event) => {
     const registrationId = `EMRS-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
     const registrationTimestamp = new Date();
 
-    // --- 3. FIX: Insert into `registration_id_text` ---
-    const insertQuery = `INSERT INTO registrations (registration_id_text, name, phone, email, city, state, image_url, timestamp, updated_at, needs_sync) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;`;
+    const insertQuery = `INSERT INTO registrations (reg_id, name, phone, email, city, state, image_url, timestamp, updated_at, needs_sync)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *;`;
     const values = [
       registrationId,
       trimmedName,
@@ -282,8 +280,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         status: "success",
         registrationData: {
-          // --- 4. FIX: Return `registration_id_text` as `registrationId` ---
-          registrationId: newRecord.registration_id_text, // Corrected field
+          registrationId: newRecord.reg_id,
           name: newRecord.name,
           phone: newRecord.phone,
           email: newRecord.email,

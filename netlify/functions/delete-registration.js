@@ -44,9 +44,8 @@ exports.handler = async (event) => {
   try {
     dbClient = await pool.connect();
 
-    // --- FIX: Use `registration_id_text` in the WHERE clause ---
     const { rows } = await dbClient.query(
-      `DELETE FROM registrations WHERE registration_id_text = $1 RETURNING registration_id_text, name;`,
+      `DELETE FROM registrations WHERE reg_id = $1 RETURNING reg_id, name;`,
       [normalizedRegistrationId],
     );
 
@@ -62,7 +61,7 @@ exports.handler = async (event) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message: "Registration deleted successfully.",
-        registrationId: rows[0].registration_id_text, // FIX: Return the correct column name
+        registrationId: rows[0].reg_id,
       }),
     };
   } catch (error) {

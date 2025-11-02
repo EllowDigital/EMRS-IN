@@ -79,13 +79,11 @@ exports.handler = async (event) => {
   const normalizedRegistrationId = registrationId.trim().toUpperCase();
   values.push(normalizedRegistrationId);
 
-  // --- 1. FIX: Use `registration_id_text` in WHERE clause ---
-  // --- 2. FIX: Use `registration_id_text` and `payment_id_text` in RETURNING clause ---
   const updateQuery = `
     UPDATE registrations
        SET ${setClauses.join(", ")}
-     WHERE registration_id_text = $${index}
-     RETURNING id, registration_id_text, name, phone, email, city, state, payment_id_text, timestamp, checked_in_at;
+    WHERE reg_id = $${index}
+    RETURNING id, reg_id, name, phone, email, city, state, pay_id, timestamp, checked_in_at;
   `;
 
   let dbClient;
@@ -104,8 +102,8 @@ exports.handler = async (event) => {
     // (This maps to the frontend `admin.html` which expects `registration_id`)
     const updatedRecord = {
       ...rows[0],
-      registration_id: rows[0].registration_id_text,
-      payment_id: rows[0].payment_id_text,
+      registration_id: rows[0].reg_id,
+      payment_id: rows[0].pay_id,
     };
 
     return {

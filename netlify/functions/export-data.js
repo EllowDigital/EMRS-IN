@@ -33,8 +33,8 @@ exports.handler = async (event) => {
       // --- 1. FIX: Use correct column names in SQL query ---
       const sql = `
           SELECT 
-            registration_id_text, name, phone, email, 
-            city, state, payment_id_text, timestamp, image_url,
+            reg_id, name, phone, email, 
+            city, state, pay_id, timestamp, image_url,
             checked_in_at
           FROM registrations ORDER BY timestamp ASC
         `;
@@ -73,13 +73,13 @@ exports.handler = async (event) => {
 
       // --- 2. FIX: Use correct keys for Excel columns ---
       worksheet.columns = [
-        { header: "Registration ID", key: "registration_id_text", width: 22 },
+        { header: "Registration ID", key: "reg_id", width: 22 },
         { header: "Name", key: "name", width: 30 },
         { header: "Phone Number", key: "phone", width: 18 },
         { header: "Email", key: "email", width: 45 },
         { header: "District / City", key: "city", width: 25 },
         { header: "State", key: "state", width: 25 },
-        { header: "Payment ID", key: "payment_id_text", width: 30 },
+        { header: "Payment ID", key: "pay_id", width: 30 },
         {
           header: "Registered On",
           key: "timestamp",

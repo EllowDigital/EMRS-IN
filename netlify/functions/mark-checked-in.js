@@ -31,15 +31,14 @@ exports.handler = async (event) => {
 
     dbClient = await pool.connect();
 
-    // --- 1. FIX: Use `registration_id_text` in WHERE and RETURNING ---
     const updateQuery = `
       UPDATE registrations
       SET
         checked_in_at = NOW(),
         updated_at = NOW(),
         needs_sync = true
-      WHERE registration_id_text = $1
-      RETURNING registration_id_text, name, checked_in_at;
+      WHERE reg_id = $1
+      RETURNING reg_id, name, checked_in_at;
     `;
     const { rows } = await dbClient.query(updateQuery, [
       normalizedRegistrationId,
@@ -54,7 +53,7 @@ exports.handler = async (event) => {
 
     // --- 2. FIX: Map correct column name to response ---
     const responseData = {
-      registration_id: rows[0].registration_id_text,
+      registration_id: rows[0].reg_id,
       name: rows[0].name,
       checked_in_at: rows[0].checked_in_at,
     };

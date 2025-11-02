@@ -77,9 +77,8 @@ exports.handler = async (event) => {
   try {
     dbClient = await pool.connect();
 
-    // --- 1. FIX: Use `registration_id_text` in SELECT ---
     const queryText = `
-            SELECT registration_id_text, name, phone, email, city, state, image_url
+      SELECT reg_id, name, phone, email, city, state, image_url
             FROM registrations WHERE phone = $1
         `;
     const { rows } = await dbClient.query(queryText, [trimmedPhone]);
@@ -95,9 +94,8 @@ exports.handler = async (event) => {
 
     const userData = rows[0];
     
-    // --- 2. FIX: Map `registration_id_text` to `registrationId` ---
     const registrationData = {
-      registrationId: userData.registration_id_text,
+      registrationId: userData.reg_id,
       name: userData.name,
       phone: userData.phone,
       email: userData.email,

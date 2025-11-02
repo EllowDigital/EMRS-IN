@@ -55,18 +55,15 @@ exports.handler = async (event = {}) => {
   try {
     dbClient = await pool.connect();
 
-    // --- 1. FIX: Using correct DB column names ---
-    // Changed `registration_id` to `registration_id_text`
-    // Changed `payment_id` to `payment_id_text`
     const { rows: registrations } = await dbClient.query(
       `SELECT 
-          registration_id_text, 
+          reg_id, 
           name, 
           phone, 
           email, 
           city, 
           state, 
-          payment_id_text, 
+          pay_id, 
           timestamp, 
           image_url, 
           checked_in_at
@@ -96,15 +93,14 @@ exports.handler = async (event = {}) => {
     console.log("[GSheet] Cleared data rows (headers preserved).");
 
     if (registrations.length > 0) {
-      // --- 3. FIX: Row mapping uses correct DB field names ---
       const sheetRows = registrations.map((record) => [
-        record.registration_id_text,    // A: REG_ID
+        record.reg_id,    // A: REG_ID
         record.name,                    // B: NAME
         record.phone,                   // C: PHONE
         record.email,                   // D: E-MAIL
         record.city,                    // E: CITY/DISTRICT
         record.state,                   // F: STATE
-        record.payment_id_text || "N/A", // G: PAYMENT_ID
+        record.pay_id || "N/A", // G: PAYMENT_ID
         formatTimestamp(record.timestamp), // H: TIME STAMP
         record.image_url,               // I: PROFILE_URL
         formatTimestamp(record.checked_in_at), // J: CHECK_IN_AT
