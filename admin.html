@@ -895,6 +895,11 @@
         try {
           testWindow = window.open("", "emrsPopupTest", "width=480,height=360");
           if (testWindow) {
+            try {
+              testWindow.opener = null;
+            } catch (noopErr) {
+              console.debug("Unable to clear opener on test pop-up", noopErr);
+            }
             testWindow.document.write(
               "<p style='font-family:Inter, sans-serif; padding:1.5rem; text-align:center;'>Pop-ups enabled for EMRS. You can close this tab.</p>",
             );

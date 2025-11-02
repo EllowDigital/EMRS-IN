@@ -286,11 +286,11 @@
               <div class="scan-laser relative overflow-hidden rounded-2xl w-full max-w-[18rem] sm:max-w-[22rem] mx-auto"
                 data-scan-container>
                 <div id="qr-reader" class="w-full aspect-square"></div>
-                <div id="scannerOverlayMessage" class="scanner-overlay-message">
+                <div id="scannerOverlayMessage" class="scanner-overlay-message" role="status" aria-live="polite">
                   <span id="scannerOverlayText">Camera is off. Sign in to start scanning.</span>
-                  <div id="permissionErrorUI" class="hidden">
+                  <div id="permissionErrorUI" class="hidden" aria-live="polite">
                     <h3 class="text-lg font-semibold">Camera Permission Denied</h3>
-                    <p class="text-sm text-slate-500">Browser blocked camera access. Please enable camera permission for this site in your browser settings and retry.</p>
+                    <p id="permissionErrorMessage" class="text-sm text-slate-500">Browser blocked camera access. Please enable camera permission for this site in your browser settings and retry.</p>
                     <button id="reloadPermissionBtn" type="button" class="inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Retry Permission</button>
                   </div>
                 </div>
@@ -461,6 +461,8 @@
       const AUTH_REQUIRED_CODE = "AUTH_REQUIRED";
       const HTML5_QRCODE_SRC = "assets/vendor/html5-qrcode.min.js";
       const SCAN_TIMEOUT_MS = 5000;
+      const DEFAULT_PERMISSION_GUIDANCE =
+        "Browser blocked camera access. Please enable camera permission for this site in your browser settings and retry.";
 
       if (typeof sessionStorage !== "undefined") {
         try {
@@ -508,6 +510,11 @@
         scanContainer: document.querySelector("[data-scan-container]"),
         scannerOverlayMessage: document.getElementById(
           "scannerOverlayMessage",
+        ),
+        scannerOverlayText: document.getElementById("scannerOverlayText"),
+        permissionErrorUI: document.getElementById("permissionErrorUI"),
+        permissionErrorMessage: document.getElementById(
+          "permissionErrorMessage",
         ),
       };
 
@@ -604,26 +611,80 @@
         }
       }
 
+      function resetPermissionOverlay() {
+        if (elements.permissionErrorUI) {
+          elements.permissionErrorUI.classList.add("hidden");
+        }
+        if (elements.permissionErrorMessage) {
+          elements.permissionErrorMessage.textContent =
+            DEFAULT_PERMISSION_GUIDANCE;
+        }
+        if (elements.scannerOverlayText) {
+          elements.scannerOverlayText.style.display = "block";
+        }
+      }
+
+      function showCameraPermissionError(details) {
+        const overlay = elements.scannerOverlayMessage;
+        if (!overlay) {
+          return;
+        }
+        if (elements.scanContainer) {
+          elements.scanContainer.classList.remove("camera-active");
+        }
+        overlay.style.display = "flex";
+        if (elements.scannerOverlayText) {
+          elements.scannerOverlayText.style.display = "none";
+        }
+        if (elements.permissionErrorUI) {
+          elements.permissionErrorUI.classList.remove("hidden");
+        }
+        if (elements.permissionErrorMessage) {
+          elements.permissionErrorMessage.textContent =
+            details || DEFAULT_PERMISSION_GUIDANCE;
+        }
+      }
+
+      async function getCameraPermissionState() {
+        if (!navigator.permissions?.query) {
+          return "prompt";
+        }
+        try {
+          const status = await navigator.permissions.query({ name: "camera" });
+          return status.state;
+        } catch (error) {
+          console.debug("Unable to determine camera permission state", error);
+          return "prompt";
+        }
+      }
+
       function updateScannerState(status, message = "") {
         const container = elements.scanContainer;
         const overlay = elements.scannerOverlayMessage;
         if (!container || !overlay) {
           return;
         }
+        const overlayText = elements.scannerOverlayText;
+        if (status === "active") {
+          container.classList.add("camera-active");
+          overlay.style.display = "none";
+          resetPermissionOverlay();
+          if (overlayText) {
+            overlayText.textContent = "";
+          }
+          return;
+        }
+
         container.classList.remove("camera-active");
-        switch (status) {
-          case "active":
-            container.classList.add("camera-active");
-            overlay.style.display = "none";
-            break;
-          case "starting":
-            overlay.textContent = message || "Initializing camera...";
-            overlay.style.display = "flex";
-            break;
-          default:
-            overlay.textContent = message || "Camera is currently off.";
-            overlay.style.display = "flex";
-            break;
+        overlay.style.display = "flex";
+        resetPermissionOverlay();
+        const displayMessage =
+          message ||
+          (status === "starting"
+            ? "Initializing camera..."
+            : "Camera is currently off.");
+        if (overlayText) {
+          overlayText.textContent = displayMessage;
         }
       }
 
@@ -857,18 +918,29 @@
           html5QrCode = new Html5Qrcode("qr-reader");
         }
         try {
+          const permissionState = await getCameraPermissionState();
+          if (permissionState === "denied") {
+            const blockedMessage =
+              "Camera access is blocked in your browser settings. Enable it and retry.";
+            showCameraPermissionError(blockedMessage);
+            setScannerError(blockedMessage);
+            return;
+          }
+          if (permissionState === "granted") {
+            state.cameraPermissionGranted = true;
+          }
+        } catch (stateCheckError) {
+          console.debug("Camera permission query failed", stateCheckError);
+        }
+        try {
           await ensureCameraPermission();
         } catch (permissionError) {
           console.error("Camera permission error:", permissionError);
-          setScannerError(
-            permissionError.message ||
-            "Camera permission is required to scan codes.",
-          );
-          updateScannerState(
-            "inactive",
-            permissionError.message ||
-            "Camera permission is required to scan codes.",
-          );
+          const guidance =
+            permissionError?.message ||
+            "Camera permission is required to scan codes.";
+          showCameraPermissionError(guidance);
+          setScannerError(guidance);
           return;
         }
         try {
@@ -898,12 +970,9 @@
           try {
             const eName = startError && startError.name ? startError.name : "";
             if (eName === "NotAllowedError" || eName === "PermissionDeniedError") {
-              const overlayTextEl = document.getElementById("scannerOverlayText");
-              const permissionUI = document.getElementById("permissionErrorUI");
-              if (overlayTextEl) overlayTextEl.style.display = "none";
-              if (permissionUI) permissionUI.classList.remove("hidden");
-              setScannerError("Camera access was denied by the browser.");
-              updateScannerState("inactive", "Camera access was denied by the browser.");
+              const deniedMessage = "Camera access was denied by the browser.";
+              showCameraPermissionError(deniedMessage);
+              setScannerError(deniedMessage);
               return;
             }
           } catch (uiErr) {
