@@ -2,7 +2,7 @@
   "name": "EMRS Staff Console",
   "short_name": "EMRS By EllowDigital",
   "description": "Staff-only toolkit to verify EMRS passes, manage check-ins, and sync with EllowDigital systems on the go.",
-  "start_url": "/verify.html",
+  "start_url": "/web-app.html",
   "scope": "/",
   "display": "standalone",
   "background_color": "#0a2540",
@@ -12,12 +12,20 @@
     {
       "src": "assets/favicon/android-chrome-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "assets/favicon/android-chrome-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "assets/favicon/android-chrome-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [
@@ -36,7 +44,79 @@
     {
       "name": "Admin Console",
       "short_name": "Admin",
-      "url": "/admin.html"
+      "url": "/admin.html",
+      "icons": [
+        {
+          "src": "assets/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Staff Hub",
+      "short_name": "Hub",
+      "url": "/web-app.html",
+      "description": "Jump straight into the EMRS quick actions dashboard.",
+      "icons": [
+        {
+          "src": "assets/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Event Site",
+      "short_name": "Home",
+      "url": "/index.html",
+      "description": "View the main EMRS event microsite.",
+      "icons": [
+        {
+          "src": "assets/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Register Guest",
+      "short_name": "Register",
+      "url": "/form.html",
+      "description": "Open the EMRS visitor registration form.",
+      "icons": [
+        {
+          "src": "assets/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Gallery",
+      "short_name": "Gallery",
+      "url": "/gallery.html",
+      "description": "Browse highlights from the EMRS experience.",
+      "icons": [
+        {
+          "src": "assets/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Case Study",
+      "short_name": "Case",
+      "url": "/case-study-tent-decor-expo.html",
+      "description": "Review the Tent Decor Expo case study.",
+      "icons": [
+        {
+          "src": "assets/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "categories": ["productivity", "business"],

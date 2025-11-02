@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EMRS Control Hub</title>
+    <meta name="description"
+        content="Launch point for the EMRS web app with quick access to admin, verification, registration, and the public site." />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/favicon/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0a2540" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        emrs: {
+                            primary: '#0A2540',
+                            accent: '#3B82F6',
+                            gold: '#FFD15C',
+                        },
+                    },
+                },
+            },
+        };
+    </script>
+        <meta name="keywords"
+            content="EMRS control hub, EllowDigital PWA, staff launcher, event operations toolkit" />
+        <meta name="author" content="EllowDigital" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href="https://get-epass.netlify.app/web-app.html" />
+
+        <meta property="og:title" content="EMRS Control Hub" />
+        <meta property="og:description"
+            content="Launch the EMRS quick actions dashboard to access admin, verification, and registration flows instantly." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://get-epass.netlify.app/web-app.html" />
+        <meta property="og:site_name" content="EMRS by EllowDigital" />
+        <meta property="og:locale" content="en_IN" />
+        <meta property="og:image" content="https://get-epass.netlify.app/assets/images/emrs-logo.png" />
+        <meta property="og:image:alt" content="EMRS control hub launcher" />
+
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="EMRS Control Hub" />
+        <meta name="twitter:description"
+            content="Launch the EMRS quick actions dashboard to access admin, verification, and registration flows instantly." />
+        <meta name="twitter:image" content="https://get-epass.netlify.app/assets/images/emrs-logo.png" />
+        <meta name="twitter:image:alt" content="EMRS control hub launcher" />
+    <style>
+        /* Background particles (soft motion) */
+        body {
+            background: radial-gradient(circle at 10% 20%, #0a2540, #09192f 80%);
+            overflow-x: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .glow {
+            box-shadow: 0 0 30px rgba(59, 130, 246, 0.35);
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-8px);
+            }
+        }
+
+        .float {
+            animation: float 4s ease-in-out infinite;
+        }
+
+        .pulse-glow {
+            animation: pulseGlow 2.2s ease-in-out infinite;
+        }
+
+        @keyframes pulseGlow {
+
+            0%,
+            100% {
+                box-shadow: 0 0 18px rgba(59, 130, 246, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 38px rgba(59, 130, 246, 0.65);
+            }
+        }
+    </style>
+</head>
+
+<body class="relative min-h-screen flex flex-col items-center justify-center text-white">
+
+    <!-- Floating particles -->
+    <div class="absolute inset-0 overflow-hidden -z-10">
+        <div class="absolute top-10 left-10 w-64 h-64 bg-blue-600/30 blur-3xl rounded-full animate-pulse"></div>
+        <div class="absolute bottom-20 right-10 w-80 h-80 bg-amber-400/20 blur-3xl rounded-full animate-pulse"></div>
+    </div>
+
+    <!-- Brand Header -->
+    <header class="flex flex-col items-center gap-3 mb-10 text-center">
+        <div class="inline-flex items-center gap-2 glass px-3 py-1.5 rounded-full border border-white/20 pulse-glow">
+            <img src="assets/images/EllowDigital-Logo.jpg" alt="EllowDigital Logo" class="w-5 h-5 rounded-md">
+            <span class="text-sm tracking-wide font-semibold text-ellow">EllowDigital</span>
+        </div>
+        <h1
+            class="text-3xl md:text-5xl font-bold mt-3 bg-gradient-to-r from-white to-blue-400 bg-clip-text text-transparent">
+            EMRS Control Hub
+        </h1>
+        <p class="text-white/70 text-base md:text-lg">Choose where you would like to start</p>
+    </header>
+
+    <!-- Main Action Grid -->
+    <main class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 w-full max-w-5xl px-4">
+
+        <!-- Card Template -->
+        <a href="admin.html"
+            class="glass rounded-2xl p-6 flex flex-col items-center gap-3 hover:bg-white/10 hover:scale-[1.02] transition-all duration-200 group">
+            <div
+                class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg group-hover:scale-110 transition">
+                🛠
+            </div>
+            <h3 class="font-semibold text-lg">Admin Dashboard</h3>
+            <p class="text-white/60 text-sm text-center">Manage event data and controls</p>
+        </a>
+
+        <a href="verify.html"
+            class="glass rounded-2xl p-6 flex flex-col items-center gap-3 hover:bg-white/10 hover:scale-[1.02] transition-all duration-200 group">
+            <div
+                class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-emerald-700 text-white shadow-lg group-hover:scale-110 transition">
+                ✅
+            </div>
+            <h3 class="font-semibold text-lg">Verify Passes</h3>
+            <p class="text-white/60 text-sm text-center">Scan & validate event entry</p>
+        </a>
+
+        <a href="form.html"
+            class="glass rounded-2xl p-6 flex flex-col items-center gap-3 hover:bg-white/10 hover:scale-[1.02] transition-all duration-200 group">
+            <div
+                class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-lg group-hover:scale-110 transition">
+                🧾
+            </div>
+            <h3 class="font-semibold text-lg">Register Attendee</h3>
+            <p class="text-white/60 text-sm text-center">Add new participants quickly</p>
+        </a>
+
+        <a href="index.html"
+            class="glass rounded-2xl p-6 flex flex-col items-center gap-3 hover:bg-white/10 hover:scale-[1.02] transition-all duration-200 group">
+            <div
+                class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-700 text-white shadow-lg group-hover:scale-110 transition">
+                🌐
+            </div>
+            <h3 class="font-semibold text-lg">Main Website</h3>
+            <p class="text-white/60 text-sm text-center">View public-facing pages</p>
+        </a>
+
+        <a href="gallery.html"
+            class="glass rounded-2xl p-6 flex flex-col items-center gap-3 hover:bg-white/10 hover:scale-[1.02] transition-all duration-200 group">
+            <div
+                class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg group-hover:scale-110 transition">
+                🖼
+            </div>
+            <h3 class="font-semibold text-lg">Event Gallery</h3>
+            <p class="text-white/60 text-sm text-center">Browse event highlights</p>
+        </a>
+
+        <a href="case-study-tent-decor-expo.html"
+            class="glass rounded-2xl p-6 flex flex-col items-center gap-3 hover:bg-white/10 hover:scale-[1.02] transition-all duration-200 group">
+            <div
+                class="w-12 h-12 flex items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-white shadow-lg group-hover:scale-110 transition">
+                🏕
+            </div>
+            <h3 class="font-semibold text-lg">Tent Decor Case Study</h3>
+            <p class="text-white/60 text-sm text-center">Showcase detailed insights</p>
+        </a>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-14 text-center text-white/70 text-sm">
+        <p>Fast actions for every EMRS device.</p>
+        <p class="mt-2">Made with <span class="text-pink-500 animate-pulse">❤️</span> by <span
+                class="font-semibold text-amber-300">EllowDigital</span></p>
+    </footer>
+</body>
+
+</html>
